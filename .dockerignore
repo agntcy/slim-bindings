@@ -1,0 +1,6 @@
+.task
+.tmp
+.tools
+.dist
+**/target
+.github

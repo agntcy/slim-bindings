@@ -1,0 +1,48 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+silent: true
+
+tasks:
+  default:
+    cmds:
+      - task -l
+
+  version:
+    desc: Get version
+    cmds:
+      - git describe --tags --match "slim-bindings-v*" | cut -c 16-
+
+  bindings:rust:lint:
+    desc: "Rust binding linter"
+    dir: ./rust
+    cmds:
+      - task lint
+
+  bindings:python:lint:
+    desc: "Python binding linter"
+    dir: ./python
+    cmds:
+      - task bindings:lint
+
+  bindings:go:lint:
+    desc: "Go binding linter"
+    dir: ./go
+    cmds:
+      - task lint
+
+  bindings:dotnet:lint:
+    desc: ".NET binding linter"
+    dir: ./dotnet
+    cmds:
+      - task lint
+
+  lint:
+    desc: "Run linters for all bindings that support it"
+    cmds:
+      - task: bindings:rust:lint
+      - task: bindings:python:lint
+      - task: bindings:go:lint
+      - task: bindings:dotnet:lint

@@ -1,0 +1,57 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: ci-test-and-build-bindings
+
+on:
+  push:
+    paths:
+      - '.github/workflows/pr.yaml'
+      - '.github/workflows/reusable-bindings-build-and-test.yaml'
+      - '.github/workflows/reusable-dotnet-build-and-test.yaml'
+      - '.github/workflows/reusable-java-build-and-test.yaml'
+      - '.github/workflows/reusable-kotlin-build-and-test.yaml'
+      - '.github/actions/setup-rust/action.yaml'
+      - 'rust/**'
+      - 'python/**'
+      - 'go/**'
+      - 'dotnet/**'
+      - 'java/**'
+      - 'kotlin/**'
+      - 'node/**'
+      - 'react-native/**'
+      - 'tasks/**'
+      - 'Taskfile.yaml'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - '.github/workflows/pr.yaml'
+      - '.github/workflows/reusable-bindings-build-and-test.yaml'
+      - '.github/workflows/reusable-dotnet-build-and-test.yaml'
+      - '.github/workflows/reusable-java-build-and-test.yaml'
+      - '.github/workflows/reusable-kotlin-build-and-test.yaml'
+      - '.github/actions/setup-rust/action.yaml'
+      - 'rust/**'
+      - 'python/**'
+      - 'go/**'
+      - 'dotnet/**'
+      - 'java/**'
+      - 'kotlin/**'
+      - 'node/**'
+      - 'react-native/**'
+      - 'tasks/**'
+      - 'Taskfile.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bindings-build-and-test:
+    name: Bindings - build & test
+    uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
