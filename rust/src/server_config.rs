@@ -8,7 +8,6 @@ use slim_config::grpc::server::KeepaliveServerParameters as CoreKeepaliveServerP
 use slim_config::grpc::server::ServerConfig as CoreServerConfig;
 
 use crate::common_config::{ServerAuthenticationConfig, TlsServerConfig, TlsSource};
-use crate::transport_protocol::TransportProtocol;
 
 /// Keepalive configuration for the server
 #[derive(uniffi::Record, Clone, Debug, PartialEq)]
@@ -69,11 +68,11 @@ impl From<CoreKeepaliveServerParameters> for KeepaliveServerParameters {
 /// Server configuration for running a SLIM server
 #[derive(uniffi::Record, Clone, Debug, PartialEq)]
 pub struct ServerConfig {
-    /// Endpoint address to listen on (e.g., "0.0.0.0:50051" or "[::]:50051")
+    /// Endpoint address to listen on (e.g., "0.0.0.0:50051" or "[::]:50051").
+    ///
+    /// The transport protocol is inferred from the endpoint scheme:
+    /// `ws://`/`wss://` → WebSocket, otherwise gRPC.
     pub endpoint: String,
-
-    /// Transport protocol to use (defaults to gRPC in core config when omitted)
-    pub transport: Option<TransportProtocol>,
 
     /// TLS server configuration
     pub tls: TlsServerConfig,
@@ -104,6 +103,15 @@ pub struct ServerConfig {
 
     /// Arbitrary user-provided metadata as JSON string
     pub metadata: Option<String>,
+
+    /// When true, reject inter-node messages without a valid header MAC (strict mode).
+    pub require_header_mac: Option<bool>,
+
+    /// Timeout (in seconds) to wait for the link HMAC session to be installed.
+    pub link_hmac_timeout_secs: Option<u64>,
+
+    /// Polling interval (in milliseconds) to wait between HMAC existence checks.
+    pub link_hmac_poll_interval_ms: Option<u64>,
 }
 
 impl Default for ServerConfig {
@@ -111,7 +119,6 @@ impl Default for ServerConfig {
         let core_defaults = CoreServerConfig::default();
         ServerConfig {
             endpoint: core_defaults.endpoint,
-            transport: None,
             tls: core_defaults.tls_setting.into(),
             http2_only: None,
             max_frame_size: None,
@@ -122,6 +129,9 @@ impl Default for ServerConfig {
             keepalive: None,
             auth: None,
             metadata: None,
+            require_header_mac: None,
+            link_hmac_timeout_secs: None,
+            link_hmac_poll_interval_ms: None,
         }
     }
 }
@@ -131,10 +141,6 @@ impl From<ServerConfig> for CoreServerConfig {
         let core_defaults = CoreServerConfig::default();
         CoreServerConfig {
             endpoint: config.endpoint,
-            transport: config
-                .transport
-                .map(Into::into)
-                .unwrap_or(core_defaults.transport),
             tls_setting: config.tls.into(),
             http2_only: config.http2_only.unwrap_or(core_defaults.http2_only),
             max_frame_size: config.max_frame_size.or(core_defaults.max_frame_size),
@@ -160,6 +166,15 @@ impl From<ServerConfig> for CoreServerConfig {
             metadata: config
                 .metadata
                 .and_then(|json| serde_json::from_str::<MetadataMap>(&json).ok()),
+            require_header_mac: config
+                .require_header_mac
+                .unwrap_or(core_defaults.require_header_mac),
+            link_hmac_timeout_secs: config
+                .link_hmac_timeout_secs
+                .unwrap_or(core_defaults.link_hmac_timeout_secs),
+            link_hmac_poll_interval_ms: config
+                .link_hmac_poll_interval_ms
+                .unwrap_or(core_defaults.link_hmac_poll_interval_ms),
         }
     }
 }
@@ -168,7 +183,6 @@ impl From<CoreServerConfig> for ServerConfig {
     fn from(config: CoreServerConfig) -> Self {
         ServerConfig {
             endpoint: config.endpoint,
-            transport: Some(config.transport.into()),
             tls: config.tls_setting.into(),
             http2_only: Some(config.http2_only),
             max_frame_size: config.max_frame_size,
@@ -179,6 +193,9 @@ impl From<CoreServerConfig> for ServerConfig {
             keepalive: Some(config.keepalive.into()),
             auth: Some(config.auth.into()),
             metadata: config.metadata.and_then(|m| serde_json::to_string(&m).ok()),
+            require_header_mac: Some(config.require_header_mac),
+            link_hmac_timeout_secs: Some(config.link_hmac_timeout_secs),
+            link_hmac_poll_interval_ms: Some(config.link_hmac_poll_interval_ms),
         }
     }
 }
@@ -256,7 +273,6 @@ mod tests {
 
         // Verify defaults are all None (core defaults applied during conversion)
         assert_eq!(config.endpoint, "");
-        assert_eq!(config.transport, None);
         assert_eq!(config.http2_only, None);
         assert_eq!(config.max_frame_size, None);
         assert_eq!(config.max_concurrent_streams, None);
@@ -266,6 +282,8 @@ mod tests {
         assert_eq!(config.keepalive, None);
         assert_eq!(config.auth, None);
         assert_eq!(config.metadata, None);
+        assert_eq!(config.link_hmac_timeout_secs, None);
+        assert_eq!(config.link_hmac_poll_interval_ms, None);
 
         // Verify core defaults are applied when converting to CoreServerConfig
         let core: CoreServerConfig = config.into();
@@ -274,6 +292,8 @@ mod tests {
         assert_eq!(core.max_concurrent_streams, Some(100));
         assert_eq!(core.read_buffer_size, Some(1024 * 1024));
         assert_eq!(core.write_buffer_size, Some(1024 * 1024));
+        assert_eq!(core.link_hmac_timeout_secs, 5);
+        assert_eq!(core.link_hmac_poll_interval_ms, 5);
         assert_eq!(
             core.auth,
             slim_config::grpc::server::AuthenticationConfig::None
@@ -330,8 +350,7 @@ mod tests {
     #[test]
     fn test_server_config_to_core_conversion() {
         let ffi_config = ServerConfig {
-            endpoint: "127.0.0.1:8080".to_string(),
-            transport: Some(TransportProtocol::Websocket),
+            endpoint: "ws://127.0.0.1:8080".to_string(),
             tls: TlsServerConfig::default(),
             http2_only: Some(false),
             max_frame_size: Some(8),
@@ -342,12 +361,18 @@ mod tests {
             keepalive: Some(KeepaliveServerParameters::default()),
             auth: Some(ServerAuthenticationConfig::None),
             metadata: Some(r#"{"key":"value"}"#.to_string()),
+            require_header_mac: None,
+            link_hmac_timeout_secs: None,
+            link_hmac_poll_interval_ms: None,
         };
 
         let core_config: CoreServerConfig = ffi_config.into();
 
-        assert_eq!(core_config.endpoint, "127.0.0.1:8080");
-        assert_eq!(core_config.transport, CoreTransportProtocol::Websocket);
+        assert_eq!(core_config.endpoint, "ws://127.0.0.1:8080");
+        assert_eq!(
+            core_config.resolved_transport(),
+            CoreTransportProtocol::Websocket
+        );
         assert!(!core_config.http2_only);
         assert_eq!(core_config.max_frame_size, Some(8));
         assert_eq!(core_config.max_concurrent_streams, Some(200));
@@ -366,7 +391,6 @@ mod tests {
         let ffi_config: ServerConfig = core_config.clone().into();
 
         assert_eq!(ffi_config.endpoint, core_config.endpoint);
-        assert_eq!(ffi_config.transport, Some(core_config.transport.into()));
         assert_eq!(ffi_config.http2_only, Some(core_config.http2_only));
         assert_eq!(ffi_config.max_frame_size, core_config.max_frame_size);
         assert_eq!(
@@ -383,7 +407,6 @@ mod tests {
     fn test_server_config_roundtrip_conversion() {
         let original = ServerConfig {
             endpoint: "localhost:9090".to_string(),
-            transport: Some(TransportProtocol::Grpc),
             tls: TlsServerConfig::default(),
             http2_only: Some(true),
             max_frame_size: Some(16),
@@ -394,6 +417,9 @@ mod tests {
             keepalive: Some(KeepaliveServerParameters::default()),
             auth: Some(ServerAuthenticationConfig::None),
             metadata: None,
+            require_header_mac: None,
+            link_hmac_timeout_secs: None,
+            link_hmac_poll_interval_ms: None,
         };
 
         // FFI -> Core -> FFI using the new From implementation
@@ -401,7 +427,6 @@ mod tests {
         let roundtrip: ServerConfig = core.into();
 
         assert_eq!(roundtrip.endpoint, original.endpoint);
-        assert_eq!(roundtrip.transport, original.transport);
         assert_eq!(roundtrip.http2_only, original.http2_only);
         assert_eq!(roundtrip.max_frame_size, original.max_frame_size);
         assert_eq!(

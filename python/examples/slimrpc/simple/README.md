@@ -25,7 +25,7 @@ If you change `.proto` or the slimrpc plugin, regenerate types:
 task python:generate-proto
 ```
 
-(The task installs `protoc-gen-slimrpc-python` from crates.io via `cargo install`.)
+(Requires `protoc-gen-slimrpc-python` at `data-plane/target/release/`; the task builds it.)
 
 ## Run
 

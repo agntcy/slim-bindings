@@ -316,7 +316,7 @@ def create_base_parser(description: str) -> argparse.ArgumentParser:
         default=None,
         help=(
             "Path to JSON file for full gRPC ClientConfig "
-            "(same schema as https://github.com/agntcy/slim/blob/main/data-plane/core/config/src/grpc/schema/client-config.schema.json); "
+            "(same schema as data-plane/core/config/src/grpc/schema/client-config.schema.json); "
             "when set, overrides --slim for the dataplane connection"
         ),
     )

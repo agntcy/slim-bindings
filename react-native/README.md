@@ -43,7 +43,7 @@ yarn add @agntcy/slim-bindings-react-native
 
 ```bash
 git clone https://github.com/agntcy/slim-bindings.git
-cd slim-bindings/react-native
+cd slim/react-native
 npm install
 task generate
 task test

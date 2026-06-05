@@ -12,10 +12,10 @@ This example demonstrates all slimrpc RPC patterns in Kotlin with comprehensive 
 
 ## Generate Code
 
-First install the Kotlin protoc plugin from crates.io:
+First build the Kotlin protoc plugin:
 
 ```bash
-cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-kotlin
+cargo build --release -p agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-kotlin
 ```
 
 Then generate the code:

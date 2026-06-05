@@ -17,7 +17,6 @@ use slim_config::grpc::client::{
 
 use crate::common_config::{ClientAuthenticationConfig, TlsClientConfig};
 use crate::errors::SlimError;
-use crate::transport_protocol::TransportProtocol;
 
 use slim_config::component::configuration::Configuration;
 
@@ -261,11 +260,11 @@ impl From<CoreBackoffConfig> for BackoffConfig {
 /// Client configuration for connecting to a SLIM server
 #[derive(uniffi::Record, Clone, Debug, PartialEq)]
 pub struct ClientConfig {
-    /// The target endpoint the client will connect to
+    /// The target endpoint the client will connect to.
+    ///
+    /// The transport protocol is inferred from the endpoint scheme:
+    /// `ws://`/`wss://` → WebSocket, otherwise gRPC.
     pub endpoint: String,
-
-    /// Transport protocol to use (defaults to gRPC in core config when omitted)
-    pub transport: Option<TransportProtocol>,
 
     /// TLS client configuration
     pub tls: TlsClientConfig,
@@ -308,6 +307,9 @@ pub struct ClientConfig {
 
     /// Arbitrary user-provided metadata as JSON string
     pub metadata: Option<String>,
+
+    /// When true, reject inter-node messages without a valid header MAC (strict mode).
+    pub require_header_mac: Option<bool>,
 }
 
 impl From<ClientConfig> for CoreClientConfig {
@@ -315,10 +317,6 @@ impl From<ClientConfig> for CoreClientConfig {
         let core_defaults = CoreClientConfig::default();
         CoreClientConfig {
             endpoint: config.endpoint,
-            transport: config
-                .transport
-                .map(Into::into)
-                .unwrap_or(core_defaults.transport),
             origin: config.origin,
             server_name: config.server_name,
             compression: config.compression.map(Into::into),
@@ -345,6 +343,10 @@ impl From<ClientConfig> for CoreClientConfig {
                 .metadata
                 .and_then(|json| serde_json::from_str::<MetadataMap>(&json).ok()),
             link_id: core_defaults.link_id,
+            require_header_mac: config
+                .require_header_mac
+                .unwrap_or(core_defaults.require_header_mac),
+            connection_type: core_defaults.connection_type,
         }
     }
 }
@@ -353,7 +355,6 @@ impl From<CoreClientConfig> for ClientConfig {
     fn from(config: CoreClientConfig) -> Self {
         ClientConfig {
             endpoint: config.endpoint,
-            transport: Some(config.transport.into()),
             origin: config.origin,
             server_name: config.server_name,
             compression: config.compression.map(Into::into),
@@ -368,6 +369,7 @@ impl From<CoreClientConfig> for ClientConfig {
             auth: Some(config.auth.into()),
             backoff: Some(config.backoff.into()),
             metadata: config.metadata.and_then(|m| serde_json::to_string(&m).ok()),
+            require_header_mac: Some(config.require_header_mac),
         }
     }
 }
@@ -377,7 +379,6 @@ impl Default for ClientConfig {
         let core_defaults = CoreClientConfig::default();
         Self {
             endpoint: core_defaults.endpoint,
-            transport: None,
             origin: None,
             server_name: None,
             compression: None,
@@ -392,6 +393,7 @@ impl Default for ClientConfig {
             auth: None,
             backoff: None,
             metadata: None,
+            require_header_mac: None,
         }
     }
 }
@@ -421,9 +423,8 @@ pub fn new_secure_client_config(endpoint: String) -> ClientConfig {
 
 /// Parse and validate a SLIM gRPC client configuration from JSON.
 ///
-/// The JSON must match [`CoreClientConfig`] (same as the schema in the slim
-/// repo at `data-plane/core/config/src/grpc/schema/client-config.schema.json`,
-/// see <https://github.com/agntcy/slim>).
+/// The JSON must match [`CoreClientConfig`] (same as
+/// `data-plane/core/config/src/grpc/schema/client-config.schema.json`).
 #[uniffi::export]
 pub fn new_config_from_json(json: String) -> Result<ClientConfig, SlimError> {
     let core: CoreClientConfig =
@@ -448,7 +449,6 @@ mod tests {
     fn test_client_config_creation() {
         let config = ClientConfig {
             endpoint: "example.com:443".to_string(),
-            transport: None,
             origin: None,
             server_name: None,
             compression: None,
@@ -472,6 +472,7 @@ mod tests {
             auth: None,
             backoff: None,
             metadata: None,
+            require_header_mac: None,
         };
 
         assert_eq!(config.endpoint, "example.com:443");
@@ -485,7 +486,6 @@ mod tests {
 
         // Verify defaults are all None (core defaults applied during conversion)
         assert_eq!(config.endpoint, "");
-        assert_eq!(config.transport, None);
         assert_eq!(config.origin, None);
         assert_eq!(config.server_name, None);
         assert_eq!(config.compression, None);
@@ -569,8 +569,7 @@ mod tests {
         headers.insert("x-api-key".to_string(), "test-key".to_string());
 
         let ffi_config = ClientConfig {
-            endpoint: "api.example.com:443".to_string(),
-            transport: Some(TransportProtocol::Websocket),
+            endpoint: "ws://api.example.com:443".to_string(),
             origin: Some("example.com".to_string()),
             server_name: Some("sni.example.com".to_string()),
             compression: Some(CompressionType::Gzip),
@@ -595,12 +594,16 @@ mod tests {
                 },
             }),
             metadata: Some(r#"{"client":"test"}"#.to_string()),
+            require_header_mac: None,
         };
 
         let core_config: CoreClientConfig = ffi_config.into();
 
-        assert_eq!(core_config.endpoint, "api.example.com:443");
-        assert_eq!(core_config.transport, CoreTransportProtocol::Websocket);
+        assert_eq!(core_config.endpoint, "ws://api.example.com:443");
+        assert_eq!(
+            core_config.resolved_transport(),
+            CoreTransportProtocol::Websocket
+        );
         assert_eq!(core_config.origin, Some("example.com".to_string()));
         assert_eq!(core_config.server_name, Some("sni.example.com".to_string()));
         assert!(core_config.compression.is_some());
@@ -620,7 +623,6 @@ mod tests {
         let ffi_config: ClientConfig = core_config.clone().into();
 
         assert_eq!(ffi_config.endpoint, core_config.endpoint);
-        assert_eq!(ffi_config.transport, Some(core_config.transport.into()));
         assert_eq!(ffi_config.origin, core_config.origin);
         assert_eq!(ffi_config.server_name, core_config.server_name);
         assert_eq!(ffi_config.rate_limit, core_config.rate_limit);
@@ -638,7 +640,6 @@ mod tests {
     fn test_client_config_roundtrip_conversion() {
         let original = ClientConfig {
             endpoint: "localhost:8080".to_string(),
-            transport: Some(TransportProtocol::Grpc),
             origin: Some("test.local".to_string()),
             server_name: None,
             compression: Some(CompressionType::Zstd),
@@ -655,6 +656,7 @@ mod tests {
                 config: ExponentialBackoff::default(),
             }),
             metadata: None,
+            require_header_mac: None,
         };
 
         // FFI -> Core -> FFI using the new From implementation
@@ -662,7 +664,6 @@ mod tests {
         let roundtrip: ClientConfig = core.into();
 
         assert_eq!(roundtrip.endpoint, original.endpoint);
-        assert_eq!(roundtrip.transport, original.transport);
         assert_eq!(roundtrip.origin, original.origin);
         assert_eq!(roundtrip.rate_limit, original.rate_limit);
         assert_eq!(roundtrip.buffer_size, original.buffer_size);

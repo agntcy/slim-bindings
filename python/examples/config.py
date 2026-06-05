@@ -68,7 +68,7 @@ class BaseConfig(BaseSettings):
         default=None,
         description=(
             "Path to JSON file for full gRPC ClientConfig "
-            "(schema: https://github.com/agntcy/slim/blob/main/data-plane/core/config/src/grpc/schema/client-config.schema.json)"
+            "(schema: data-plane/core/config/src/grpc/schema/client-config.schema.json)"
         ),
     )
 
