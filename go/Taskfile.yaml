@@ -131,9 +131,11 @@ tasks:
     cmds:
       - echo "Generating Go bindings from compiled library..."
       - |
+        OUT_DIR="{{.TASKFILE_DIR}}"
+        cd "{{.BINDINGS_DIR}}"
         uniffi-bindgen-go \
           --library '{{.LIB_PATH}}' \
-          --out-dir '.' \
+          --out-dir "${OUT_DIR}"
       - task: copy-library
       - task: patch-header
       - task: patch-cgo-directives
@@ -209,9 +211,11 @@ tasks:
           exit 1
         fi
 
+        OUT_DIR="{{.TASKFILE_DIR}}"
+        cd "{{.BINDINGS_DIR}}"
         uniffi-bindgen-go \
           --library "$LIB_PATH" \
-          --out-dir '.' \
+          --out-dir "${OUT_DIR}"
 
       - task: patch-header
       - task: patch-cgo-directives

@@ -85,12 +85,15 @@ tasks:
       - file '{{.LIB_PATH}}'
       - echo "🚀 Running uniffi-bindgen-cli with verbose output..."
       - |
+        CONFIG_PATH="{{.TASKFILE_DIR}}/uniffi.toml"
+        OUT_DIR="{{.TASKFILE_DIR}}/generated"
+        cd "{{.BINDINGS_DIR}}"
         set -x
         uniffi-bindgen-cli generate \
           --library '{{.LIB_PATH}}' \
           --language kotlin \
-          --config uniffi.toml \
-          --out-dir generated
+          --config "${CONFIG_PATH}" \
+          --out-dir "${OUT_DIR}"
         BINDGEN_EXIT=$?
         set +x
         echo "uniffi-bindgen-cli exit code: $BINDGEN_EXIT"

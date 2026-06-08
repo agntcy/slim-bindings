@@ -169,10 +169,12 @@ tasks:
         rm -rf generated/uniffi
         mkdir -p generated/uniffi
         # UniFFI crate_name in metadata is the lib crate name (slim_bindings), not the Cargo package name.
-        uniffi-bindgen-java generate "$LIB" \
-          --out-dir generated/uniffi \
-          --config uniffi.toml \
-          --crate slim_bindings
+        CONFIG_PATH="$(pwd)/uniffi.toml"
+        OUT_DIR="$(pwd)/generated/uniffi"
+        (cd "{{.BINDINGS_DIR}}" && uniffi-bindgen-java generate "$LIB" \
+          --out-dir "${OUT_DIR}" \
+          --config "${CONFIG_PATH}" \
+          --crate slim_bindings)
         n=$(find generated/uniffi -type f -name '*.java' 2>/dev/null | wc -l | tr -d ' ')
         if [ "${n:-0}" -lt 1 ]; then
           echo "error: uniffi-bindgen-java produced no Java files under generated/uniffi (count=${n:-0}). cwd=$(pwd) lib=$LIB" >&2

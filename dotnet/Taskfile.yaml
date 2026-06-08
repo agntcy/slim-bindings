@@ -152,7 +152,7 @@ tasks:
 
         rm -rf {{.GENERATED_DIR}}
         mkdir -p {{.GENERATED_DIR}}
-        uniffi-bindgen-cs --library --out-dir {{.GENERATED_DIR}} "$lib_file"
+        (cd "{{.BINDINGS_DIR}}" && uniffi-bindgen-cs --library --out-dir {{.GENERATED_DIR}} "$lib_file")
 
         if [[ ! -f "{{.GENERATED_DIR}}/slim_bindings.cs" ]]; then
           echo "ERROR: Failed to generate slim_bindings.cs"
