@@ -9,7 +9,7 @@ import pytest
 
 import slim_bindings
 
-keys_folder = f"{pathlib.Path(__file__).parent.resolve()}/testdata"
+keys_folder = str(pathlib.Path(__file__).resolve().parents[2] / "testdata" / "jwt")
 
 test_audience = ["test.audience"]
 
