@@ -346,9 +346,7 @@ impl From<ClientConfig> for CoreClientConfig {
             require_header_mac: config
                 .require_header_mac
                 .unwrap_or(core_defaults.require_header_mac),
-            // TODO: re-add `connection_type: core_defaults.connection_type` once
-            // agntcy-slim-config publishes a version that includes the peer
-            // discovery field (added in slim PR #1696, not yet on crates.io).
+            connection_type: core_defaults.connection_type,
         }
     }
 }

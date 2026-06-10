@@ -32,7 +32,6 @@ use slim_config::component::id::{ID, Kind};
 use slim_datapath::api::ProtoName as Name;
 use slim_service::service::Service;
 
-// Inlined from former agntcy-slim-testing dev-dep (slim_testing::utils::TEST_VALID_SECRET).
 const TEST_VALID_SECRET: &str = "test-shared-secret-value-0123456789abcdef";
 
 use slim_bindings::slimrpc::{

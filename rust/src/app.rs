@@ -679,7 +679,6 @@ mod tests {
     use slim_config::component::ComponentBuilder;
     use slim_datapath::api::ProtoName as SlimName;
 
-    // Inlined from former agntcy-slim-testing dev-dep (slim_testing::utils::TEST_VALID_SECRET).
     const TEST_VALID_SECRET: &str = "test-shared-secret-value-0123456789abcdef";
 
     // Helper to create test identity configs
@@ -748,10 +747,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(3),
             interval: Some(std::time::Duration::from_millis(100)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -795,10 +794,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(3),
             interval: Some(std::time::Duration::from_millis(100)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -1151,10 +1150,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(1),
             interval: Some(std::time::Duration::from_millis(50)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -1448,10 +1447,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(3),
             interval: Some(std::time::Duration::from_millis(100)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(

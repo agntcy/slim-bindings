@@ -511,7 +511,6 @@ mod tests {
     use super::*;
     use slim_datapath::api::ProtoName as SlimName;
 
-    // Inlined from former agntcy-slim-testing dev-dep (slim_testing::utils::TEST_VALID_SECRET).
     const TEST_VALID_SECRET: &str = "test-shared-secret-value-0123456789abcdef";
 
     use crate::app::App;
