@@ -1,0 +1,16 @@
+version: v2
+managed:
+  enabled: true
+plugins:
+  # Generates standard .pb.go files
+  - remote: buf.build/protocolbuffers/go
+    out: types
+    opt:
+      - paths=source_relative
+
+  # Generates _slimrpc.pb.go files
+  # Requires `protoc-gen-slimrpc-go` on PATH (installed via `cargo install agntcy-protoc-slimrpc-plugin`).
+  - local: protoc-gen-slimrpc-go
+    out: types
+    opt:
+      - paths=source_relative
