@@ -114,7 +114,7 @@ pub fn build_method_subscription_name(
     let (c0, c1, c2) = base_name.str_components();
 
     // Create subscription name: org/namespace/app-service-method
-    let app_with_method = format!("{}-{}-{}", c2, service_name, method_name);
+    let app_with_method = format!("{c2}-{service_name}-{method_name}");
 
     Name::from_strings([c0, c1, &app_with_method])
 }

@@ -41,7 +41,7 @@ struct TestRequest {
 impl Encoder for TestRequest {
     fn encode(self) -> Result<Vec<u8>, RpcError> {
         let encoded = bincode::encode_to_vec(self, bincode::config::standard())
-            .map_err(|e| RpcError::internal(format!("Encoding error: {}", e)))?;
+            .map_err(|e| RpcError::internal(format!("Encoding error: {e}")))?;
         Ok(encoded)
     }
 }
@@ -50,7 +50,7 @@ impl Decoder for TestRequest {
     fn decode(buf: impl Into<Vec<u8>>) -> Result<Self, RpcError> {
         let (decoded, _len): (TestRequest, usize) =
             bincode::decode_from_slice(&buf.into(), bincode::config::standard())
-                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {}", e)))?;
+                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {e}")))?;
         Ok(decoded)
     }
 }
@@ -65,7 +65,7 @@ struct TestResponse {
 impl Encoder for TestResponse {
     fn encode(self) -> Result<Vec<u8>, RpcError> {
         let encoded = bincode::encode_to_vec(self, bincode::config::standard())
-            .map_err(|e| RpcError::internal(format!("Encoding error: {}", e)))?;
+            .map_err(|e| RpcError::internal(format!("Encoding error: {e}")))?;
         Ok(encoded)
     }
 }
@@ -74,7 +74,7 @@ impl Decoder for TestResponse {
     fn decode(buf: impl Into<Vec<u8>>) -> Result<Self, RpcError> {
         let (decoded, _len): (TestResponse, usize) =
             bincode::decode_from_slice(&buf.into(), bincode::config::standard())
-                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {}", e)))?;
+                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {e}")))?;
         Ok(decoded)
     }
 }
@@ -254,9 +254,7 @@ fn assert_error_with_code(
         let actual_msg = err.message();
         assert!(
             actual_msg.contains(expected_msg),
-            "Error message '{}' does not contain '{}'",
-            actual_msg,
-            expected_msg
+            "Error message '{actual_msg}' does not contain '{expected_msg}'"
         );
     }
 }
@@ -484,10 +482,9 @@ async fn test_stream_unary_error_handling() {
     let msg = err.message();
     assert!(
         msg.contains("Negative values not allowed"),
-        "Error message was: {}",
-        msg
+        "Error message was: {msg}"
     );
-    assert!(msg.contains("-5"), "Error message was: {}", msg);
+    assert!(msg.contains("-5"), "Error message was: {msg}");
 
     env.shutdown().await;
 }
@@ -517,7 +514,7 @@ async fn test_unary_stream_rpc() {
                     tokio::time::sleep(Duration::from_millis(1)).await;
 
                     yield Ok(TestResponse {
-                        result: format!("{}-{}", message, i),
+                        result: format!("{message}-{i}"),
                         count: i,
                     });
                 }
@@ -585,7 +582,7 @@ async fn test_unary_stream_error_handling() {
                     if i > 3 {
                         tracing::info!("Simulating error after {} responses", i - 1);
                         yield Err(RpcError::internal(
-                            format!("Failed to generate item {}", i)
+                            format!("Failed to generate item {i}")
                         ));
                         break;
                     }
@@ -593,7 +590,7 @@ async fn test_unary_stream_error_handling() {
                     tokio::time::sleep(Duration::from_millis(1)).await;
 
                     yield Ok(TestResponse {
-                        result: format!("{}-{}", message, i),
+                        result: format!("{message}-{i}"),
                         count: i,
                     });
                 }
@@ -878,7 +875,7 @@ async fn test_concurrent_unary_calls() {
         let channel_clone = channel.clone();
         let handle = tokio::spawn(async move {
             let request = TestRequest {
-                message: format!("call-{}", i),
+                message: format!("call-{i}"),
                 value: i,
             };
             channel_clone
@@ -1136,11 +1133,11 @@ async fn test_different_methods_different_sessions() {
     // Call both methods multiple times
     for i in 0..3 {
         let req1 = TestRequest {
-            message: format!("call-{}", i),
+            message: format!("call-{i}"),
             value: i,
         };
         let req2 = TestRequest {
-            message: format!("call-{}", i),
+            message: format!("call-{i}"),
             value: i,
         };
 
@@ -1156,10 +1153,10 @@ async fn test_different_methods_different_sessions() {
             .await
             .expect("Method2 call failed");
 
-        assert_eq!(resp1.result, format!("M1: call-{}", i));
+        assert_eq!(resp1.result, format!("M1: call-{i}"));
         assert_eq!(resp1.count, i + 100);
 
-        assert_eq!(resp2.result, format!("M2: call-{}", i));
+        assert_eq!(resp2.result, format!("M2: call-{i}"));
         assert_eq!(resp2.count, i + 200);
     }
 
@@ -1208,7 +1205,7 @@ async fn test_session_reused_for_streaming() {
                 let n = request.value;
                 let stream = stream::iter((0..n).map(|i| {
                     Ok(TestResponse {
-                        result: format!("item-{}", i),
+                        result: format!("item-{i}"),
                         count: i,
                     })
                 }));
@@ -1343,7 +1340,7 @@ async fn test_concurrent_calls_independent() {
             b.wait().await;
 
             let req = TestRequest {
-                message: format!("call-{}", i),
+                message: format!("call-{i}"),
                 value: i + 1,
             };
             ch.unary::<TestRequest, TestResponse>("TestService", "SlowEcho", req, None, None)
@@ -1493,7 +1490,7 @@ async fn test_multiple_handler_types_same_client() {
     // Test 1: Call unary-unary handler twice
     for i in 0..2 {
         let req = TestRequest {
-            message: format!("uu-call-{}", i),
+            message: format!("uu-call-{i}"),
             value: i + 1,
         };
         let resp: TestResponse = env
@@ -1502,7 +1499,7 @@ async fn test_multiple_handler_types_same_client() {
             .await
             .expect("UnaryUnary call failed");
 
-        assert_eq!(resp.result, format!("UnaryUnary: uu-call-{}", i));
+        assert_eq!(resp.result, format!("UnaryUnary: uu-call-{i}"));
         assert_eq!(resp.count, (i + 1) * 10);
     }
 
@@ -1510,15 +1507,15 @@ async fn test_multiple_handler_types_same_client() {
     for i in 0..2 {
         let requests = vec![
             TestRequest {
-                message: format!("su-msg-{}-1", i),
+                message: format!("su-msg-{i}-1"),
                 value: 1,
             },
             TestRequest {
-                message: format!("su-msg-{}-2", i),
+                message: format!("su-msg-{i}-2"),
                 value: 2,
             },
             TestRequest {
-                message: format!("su-msg-{}-3", i),
+                message: format!("su-msg-{i}-3"),
                 value: 3,
             },
         ];
@@ -1537,7 +1534,7 @@ async fn test_multiple_handler_types_same_client() {
 
         assert_eq!(
             resp.result,
-            format!("StreamUnary: su-msg-{}-1,su-msg-{}-2,su-msg-{}-3", i, i, i)
+            format!("StreamUnary: su-msg-{i}-1,su-msg-{i}-2,su-msg-{i}-3")
         );
         assert_eq!(resp.count, 6);
     }
@@ -1545,7 +1542,7 @@ async fn test_multiple_handler_types_same_client() {
     // Test 3: Call unary-stream handler twice
     for i in 0..2 {
         let req = TestRequest {
-            message: format!("us-call-{}", i),
+            message: format!("us-call-{i}"),
             value: 3,
         };
 
@@ -1558,7 +1555,7 @@ async fn test_multiple_handler_types_same_client() {
         let responses: Vec<TestResponse> = collect_stream_responses(response_stream).await;
         assert_eq!(responses.len(), 3);
         for (count, resp) in responses.iter().enumerate() {
-            assert_eq!(resp.result, format!("UnaryStream-{}: us-call-{}", count, i));
+            assert_eq!(resp.result, format!("UnaryStream-{count}: us-call-{i}"));
             assert_eq!(resp.count, count as i32);
         }
     }
@@ -1567,11 +1564,11 @@ async fn test_multiple_handler_types_same_client() {
     for i in 0..2 {
         let requests = vec![
             TestRequest {
-                message: format!("ss-msg-{}-1", i),
+                message: format!("ss-msg-{i}-1"),
                 value: 1,
             },
             TestRequest {
-                message: format!("ss-msg-{}-2", i),
+                message: format!("ss-msg-{i}-2"),
                 value: 2,
             },
         ];
@@ -1589,9 +1586,9 @@ async fn test_multiple_handler_types_same_client() {
         let received: Vec<TestResponse> = collect_stream_responses(response_stream).await;
 
         assert_eq!(received.len(), 2);
-        assert_eq!(received[0].result, format!("StreamStream: ss-msg-{}-1", i));
+        assert_eq!(received[0].result, format!("StreamStream: ss-msg-{i}-1"));
         assert_eq!(received[0].count, 100);
-        assert_eq!(received[1].result, format!("StreamStream: ss-msg-{}-2", i));
+        assert_eq!(received[1].result, format!("StreamStream: ss-msg-{i}-2"));
         assert_eq!(received[1].count, 200);
     }
 
@@ -1670,7 +1667,7 @@ async fn test_client_deadline_unary_stream() {
                     // Each item takes 500ms
                     tokio::time::sleep(Duration::from_millis(500)).await;
                     Ok::<_, RpcError>(TestResponse {
-                        result: format!("{}-{}", msg, i),
+                        result: format!("{msg}-{i}"),
                         count: i,
                     })
                 }
@@ -1703,11 +1700,7 @@ async fn test_client_deadline_unary_stream() {
     let count = responses.len();
 
     // Should have received some items but then timed out
-    assert!(
-        count < 5,
-        "Expected timeout before all items, got {}",
-        count
-    );
+    assert!(count < 5, "Expected timeout before all items, got {count}");
     assert!(last_error.is_some());
     let err = last_error.unwrap();
     assert_eq!(err.code(), RpcCode::DeadlineExceeded);
@@ -1898,7 +1891,7 @@ async fn test_server_deadline_stream_stream() {
 
             Ok(stream::iter((0..3).map(|i| {
                 Ok::<_, RpcError>(TestResponse {
-                    result: format!("response-{}", i),
+                    result: format!("response-{i}"),
                     count: i,
                 })
             })))
@@ -2080,8 +2073,7 @@ async fn test_deadline_propagation() {
 
     assert!(
         diff < Duration::from_secs(1),
-        "Deadline should match expected value within tolerance, diff: {:?}",
-        diff
+        "Deadline should match expected value within tolerance, diff: {diff:?}"
     );
 
     env.shutdown().await;
@@ -2282,7 +2274,7 @@ async fn test_server_enforces_deadline_for_stream_unary() {
                 tracing::info!("Handler completed processing {} messages", count);
 
                 Ok(TestResponse {
-                    result: format!("Processed {} messages", count),
+                    result: format!("Processed {count} messages"),
                     count,
                 })
             }
@@ -2294,7 +2286,7 @@ async fn test_server_enforces_deadline_for_stream_unary() {
     // Create a stream of 10 messages (would take 2 seconds to process)
     let requests = (0..10)
         .map(|i| TestRequest {
-            message: format!("msg-{}", i),
+            message: format!("msg-{i}"),
             value: i,
         })
         .collect::<Vec<_>>();
@@ -2332,8 +2324,7 @@ async fn test_server_enforces_deadline_for_stream_unary() {
     // Handler should not have completed due to server-enforced deadline
     assert!(
         received < 10,
-        "Handler should not have processed all messages due to deadline, got {}",
-        received
+        "Handler should not have processed all messages due to deadline, got {received}"
     );
 
     env.shutdown().await;
@@ -2410,8 +2401,7 @@ async fn test_server_enforces_deadline_for_unary_stream() {
     // Should have received some messages but not all due to deadline
     assert!(
         responses_received < 10,
-        "Should not have received all messages due to deadline, got {}",
-        responses_received
+        "Should not have received all messages due to deadline, got {responses_received}"
     );
 
     // Should get a deadline exceeded error
@@ -2433,8 +2423,7 @@ async fn test_server_enforces_deadline_for_unary_stream() {
     assert!(!was_completed, "Handler should not have completed");
     assert!(
         sent < 10,
-        "Handler should not have sent all messages due to deadline, sent {}",
-        sent
+        "Handler should not have sent all messages due to deadline, sent {sent}"
     );
 
     env.shutdown().await;
@@ -2505,7 +2494,7 @@ async fn test_server_enforces_deadline_for_stream_stream() {
     // Create a stream of 10 messages (would take 3 seconds to process)
     let requests = (0..10)
         .map(|i| TestRequest {
-            message: format!("msg-{}", i),
+            message: format!("msg-{i}"),
             value: i,
         })
         .collect::<Vec<_>>();
@@ -2529,8 +2518,7 @@ async fn test_server_enforces_deadline_for_stream_stream() {
     // Should have received some messages but not all due to deadline
     assert!(
         responses_received < 10,
-        "Should not have received all messages due to deadline, got {}",
-        responses_received
+        "Should not have received all messages due to deadline, got {responses_received}"
     );
 
     // Should get a deadline exceeded error
@@ -2552,8 +2540,7 @@ async fn test_server_enforces_deadline_for_stream_stream() {
     assert!(!was_completed, "Handler should not have completed");
     assert!(
         sent < 10,
-        "Handler should not have sent all messages due to deadline, sent {}",
-        sent
+        "Handler should not have sent all messages due to deadline, sent {sent}"
     );
 
     env.shutdown().await;

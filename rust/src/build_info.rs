@@ -81,7 +81,7 @@ mod tests {
         assert_eq!(info.profile, cloned.profile);
 
         // Debug trait should work
-        let debug_str = format!("{:?}", info);
+        let debug_str = format!("{info:?}");
         assert!(debug_str.contains("BuildInfo"));
     }
 }

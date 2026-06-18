@@ -91,7 +91,7 @@ impl fmt::Display for RpcCode {
             RpcCode::DataLoss => "DATA_LOSS",
             RpcCode::Unauthenticated => "UNAUTHENTICATED",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

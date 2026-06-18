@@ -51,7 +51,7 @@ struct TestRequest {
 impl Encoder for TestRequest {
     fn encode(self) -> Result<Vec<u8>, RpcError> {
         bincode::encode_to_vec(self, bincode::config::standard())
-            .map_err(|e| RpcError::internal(format!("Encoding error: {}", e)))
+            .map_err(|e| RpcError::internal(format!("Encoding error: {e}")))
     }
 }
 
@@ -59,7 +59,7 @@ impl Decoder for TestRequest {
     fn decode(buf: impl Into<Vec<u8>>) -> Result<Self, RpcError> {
         let (v, _): (TestRequest, usize) =
             bincode::decode_from_slice(&buf.into(), bincode::config::standard())
-                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {}", e)))?;
+                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {e}")))?;
         Ok(v)
     }
 }
@@ -74,7 +74,7 @@ struct TestResponse {
 impl Encoder for TestResponse {
     fn encode(self) -> Result<Vec<u8>, RpcError> {
         bincode::encode_to_vec(self, bincode::config::standard())
-            .map_err(|e| RpcError::internal(format!("Encoding error: {}", e)))
+            .map_err(|e| RpcError::internal(format!("Encoding error: {e}")))
     }
 }
 
@@ -82,7 +82,7 @@ impl Decoder for TestResponse {
     fn decode(buf: impl Into<Vec<u8>>) -> Result<Self, RpcError> {
         let (v, _): (TestResponse, usize) =
             bincode::decode_from_slice(&buf.into(), bincode::config::standard())
-                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {}", e)))?;
+                .map_err(|e| RpcError::invalid_argument(format!("Decoding error: {e}")))?;
         Ok(v)
     }
 }
@@ -115,7 +115,7 @@ impl MulticastTestEnv {
         let mut member_servers = Vec::new();
         let mut member_app_names = Vec::new();
         for i in 0..num_members {
-            let member_app_name = Name::from_strings(["org", "ns", &format!("member-{}", i)]);
+            let member_app_name = Name::from_strings(["org", "ns", &format!("member-{i}")]);
             let secret = SharedSecret::new("test", TEST_VALID_SECRET).unwrap();
             let (app, notifications) = service
                 .create_app(

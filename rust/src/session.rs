@@ -915,7 +915,7 @@ mod tests {
                 make_slim_name(["org", "sender", "app"]),
                 make_slim_name(["org", "receiver", "app"]),
                 i as u64,
-                format!("message {}", i).into_bytes(),
+                format!("message {i}").into_bytes(),
                 "text/plain",
                 HashMap::new(),
             );
@@ -929,7 +929,7 @@ mod tests {
                 .await;
             assert!(result.is_ok());
             let (msg_ctx, payload) = result.unwrap();
-            assert_eq!(payload, format!("message {}", i).into_bytes());
+            assert_eq!(payload, format!("message {i}").into_bytes());
             assert_eq!(msg_ctx.input_connection, i as u64);
         }
     }

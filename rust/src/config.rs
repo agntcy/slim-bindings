@@ -80,7 +80,7 @@ pub fn initialize_from_config(config_path: String) {
     // Use get_or_init for atomic initialization
     GLOBAL_STATE.get_or_init(|| {
         let (runtime_config, tracing_conf, service_configs) =
-            load_configs(&config_path).unwrap_or_else(|e| panic!("Initialization failed: {}", e));
+            load_configs(&config_path).unwrap_or_else(|e| panic!("Initialization failed: {e}"));
 
         // Perform initialization and return config
         initialize_internal(
@@ -88,7 +88,7 @@ pub fn initialize_from_config(config_path: String) {
             tracing_conf.clone(),
             &service_configs,
         )
-        .unwrap_or_else(|e| panic!("Initialization failed: {}", e))
+        .unwrap_or_else(|e| panic!("Initialization failed: {e}"))
     });
 }
 
@@ -154,7 +154,7 @@ pub fn initialize_with_configs(
             core_tracing_config,
             &core_service_config,
         )
-        .unwrap_or_else(|e| panic!("Initialization failed: {}", e))
+        .unwrap_or_else(|e| panic!("Initialization failed: {e}"))
     });
     Ok(())
 }
@@ -495,7 +495,7 @@ pub async fn shutdown() -> Result<(), SlimError> {
             }
             futures::future::Either::Right(_) => {
                 return Err(SlimError::ServiceError {
-                    message: format!("Service shutdown timed out after {:?}", drain_timeout),
+                    message: format!("Service shutdown timed out after {drain_timeout:?}"),
                 });
             }
         }
@@ -532,7 +532,7 @@ mod tests {
         let err = SlimError::ConfigError {
             message: "test error".to_string(),
         };
-        assert!(format!("{}", err).contains("Configuration error"));
+        assert!(format!("{err}").contains("Configuration error"));
     }
 
     #[test]
@@ -976,7 +976,7 @@ services:
 
         // Shutdown should succeed
         let result = shutdown().await;
-        assert!(result.is_ok(), "Shutdown should succeed: {:?}", result);
+        assert!(result.is_ok(), "Shutdown should succeed: {result:?}");
     }
 
     #[tokio::test]
@@ -1002,8 +1002,7 @@ services:
         let result = shutdown_blocking();
         assert!(
             result.is_ok(),
-            "Blocking shutdown should succeed: {:?}",
-            result
+            "Blocking shutdown should succeed: {result:?}"
         );
     }
 
@@ -1056,7 +1055,7 @@ services:
             Err(SlimError::ConfigError { message }) => {
                 assert!(!message.is_empty());
             }
-            other => panic!("Expected ConfigError, got: {:?}", other),
+            other => panic!("Expected ConfigError, got: {other:?}"),
         }
     }
 
@@ -1170,7 +1169,7 @@ services:
         drop(file);
 
         let result = initialize_from_config_with_error(config_path.to_str().unwrap().to_string());
-        assert!(result.is_ok(), "Expected Ok(()), got: {:?}", result);
+        assert!(result.is_ok(), "Expected Ok(()), got: {result:?}");
 
         let service_configs = get_service_config();
         assert!(!service_configs.is_empty());

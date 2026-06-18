@@ -212,7 +212,7 @@ impl Service {
         });
 
         handle.await.map_err(|e| SlimError::ServiceError {
-            message: format!("Failed to join server task: {}", e),
+            message: format!("Failed to join server task: {e}"),
         })?
     }
 
@@ -237,7 +237,7 @@ impl Service {
         let handle = runtime.spawn(async move { inner.connect(&core_config).await });
 
         let result = handle.await.map_err(|e| SlimError::InternalError {
-            message: format!("Failed to join connect task: {}", e),
+            message: format!("Failed to join connect task: {e}"),
         })?;
 
         Ok(result?)
@@ -839,13 +839,7 @@ mod tests {
                 .create_app_async(base_name, provider.clone(), verifier.clone())
                 .await;
 
-            assert!(
-                result.is_ok(),
-                "Should create adapter for {}/{}/{}",
-                org,
-                ns,
-                app
-            );
+            assert!(result.is_ok(), "Should create adapter for {org}/{ns}/{app}");
         }
     }
 
@@ -918,10 +912,7 @@ mod tests {
 
             assert!(
                 result.is_ok(),
-                "Should create secret app for {}/{}/{}",
-                org,
-                ns,
-                app
+                "Should create secret app for {org}/{ns}/{app}"
             );
         }
     }

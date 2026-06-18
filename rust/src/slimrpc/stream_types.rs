@@ -20,6 +20,13 @@ use tokio::sync::{
 
 use super::{Channel, MulticastItem, ReceivedMessage, RpcCode, RpcError, STATUS_CODE_KEY};
 
+/// Result type for raw byte payloads flowing through the RPC streams.
+type RpcBytesResult = Result<Vec<u8>, RpcError>;
+/// Sender end of a channel carrying RPC byte results.
+type RpcBytesSender = UnboundedSender<RpcBytesResult>;
+/// Tokio JoinHandle producing a final RPC byte result.
+type RpcBytesJoinHandle = tokio::task::JoinHandle<RpcBytesResult>;
+
 /// Raw byte stream for a stream-input RPC call.
 ///
 /// Implements [`Stream`] directly using `poll_recv` — no heap allocation.
@@ -208,7 +215,7 @@ pub enum StreamMessage {
 #[derive(uniffi::Object)]
 pub struct ResponseSink {
     /// Channel sender for streaming responses (None when closed)
-    sender: Mutex<Option<UnboundedSender<Result<Vec<u8>, RpcError>>>>,
+    sender: Mutex<Option<RpcBytesSender>>,
 }
 
 impl ResponseSink {
@@ -350,7 +357,7 @@ impl ResponseStreamReader {
 #[derive(uniffi::Object)]
 pub struct RequestStreamWriter {
     sender: TokioMutex<Option<UnboundedSender<Vec<u8>>>>,
-    response: TokioMutex<Option<tokio::task::JoinHandle<Result<Vec<u8>, RpcError>>>>,
+    response: TokioMutex<Option<RpcBytesJoinHandle>>,
 }
 
 impl RequestStreamWriter {
@@ -434,7 +441,7 @@ impl RequestStreamWriter {
         if let Some(handle) = response_guard.take() {
             handle
                 .await
-                .map_err(|e| RpcError::new(RpcCode::Internal, format!("Task failed: {}", e)))?
+                .map_err(|e| RpcError::new(RpcCode::Internal, format!("Task failed: {e}")))?
         } else {
             Err(RpcError::new(
                 RpcCode::Internal,
@@ -780,7 +787,7 @@ mod tests {
             first_is_eos: false,
             first_code: RpcCode::Ok,
         };
-        let decode_fn: fn(Result<Vec<u8>, RpcError>) -> Result<Vec<u8>, RpcError> = |res| res;
+        let decode_fn: fn(RpcBytesResult) -> RpcBytesResult = |res| res;
         let stream: DecodedStream<Vec<u8>> = source.into_raw_stream().map(decode_fn);
         let request_stream = RequestStream::new(stream);
 
