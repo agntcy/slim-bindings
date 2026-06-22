@@ -353,7 +353,7 @@ impl App {
             runtime.spawn(async move { app.create_session(slim_config, slim_dest, None).await });
 
         let (session_ctx, completion) = handle.await.map_err(|e| SlimError::SessionError {
-            message: format!("Failed to create session: {}", e),
+            message: format!("Failed to create session: {e}"),
         })??;
 
         // Create Session and CompletionHandle
@@ -563,7 +563,7 @@ impl App {
                     .to_string(),
             }),
             Err(e) => Err(SlimError::ReceiveError {
-                message: format!("failed to receive session notification: {}", e),
+                message: format!("failed to receive session notification: {e}"),
             }),
         }
     }
@@ -648,7 +648,7 @@ impl App {
                     .to_string(),
             }),
             Err(e) => Err(SlimError::ReceiveError {
-                message: format!("failed to receive session notification: {}", e),
+                message: format!("failed to receive session notification: {e}"),
             }),
         }
     }
@@ -679,7 +679,6 @@ mod tests {
     use slim_config::component::ComponentBuilder;
     use slim_datapath::api::ProtoName as SlimName;
 
-    // Inlined from former agntcy-slim-testing dev-dep (slim_testing::utils::TEST_VALID_SECRET).
     const TEST_VALID_SECRET: &str = "test-shared-secret-value-0123456789abcdef";
 
     // Helper to create test identity configs
@@ -748,10 +747,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(3),
             interval: Some(std::time::Duration::from_millis(100)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -775,7 +774,7 @@ mod tests {
             Err(e) => {
                 // Expected to fail in test environment without network
                 // but shouldn't panic
-                println!("Expected error in test environment: {:?}", e);
+                println!("Expected error in test environment: {e:?}");
             }
         }
     }
@@ -795,10 +794,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(3),
             interval: Some(std::time::Duration::from_millis(100)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -826,7 +825,7 @@ mod tests {
                 }
                 Err(e) => {
                     // Expected to fail without actual connections
-                    println!("Expected error without network: {:?}", e);
+                    println!("Expected error without network: {e:?}");
                 }
             }
         }
@@ -942,11 +941,7 @@ mod tests {
             let (provider_config, verifier_config) = create_test_configs(TEST_VALID_SECRET);
 
             let result = App::new_async(base_name, provider_config, verifier_config).await;
-            assert!(
-                result.is_ok(),
-                "Should create adapter for namespace {:?}",
-                ns
-            );
+            assert!(result.is_ok(), "Should create adapter for namespace {ns:?}");
         }
     }
 
@@ -1151,10 +1146,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(1),
             interval: Some(std::time::Duration::from_millis(50)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -1448,10 +1443,10 @@ mod tests {
 
         let session_config = SessionConfig {
             session_type: SessionType::PointToPoint,
-            enable_mls: false,
             max_retries: Some(3),
             interval: Some(std::time::Duration::from_millis(100)),
             metadata: std::collections::HashMap::new(),
+            mls_settings: None,
         };
 
         let destination = Arc::new(Name::new(
@@ -1484,7 +1479,7 @@ mod tests {
 
         assert!(result.is_err(), "Should timeout when no session arrives");
         if let Err(e) = result {
-            let error_msg = format!("{:?}", e);
+            let error_msg = format!("{e:?}");
             assert!(
                 error_msg.contains("timed out") || error_msg.contains("timeout"),
                 "Error should mention timeout"
@@ -1509,7 +1504,7 @@ mod tests {
 
         assert!(result.is_err(), "Should timeout when no session arrives");
         if let Err(e) = result {
-            let error_msg = format!("{:?}", e);
+            let error_msg = format!("{e:?}");
             assert!(
                 error_msg.contains("timed out") || error_msg.contains("timeout"),
                 "Error should mention timeout"

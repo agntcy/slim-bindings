@@ -151,10 +151,10 @@ pub async fn send_error_for_rpc(
             Some(metadata),
         )
         .await
-        .map_err(|e| RpcError::internal(format!("Failed to send error: {}", e)))?;
+        .map_err(|e| RpcError::internal(format!("Failed to send error: {e}")))?;
     handle.await.map_err(|e| {
         tracing::warn!(error = %e, "Failed to send error response");
-        RpcError::internal(format!("Failed to complete error send: {}", e))
+        RpcError::internal(format!("Failed to complete error send: {e}"))
     })
 }
 
@@ -181,7 +181,7 @@ pub async fn send_eos(
     session_tx
         .publish(target, Vec::new(), Some("msg".to_string()), Some(metadata))
         .await
-        .map_err(|e| RpcError::internal(format!("Failed to send EOS: {}", e)))
+        .map_err(|e| RpcError::internal(format!("Failed to send EOS: {e}")))
 }
 
 fn create_status_metadata(code: RpcCode, rpc_id: &str) -> HashMap<String, String> {
@@ -223,9 +223,7 @@ where
                             Some(create_status_metadata(RpcCode::Ok, rpc_id)),
                         )
                         .await
-                        .map_err(|e| {
-                            RpcError::internal(format!("Failed to send response: {}", e))
-                        })?,
+                        .map_err(|e| RpcError::internal(format!("Failed to send response: {e}")))?,
                 );
             }
             Err(e) => return Err(e),
@@ -238,7 +236,7 @@ where
     // Wait for all in-flight sends to be acknowledged by the session layer.
     futures::future::try_join_all(handles)
         .await
-        .map_err(|e| RpcError::internal(format!("Failed to complete sending: {}", e)))?;
+        .map_err(|e| RpcError::internal(format!("Failed to complete sending: {e}")))?;
 
     Ok(())
 }

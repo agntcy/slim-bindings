@@ -46,8 +46,7 @@ fn parse_name(id: &str) -> Result<Name, Box<dyn std::error::Error>> {
     let parts: Vec<&str> = id.split('/').collect();
     if parts.len() != 3 {
         return Err(format!(
-            "Invalid name format '{}'. Expected format: organization/namespace/application",
-            id
+            "Invalid name format '{id}'. Expected format: organization/namespace/application"
         )
         .into());
     }
@@ -73,7 +72,7 @@ async fn run_receiver(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let client_config = new_insecure_client_config(args.slim);
     let conn_id = service.connect_async(client_config).await?;
 
-    println!("Connected to control plane with connection ID: {}", conn_id);
+    println!("Connected to control plane with connection ID: {conn_id}");
 
     // Create the slim application using global service with shared secret
     let app = service
@@ -85,17 +84,14 @@ async fn run_receiver(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     // Subscribe to local name
     app.subscribe_async(local_name_arc, Some(conn_id)).await?;
 
-    println!("[{}] Waiting for incoming session...", full_name);
+    println!("[{full_name}] Waiting for incoming session...");
 
     // Wait for one incoming session (no timeout)
     let session = app.listen_for_session_async(None).await?;
 
     let session_id = session.session_id()?;
     let destination = session.destination()?;
-    println!(
-        "[{}] New session {} established from {}",
-        full_name, session_id, destination
-    );
+    println!("[{full_name}] New session {session_id} established from {destination}");
 
     // Loop to receive messages and reply
     loop {
@@ -107,12 +103,11 @@ async fn run_receiver(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                         let source = &received_msg.context.source_name;
 
                         println!(
-                            "[{}] Received from {}: {}",
-                            full_name, source, payload
+                            "[{full_name}] Received from {source}: {payload}"
                         );
 
                         // Reply to the sender using publish_to
-                        let reply = format!("{} from {}", payload, full_name);
+                        let reply = format!("{payload} from {full_name}");
                         session
                             .publish_to_and_wait_async(
                                 received_msg.context,
@@ -122,7 +117,7 @@ async fn run_receiver(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                             )
                             .await?;
 
-                        println!("[{}] Sent reply: {}", full_name, reply);
+                        println!("[{full_name}] Sent reply: {reply}");
                     }
                     Err(e) => {
                         let error_msg = e.to_string().to_lowercase();
@@ -130,14 +125,14 @@ async fn run_receiver(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                             // Timeout is expected, just continue waiting
                             continue;
                         } else {
-                            println!("[{}] Error receiving message: {}", full_name, e);
+                            println!("[{full_name}] Error receiving message: {e}");
                             break;
                         }
                     }
                 }
             },
             _ = signal::ctrl_c() => {
-                println!("\n[{}] Received Ctrl+C, shutting down gracefully...", full_name);
+                println!("\n[{full_name}] Received Ctrl+C, shutting down gracefully...");
                 break;
             }
         }
@@ -145,7 +140,7 @@ async fn run_receiver(args: Args) -> Result<(), Box<dyn std::error::Error>> {
 
     // Cleanup
     shutdown().await?;
-    println!("[{}] Receiver stopped", full_name);
+    println!("[{full_name}] Receiver stopped");
 
     Ok(())
 }

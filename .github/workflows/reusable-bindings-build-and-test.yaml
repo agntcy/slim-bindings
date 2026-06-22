@@ -39,14 +39,6 @@ on:
 env:
   LIBRARY_NAME: slim_bindings
   PYTHON_VERSION: '3.11'
-  # Force aws-lc-sys to use its CC builder instead of the CMake builder. The
-  # published aws-lc-sys 0.39.0 tarball on crates.io is missing aws-lc/tool/,
-  # aws-lc/tool-openssl/, and aws-lc/util/go_tests.txt, which causes the CMake
-  # builder to fail when CMake invalidates its cache and re-runs configure
-  # without the -DBUILD_LIBSSL=OFF / -DBUILD_TOOL=OFF overrides. The CC builder
-  # only needs aws-lc/crypto/ sources, which are present in the tarball.
-  # Remove this once the upstream agntcy-slim-auth dep chain moves off
-  # aws-lc-sys 0.39.0 (e.g. when mls-rs-crypto-awslc >= 0.25 is in use).
   AWS_LC_SYS_CMAKE_BUILDER: '0'
 
 jobs:

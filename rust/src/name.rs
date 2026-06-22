@@ -43,7 +43,7 @@ impl From<&ProtoName> for Name {
 impl Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let (c0, c1, c2) = self.inner.str_components();
-        write!(f, "{}/{}/{}", c0, c1, c2)
+        write!(f, "{c0}/{c1}/{c2}")
     }
 }
 
@@ -65,13 +65,13 @@ impl Name {
         let trimmed = s.trim();
         if trimmed.is_empty() {
             return Err(SlimError::InvalidArgument {
-                message: format!("expected \"org/namespace/agent\", got {:?}", s),
+                message: format!("expected \"org/namespace/agent\", got {s:?}"),
             });
         }
         let parts: Vec<&str> = trimmed.split('/').map(str::trim).collect();
         if parts.len() != 3 || parts.iter().any(|p| p.is_empty()) {
             return Err(SlimError::InvalidArgument {
-                message: format!("expected \"org/namespace/agent\", got {:?}", s),
+                message: format!("expected \"org/namespace/agent\", got {s:?}"),
             });
         }
         Ok(Name {
@@ -234,7 +234,7 @@ mod tests {
         assert_ne!(name1, name3);
 
         // Debug
-        let debug_str = format!("{:?}", name1);
+        let debug_str = format!("{name1:?}");
         assert!(debug_str.contains("Name"));
         assert!(debug_str.contains("inner"));
     }
@@ -248,7 +248,7 @@ mod tests {
             "app".to_string(),
             "00000000-0000-0000-0000-00000000007b".to_string(),
         );
-        let display_str = format!("{}", name);
+        let display_str = format!("{name}");
 
         // Should display the ProtoName format
         assert!(!display_str.is_empty());

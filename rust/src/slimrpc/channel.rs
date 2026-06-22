@@ -27,6 +27,7 @@ use futures::future::join_all;
 use futures::stream::Stream;
 use futures_timer::Delay;
 use parking_lot::RwLock as ParkingRwLock;
+use slim_session::session_config::MlsSettings;
 use tokio::sync::mpsc::{self, unbounded_channel};
 use tokio::task::JoinHandle;
 
@@ -192,9 +193,9 @@ async fn send_invite(session_tx: &SessionTx, member: &Name) -> Result<(), RpcErr
         .controller()
         .invite_participant(member)
         .await
-        .map_err(|e| RpcError::internal(format!("Failed to invite {}: {}", member, e)))?
+        .map_err(|e| RpcError::internal(format!("Failed to invite {member}: {e}")))?
         .await
-        .map_err(|e| RpcError::internal(format!("Failed to invite {}: {}", member, e)))
+        .map_err(|e| RpcError::internal(format!("Failed to invite {member}: {e}")))
 }
 
 /// Generate a random group session name derived from the client name.
@@ -414,28 +415,28 @@ impl Channel {
 
             let slim_config = slim_session::session_config::SessionConfig {
                 session_type,
-                mls_enabled: true,
                 max_retries: Some(10),
                 interval: Some(Duration::from_secs(1)),
                 initiator: true,
                 metadata: HashMap::new(),
+                mls_settings: Some(MlsSettings::default()),
             };
 
             let (session_ctx, completion) = app
                 .create_session(slim_config, remote.clone(), None)
                 .await
-                .map_err(|e| RpcError::unavailable(format!("Failed to create session: {}", e)))?;
+                .map_err(|e| RpcError::unavailable(format!("Failed to create session: {e}")))?;
 
             completion
                 .await
-                .map_err(|e| RpcError::unavailable(format!("Session handshake failed: {}", e)))?;
+                .map_err(|e| RpcError::unavailable(format!("Session handshake failed: {e}")))?;
 
             Ok(new_session(session_ctx))
         });
 
         handle
             .await
-            .map_err(|e| RpcError::internal(format!("Session creation task failed: {}", e)))?
+            .map_err(|e| RpcError::internal(format!("Session creation task failed: {e}")))?
     }
 
     // ── Send helpers ──────────────────────────────────────────────────────────
@@ -578,7 +579,7 @@ impl Channel {
                         match send_result {
                             Ok(Ok(_)) => continue,
                             Ok(Err(e)) => Err(e),
-                            Err(e) => Err(RpcError::internal(format!("Send task panicked: {}", e))),
+                            Err(e) => Err(RpcError::internal(format!("Send task panicked: {e}"))),
                         }
                     },
                     _ = &mut delay => Err(RpcError::deadline_exceeded(
@@ -596,8 +597,7 @@ impl Channel {
                                 ));
                             } else {
                                 yield Err(RpcError::internal(format!(
-                                    "Session closed after {}/{} EOS markers",
-                                    num_completed, num_members
+                                    "Session closed after {num_completed}/{num_members} EOS markers"
                                 )));
                             }
                         }

@@ -88,7 +88,7 @@ mod tests {
         ];
 
         for error in errors {
-            let display = format!("{}", error);
+            let display = format!("{error}");
             assert!(!display.is_empty(), "Error display should not be empty");
         }
 

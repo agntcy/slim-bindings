@@ -32,7 +32,7 @@ use std::time::Duration;
 
 use clap::Parser;
 use slim_bindings::{
-    Name, SessionConfig, SessionType, get_global_service, initialize_with_defaults,
+    MlsSettings, Name, SessionConfig, SessionType, get_global_service, initialize_with_defaults,
     new_insecure_client_config, shutdown,
 };
 
@@ -75,8 +75,7 @@ fn parse_name(id: &str) -> Result<Name, Box<dyn std::error::Error>> {
     let parts: Vec<&str> = id.split('/').collect();
     if parts.len() != 3 {
         return Err(format!(
-            "Invalid name format '{}'. Expected format: organization/namespace/application",
-            id
+            "Invalid name format '{id}'. Expected format: organization/namespace/application"
         )
         .into());
     }
@@ -93,7 +92,7 @@ fn parse_session_type(s: &str) -> Result<SessionType, Box<dyn std::error::Error>
     match s.to_lowercase().as_str() {
         "p2p" | "point-to-point" | "pointtopoint" => Ok(SessionType::PointToPoint),
         "group" | "multicast" => Ok(SessionType::Group),
-        _ => Err(format!("Invalid session type '{}'. Expected 'p2p' or 'group'", s).into()),
+        _ => Err(format!("Invalid session type '{s}'. Expected 'p2p' or 'group'").into()),
     }
 }
 
@@ -127,7 +126,7 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let client_config = new_insecure_client_config(args.slim);
     let conn_id = service.connect_async(client_config).await?;
 
-    println!("Connected to control plane with connection ID: {}", conn_id);
+    println!("Connected to control plane with connection ID: {conn_id}");
 
     // Create the slim application using global service with shared secret
     let app = service
@@ -135,7 +134,7 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let full_name = app.name();
-    println!("[{}] Application created", full_name);
+    println!("[{full_name}] Application created");
 
     // Subscribe to local name
     app.subscribe_async(local_name_arc, Some(conn_id)).await?;
@@ -143,10 +142,10 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     // Create session configuration
     let session_config = SessionConfig {
         session_type: session_type.clone(),
-        enable_mls: true,
         max_retries: Some(5),
         interval: Some(Duration::from_secs(1)),
         metadata: HashMap::new(),
+        mls_settings: Some(MlsSettings::default()),
     };
 
     // For p2p, destination is the single participant
@@ -157,14 +156,11 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(participant_names[0].clone())
     };
 
-    println!(
-        "[{}] Creating {:?} session with destination {}...",
-        full_name, session_type, destination
-    );
+    println!("[{full_name}] Creating {session_type:?} session with destination {destination}...");
 
     // Set routes for all participants to ensure they can receive the session invite
     for participant in &participant_names {
-        println!("[{}] Setting route for {}", full_name, participant);
+        println!("[{full_name}] Setting route for {participant}");
         app.set_route_async(Arc::new(participant.clone()), conn_id)
             .await?;
     }
@@ -178,16 +174,16 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let session = session_with_completion.session;
 
     let session_id = session.session_id()?;
-    println!("[{}] Session {} established", full_name, session_id);
+    println!("[{full_name}] Session {session_id} established");
 
     // For group sessions, invite all participants
     if session_type == SessionType::Group {
         for participant in &participant_names {
-            println!("[{}] Inviting {} to session...", full_name, participant);
+            println!("[{full_name}] Inviting {participant} to session...");
             session
                 .invite_and_wait_async(Arc::new(participant.clone()))
                 .await?;
-            println!("[{}] {} joined session", full_name, participant);
+            println!("[{full_name}] {participant} joined session");
         }
     }
 
@@ -215,7 +211,7 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                     let payload = String::from_utf8_lossy(&received_msg.payload);
                     let source = received_msg.context.source_name.to_string();
 
-                    println!("[{}] Reply from {}: {}", full_name_clone, source, payload);
+                    println!("[{full_name_clone}] Reply from {source}: {payload}");
 
                     total_replies_received += 1;
 
@@ -230,7 +226,7 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
                         // Continue waiting
                         continue;
                     } else {
-                        println!("[{}] Error receiving reply: {}", full_name_clone, e);
+                        println!("[{full_name_clone}] Error receiving reply: {e}");
                         break;
                     }
                 }
@@ -243,22 +239,19 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     // Send messages at fixed intervals
     for i in 0..args.count {
         let message = format!("Message {}", i + 1);
-        println!("[{}] Sending: {}", full_name, message);
+        println!("[{full_name}] Sending: {message}");
 
         if let Err(e) = session
             .publish_and_wait_async(message.as_bytes().to_vec(), None, None)
             .await
         {
-            println!("[{}] Error sending message: {}", full_name, e);
+            println!("[{full_name}] Error sending message: {e}");
         }
 
         tokio::time::sleep(interval).await;
     }
 
-    println!(
-        "[{}] Finished sending messages, waiting for remaining replies...",
-        full_name
-    );
+    println!("[{full_name}] Finished sending messages, waiting for remaining replies...");
 
     // Wait for reply collection task to finish or timeout
     let total_replies_received = tokio::select! {
@@ -266,26 +259,23 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
             match result {
                 Ok(data) => data,
                 Err(e) => {
-                    println!("[{}] Reply collection task error: {}", full_name, e);
+                    println!("[{full_name}] Reply collection task error: {e}");
                     0
                 }
             }
         }
         _ = tokio::time::sleep(Duration::from_secs(30)) => {
-            println!("[{}] Timeout waiting for replies", full_name);
+            println!("[{full_name}] Timeout waiting for replies");
             0
         }
     };
 
     // Summary
-    println!("\n[{}] === Summary ===", full_name);
-    println!(
-        "[{}] Replies received: {}/{}",
-        full_name, total_replies_received, total_expected_replies
-    );
+    println!("\n[{full_name}] === Summary ===");
+    println!("[{full_name}] Replies received: {total_replies_received}/{total_expected_replies}");
 
     if total_replies_received == total_expected_replies {
-        println!("[{}] ✓ All participants replied correctly", full_name);
+        println!("[{full_name}] ✓ All participants replied correctly");
     } else {
         println!(
             "[{}] ✗ Missing {} replies",
@@ -295,12 +285,12 @@ async fn run_sender(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Delete session
-    println!("[{}] Deleting session...", full_name);
+    println!("[{full_name}] Deleting session...");
     app.delete_session_and_wait_async(session).await?;
 
     // Cleanup
     shutdown().await?;
-    println!("[{}] Sender stopped", full_name);
+    println!("[{full_name}] Sender stopped");
 
     Ok(())
 }

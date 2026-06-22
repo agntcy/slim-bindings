@@ -36,7 +36,7 @@ impl UnaryUnaryHandler for EchoHandler {
         _context: Arc<slim_bindings::Context>,
     ) -> Result<Vec<u8>, RpcError> {
         // Echo the request back
-        println!("EchoHandler received request: {:?}", request);
+        println!("EchoHandler received request: {request:?}");
         Ok(request)
     }
 }
@@ -167,7 +167,7 @@ impl StreamUnaryHandler for StreamInputErrorHandler {
                     if !data.is_empty() && data[0] == 255 {
                         return Err(RpcError::new(
                             RpcCode::InvalidArgument,
-                            format!("Invalid data at message {}", count),
+                            format!("Invalid data at message {count}"),
                         ));
                     }
                 }
@@ -348,7 +348,7 @@ impl StreamUnaryHandler for SlowStreamUnaryHandler {
 
                     // Slow processing
                     tokio::time::sleep(Duration::from_millis(200)).await;
-                    println!("Processed message {}", count);
+                    println!("Processed message {count}");
                 }
                 StreamMessage::End => break,
                 StreamMessage::Error(e) => return Err(e),
@@ -452,7 +452,7 @@ struct TestEnv {
 
 impl TestEnv {
     async fn new(test_name: &str) -> Self {
-        println!("TestEnv::new starting for {}", test_name);
+        println!("TestEnv::new starting for {test_name}");
 
         // Initialize the runtime if not already initialized
         initialize_with_defaults();
@@ -491,7 +491,7 @@ impl TestEnv {
         let server = Arc::new(Server::new(&server_app, server_app.name().clone()));
         println!("RPC server created");
 
-        println!("TestEnv::new completed for {}", test_name);
+        println!("TestEnv::new completed for {test_name}");
         Self {
             server,
             _app: server_app,
@@ -506,7 +506,7 @@ impl TestEnv {
         // Spawn task to run the server
         tokio::spawn(async move {
             if let Err(e) = server.serve_async().await {
-                eprintln!("Server error: {:?}", e);
+                eprintln!("Server error: {e:?}");
             }
         });
 
@@ -518,7 +518,7 @@ impl TestEnv {
         let client_name = Arc::new(Name::new(
             "org".to_string(),
             "test".to_string(),
-            format!("{}-client", test_name),
+            format!("{test_name}-client"),
         ));
 
         let provider_config = IdentityProviderConfig::SharedSecret {
@@ -670,7 +670,7 @@ async fn test_unary_stream_rpc() {
                 responses.push(data);
             }
             StreamMessage::Error(e) => {
-                panic!("Unexpected error: {:?}", e);
+                panic!("Unexpected error: {e:?}");
             }
             StreamMessage::End => break,
         }
@@ -885,7 +885,7 @@ async fn test_stream_stream_echo() {
                 received.push(data);
             }
             StreamMessage::Error(e) => {
-                panic!("Unexpected error: {:?}", e);
+                panic!("Unexpected error: {e:?}");
             }
             StreamMessage::End => break,
         }
@@ -942,7 +942,7 @@ async fn test_stream_stream_transform() {
                 received.push(data);
             }
             StreamMessage::Error(e) => {
-                panic!("Unexpected error: {:?}", e);
+                panic!("Unexpected error: {e:?}");
             }
             StreamMessage::End => break,
         }
@@ -1352,7 +1352,7 @@ async fn test_unary_stream_with_metadata() {
                 count += 1;
             }
             StreamMessage::Error(e) => {
-                panic!("Stream error: {:?}", e);
+                panic!("Stream error: {e:?}");
             }
             StreamMessage::End => break,
         }
@@ -1460,7 +1460,7 @@ async fn test_stream_stream_with_metadata() {
                 received.push(data);
             }
             StreamMessage::Error(e) => {
-                panic!("Stream error: {:?}", e);
+                panic!("Stream error: {e:?}");
             }
             StreamMessage::End => break,
         }
@@ -1704,11 +1704,7 @@ async fn test_client_deadline_unary_stream() {
     }
 
     // Should have received some items but not all (5 total)
-    assert!(
-        count < 5,
-        "Expected timeout before all items, got {}",
-        count
-    );
+    assert!(count < 5, "Expected timeout before all items, got {count}");
     assert!(got_error, "Expected a deadline exceeded error");
 
     // Give handler time to potentially complete
@@ -1723,8 +1719,7 @@ async fn test_client_deadline_unary_stream() {
     assert!(!was_completed, "Handler should not have completed");
     assert!(
         sent < 5,
-        "Handler should not have sent all items, sent {}",
-        sent
+        "Handler should not have sent all items, sent {sent}"
     );
 
     env.server.shutdown_async().await;
@@ -1899,7 +1894,7 @@ async fn test_server_deadline_stream_unary() {
 
     assert!(was_started, "Handler should have started execution");
     assert!(!was_completed, "Handler should not have completed");
-    println!("Handler received {} messages before deadline", received);
+    println!("Handler received {received} messages before deadline");
 
     env.server.shutdown_async().await;
 }
@@ -2090,8 +2085,7 @@ async fn test_deadline_propagation() {
 
     assert!(
         diff < Duration::from_secs(1),
-        "Deadline should match expected value within tolerance, diff: {:?}",
-        diff
+        "Deadline should match expected value within tolerance, diff: {diff:?}"
     );
 
     env.server.shutdown_async().await;
@@ -2288,7 +2282,7 @@ async fn setup_multicast_env(
         let member_name = Arc::new(Name::new(
             "org".to_string(),
             "test".to_string(),
-            format!("{}-m{}", test_name, i),
+            format!("{test_name}-m{i}"),
         ));
         let app = App::new_with_direction_async(
             member_name.clone(),
@@ -2308,7 +2302,7 @@ async fn setup_multicast_env(
     let client_name = Arc::new(Name::new(
         "org".to_string(),
         "test".to_string(),
-        format!("{}-client", test_name),
+        format!("{test_name}-client"),
     ));
     let client_app = App::new_with_direction_async(
         client_name,
@@ -2331,7 +2325,7 @@ async fn start_multicast_servers(servers: &[Arc<Server>]) {
         let s = s.clone();
         tokio::spawn(async move {
             if let Err(e) = s.serve_async().await {
-                eprintln!("Member server error: {:?}", e);
+                eprintln!("Member server error: {e:?}");
             }
         });
     }
@@ -2376,7 +2370,7 @@ async fn test_uniffi_multicast_unary() {
                 assert_eq!(item.message, request, "Each member should echo the request");
                 items.push(item);
             }
-            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {:?}", e),
+            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {e:?}"),
             MulticastStreamMessage::End => break,
         }
     }
@@ -2392,9 +2386,7 @@ async fn test_uniffi_multicast_unary() {
     for exp in &expected {
         assert!(
             sources.contains(exp),
-            "Source {:?} missing from {:?}",
-            exp,
-            sources
+            "Source {exp:?} missing from {sources:?}"
         );
     }
 
@@ -2439,7 +2431,7 @@ async fn test_uniffi_multicast_unary_stream() {
     loop {
         match reader.next_async().await {
             MulticastStreamMessage::Data { .. } => data_count += 1,
-            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {:?}", e),
+            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {e:?}"),
             MulticastStreamMessage::End => break,
         }
     }
@@ -2495,7 +2487,7 @@ async fn test_uniffi_multicast_stream_unary() {
     loop {
         match handler.recv_async().await {
             MulticastStreamMessage::Data { item } => responses.push(item),
-            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {:?}", e),
+            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {e:?}"),
             MulticastStreamMessage::End => break,
         }
     }
@@ -2572,7 +2564,7 @@ async fn test_uniffi_multicast_stream_stream() {
     loop {
         match handler.recv_async().await {
             MulticastStreamMessage::Data { item } => received.push(item),
-            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {:?}", e),
+            MulticastStreamMessage::Error { error: e } => panic!("Unexpected error: {e:?}"),
             MulticastStreamMessage::End => break,
         }
     }
@@ -2594,8 +2586,7 @@ async fn test_uniffi_multicast_stream_stream() {
     for exp in &expected {
         assert!(
             sources.contains(exp),
-            "Member source {:?} not found among received items",
-            exp
+            "Member source {exp:?} not found among received items"
         );
     }
 

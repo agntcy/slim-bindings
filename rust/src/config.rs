@@ -80,7 +80,7 @@ pub fn initialize_from_config(config_path: String) {
     // Use get_or_init for atomic initialization
     GLOBAL_STATE.get_or_init(|| {
         let (runtime_config, tracing_conf, service_configs) =
-            load_configs(&config_path).unwrap_or_else(|e| panic!("Initialization failed: {}", e));
+            load_configs(&config_path).unwrap_or_else(|e| panic!("Initialization failed: {e}"));
 
         // Perform initialization and return config
         initialize_internal(
@@ -88,7 +88,7 @@ pub fn initialize_from_config(config_path: String) {
             tracing_conf.clone(),
             &service_configs,
         )
-        .unwrap_or_else(|e| panic!("Initialization failed: {}", e))
+        .unwrap_or_else(|e| panic!("Initialization failed: {e}"))
     });
 }
 
@@ -154,7 +154,7 @@ pub fn initialize_with_configs(
             core_tracing_config,
             &core_service_config,
         )
-        .unwrap_or_else(|e| panic!("Initialization failed: {}", e))
+        .unwrap_or_else(|e| panic!("Initialization failed: {e}"))
     });
     Ok(())
 }
@@ -410,13 +410,8 @@ async fn initialize_and_start_global_services(
     // Create and start all services
     for (idx, service_config) in service_configs.iter().enumerate() {
         debug!("Creating global service {} with configuration", idx);
-        let mut slim_service = ServiceBuilder::new().build_with_config(
-            service_config
-                .node_id
-                .as_ref()
-                .unwrap_or(&format!("global-bindings-service-{}", idx)),
-            service_config,
-        )?;
+        let mut slim_service =
+            ServiceBuilder::new().build_with_config(service_config.service_id(), service_config)?;
 
         // Start the service to initialize servers and clients
         // This calls run() internally if servers/clients are configured
@@ -500,7 +495,7 @@ pub async fn shutdown() -> Result<(), SlimError> {
             }
             futures::future::Either::Right(_) => {
                 return Err(SlimError::ServiceError {
-                    message: format!("Service shutdown timed out after {:?}", drain_timeout),
+                    message: format!("Service shutdown timed out after {drain_timeout:?}"),
                 });
             }
         }
@@ -537,7 +532,7 @@ mod tests {
         let err = SlimError::ConfigError {
             message: "test error".to_string(),
         };
-        assert!(format!("{}", err).contains("Configuration error"));
+        assert!(format!("{err}").contains("Configuration error"));
     }
 
     #[test]
@@ -599,7 +594,7 @@ mod tests {
         assert!(!tracing_config.log_level().is_empty());
         // Service config should have default values
         assert!(!service_config.is_empty());
-        assert!(service_config[0].node_id.is_none());
+        assert!(!service_config[0].node_id.is_empty());
         assert!(service_config[0].group_name.is_none());
     }
 
@@ -727,12 +722,9 @@ mod tests {
         // Verify each config is in the correct order by checking node_id
         for (idx, config) in retrieved_configs.iter().enumerate() {
             assert_eq!(
-                config.node_id.as_ref().unwrap(),
-                &expected_node_ids[idx],
-                "Config at index {} should have node_id '{}', but got '{:?}'",
-                idx,
-                expected_node_ids[idx],
-                config.node_id
+                &config.node_id, &expected_node_ids[idx],
+                "Config at index {} should have node_id '{}', but got '{}'",
+                idx, expected_node_ids[idx], config.node_id
             );
         }
 
@@ -805,12 +797,9 @@ mod tests {
         // Verify each config is in the correct order
         for (idx, config) in retrieved_configs.iter().enumerate() {
             assert_eq!(
-                config.node_id.as_ref().unwrap(),
-                &expected_node_ids[idx],
-                "Config at index {} should have node_id '{}', but got '{:?}'",
-                idx,
-                expected_node_ids[idx],
-                config.node_id
+                &config.node_id, &expected_node_ids[idx],
+                "Config at index {} should have node_id '{}', but got '{}'",
+                idx, expected_node_ids[idx], config.node_id
             );
             assert_eq!(
                 config.group_name.as_ref().unwrap(),
@@ -832,9 +821,9 @@ mod tests {
         );
     }
 
-    #[tokio::test]
     #[test_fork::fork]
-    async fn test_service_order_preserved_from_config_file() {
+    #[test]
+    fn test_service_order_preserved_from_config_file() {
         // Test that service order is preserved when loading from config file
         use std::io::Write;
 
@@ -961,10 +950,9 @@ services:
         // Test that we can get the global service
         let service = get_global_service();
 
-        // Verify the service has a valid name
+        // Verify the service has a valid name (defaults to UUID-based node_id)
         let name = service.get_name();
         assert!(!name.is_empty());
-        assert!(name.contains("global-bindings-service"));
     }
 
     #[test]
@@ -988,7 +976,7 @@ services:
 
         // Shutdown should succeed
         let result = shutdown().await;
-        assert!(result.is_ok(), "Shutdown should succeed: {:?}", result);
+        assert!(result.is_ok(), "Shutdown should succeed: {result:?}");
     }
 
     #[tokio::test]
@@ -1014,8 +1002,7 @@ services:
         let result = shutdown_blocking();
         assert!(
             result.is_ok(),
-            "Blocking shutdown should succeed: {:?}",
-            result
+            "Blocking shutdown should succeed: {result:?}"
         );
     }
 
@@ -1068,7 +1055,7 @@ services:
             Err(SlimError::ConfigError { message }) => {
                 assert!(!message.is_empty());
             }
-            other => panic!("Expected ConfigError, got: {:?}", other),
+            other => panic!("Expected ConfigError, got: {other:?}"),
         }
     }
 
@@ -1182,7 +1169,7 @@ services:
         drop(file);
 
         let result = initialize_from_config_with_error(config_path.to_str().unwrap().to_string());
-        assert!(result.is_ok(), "Expected Ok(()), got: {:?}", result);
+        assert!(result.is_ok(), "Expected Ok(()), got: {result:?}");
 
         let service_configs = get_service_config();
         assert!(!service_configs.is_empty());

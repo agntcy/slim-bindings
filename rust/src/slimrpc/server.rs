@@ -90,7 +90,7 @@ impl ServiceRegistry {
         Req: Decoder + Send + 'static,
         Res: Encoder + Send + 'static,
     {
-        let method_path = format!("{}/{}", service_name, method_name);
+        let method_path = format!("{service_name}/{method_name}");
         let wrapper = Arc::new(
             move |bytes: Vec<u8>,
                   ctx: Context,
@@ -128,7 +128,7 @@ impl ServiceRegistry {
         Req: Decoder + Send + 'static,
         Res: Encoder + Send + 'static,
     {
-        let method_path = format!("{}/{}", service_name, method_name);
+        let method_path = format!("{service_name}/{method_name}");
         let wrapper = Arc::new(
             move |bytes: Vec<u8>,
                   ctx: Context,
@@ -160,7 +160,7 @@ impl ServiceRegistry {
         Req: Decoder + Send + 'static,
         Res: Encoder + Send + 'static,
     {
-        let method_path = format!("{}/{}", service_name, method_name);
+        let method_path = format!("{service_name}/{method_name}");
         let wrapper = Arc::new(
             move |source: StreamSource,
                   ctx: Context,
@@ -201,7 +201,7 @@ impl ServiceRegistry {
         Req: Decoder + Send + 'static,
         Res: Encoder + Send + 'static,
     {
-        let method_path = format!("{}/{}", service_name, method_name);
+        let method_path = format!("{service_name}/{method_name}");
         let wrapper = Arc::new(
             move |source: StreamSource,
                   ctx: Context,
@@ -257,6 +257,11 @@ enum NotificationReceiver {
     Owned(mpsc::Receiver<Result<Notification, SessionError>>),
     Shared(Arc<tokio::sync::RwLock<mpsc::Receiver<Result<Notification, SessionError>>>>),
 }
+
+/// Result handed back from the spawned `serve_handle` task: the notification
+/// receiver (so the caller can keep consuming after shutdown) plus the run
+/// outcome.
+type ServeHandleResult = (NotificationReceiver, Result<(), RpcError>);
 
 /// RPC Server
 ///
@@ -466,7 +471,7 @@ async fn run_session_demux(
             continue;
         };
 
-        let method_path = format!("{}/{}", service, method);
+        let method_path = format!("{service}/{method}");
 
         tracing::debug!(%method_path, %rpc_id, "Dispatching new RPC call");
 
@@ -474,7 +479,7 @@ async fn run_session_demux(
             tracing::error!(%method_path, "No handler registered");
             let _ = send_error_for_rpc(
                 &session_tx,
-                RpcError::unimplemented(format!("Method not found: {}", method_path)),
+                RpcError::unimplemented(format!("Method not found: {method_path}")),
                 &rpc_id,
             )
             .await;
@@ -981,9 +986,7 @@ impl Server {
     /// # Ok(())
     /// # }
     /// ```
-    fn serve_handle(
-        &self,
-    ) -> Result<JoinHandle<(NotificationReceiver, Result<(), RpcError>)>, RpcError> {
+    fn serve_handle(&self) -> Result<JoinHandle<ServeHandleResult>, RpcError> {
         let notification = self
             .notification_rx
             .lock()
@@ -1033,7 +1036,7 @@ impl Server {
         // sessions to this server.
         tracing::info!(%base_name, "Subscribing");
         if let Err(e) = app.subscribe(&base_name, connection_id).await {
-            let status = RpcError::internal(format!("Failed to subscribe to {}: {}", base_name, e));
+            let status = RpcError::internal(format!("Failed to subscribe to {base_name}: {e}"));
             return (rx, Err(status));
         }
 
@@ -1172,7 +1175,7 @@ impl Server {
 
         let notification = notification_opt
             .unwrap()
-            .map_err(|e| RpcError::internal(format!("Session error: {}", e)))?;
+            .map_err(|e| RpcError::internal(format!("Session error: {e}")))?;
 
         match notification {
             Notification::NewSession(session_ctx) => Ok(session_ctx),
@@ -1396,9 +1399,9 @@ impl Server {
         let handle = self.serve_handle()?;
 
         // Wait for the server task to complete and restore the NotificationReceiver
-        let (notification_rx, result) = handle.await.map_err(|e| {
-            RpcError::new(RpcCode::Internal, format!("Server task panicked: {}", e))
-        })?;
+        let (notification_rx, result) = handle
+            .await
+            .map_err(|e| RpcError::new(RpcCode::Internal, format!("Server task panicked: {e}")))?;
 
         // Restore the NotificationReceiver back to the server
         *self.notification_rx.lock() = Some(notification_rx);
@@ -1450,7 +1453,7 @@ mod tests {
         let full_method = "app-MyService-MyMethod";
         let base_app = "app";
 
-        if let Some(suffix) = full_method.strip_prefix(&format!("{}-", base_app)) {
+        if let Some(suffix) = full_method.strip_prefix(&format!("{base_app}-")) {
             let parts: Vec<&str> = suffix.splitn(2, '-').collect();
             assert_eq!(parts.len(), 2);
             assert_eq!(parts[0], "MyService");

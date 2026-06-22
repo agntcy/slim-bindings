@@ -265,19 +265,17 @@ mod tests {
             Err(SlimError::InternalError { message }) => {
                 assert!(
                     message.contains("sender dropped") || message.contains("already consumed"),
-                    "Error message should mention sender dropped or already consumed, got: {}",
-                    message
+                    "Error message should mention sender dropped or already consumed, got: {message}"
                 );
             }
             Err(SlimError::SessionError { message }) => {
                 // The background task may have consumed the receiver and got a channel closed error
                 assert!(
                     message.contains("channel closed") || message.contains("receiving ack"),
-                    "Expected channel closed error, got: {}",
-                    message
+                    "Expected channel closed error, got: {message}"
                 );
             }
-            Err(e) => panic!("Unexpected error type: {:?}", e),
+            Err(e) => panic!("Unexpected error type: {e:?}"),
             Ok(_) => panic!("Expected error, got Ok"),
         }
     }
@@ -341,7 +339,7 @@ mod tests {
 
         match result {
             Err(SlimError::Timeout) => {} // Expected
-            Err(e) => panic!("Expected Timeout error, got: {:?}", e),
+            Err(e) => panic!("Expected Timeout error, got: {e:?}"),
             Ok(_) => panic!("Expected timeout, got Ok"),
         }
 
