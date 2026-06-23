@@ -98,7 +98,8 @@ Optional platform packages (`@agntcy/slim-bindings-*`) are version-pinned beside
 
 - **Dry run**: From `node`, run `npm pack` for the main tarball; platform bundles via `task pack:platform TARGET=<target>` → `dist/node-<platform>.tgz`.
 - **Version**: In `package.json`; release tags use `slim-bindings-v*` (see `.github/scripts/get-binding-version.sh`).
-- **CI**: Releases publish via [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC from `release-bindings.yaml`); no publish token in GitHub. For **local** `npm publish`, use `npm login` or an automation token as usual.
+- **CI**: Releases publish via [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) (OIDC from `release-bindings.yaml`); no publish token in GitHub. Publish jobs use **Node 24** (npm ≥ 11.5.1 is required; Node 22.14 ships npm 10.x and fails with a misleading `404 Not Found`). For **local** `npm publish`, use `npm login` or an automation token as usual.
+- **Trusted publisher setup (maintainers)**: Configure OIDC on **each** npm package that CI publishes — `@agntcy/slim-bindings`, every `@agntcy/slim-bindings-*` platform package, and `@agntcy/slim-bindings-react-native`. On npmjs.com → package → Settings → Trusted publishing, set **Repository** to `agntcy/slim-bindings` and **Workflow filename** to `release-bindings.yaml` (filename only, not the `.github/workflows/` path). After the repo split from `agntcy/slim`, update any publishers still pointing at the old monorepo.
 
 ## Resources
 
