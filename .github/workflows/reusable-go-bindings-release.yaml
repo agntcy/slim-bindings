@@ -109,6 +109,16 @@ jobs:
           VERSION="${VERSION#slim-bindings-}"
           echo "📦 Extracted version: $VERSION"
 
+          # Go requires a /vN suffix in the module path at major version >= 2.
+          # Source keeps the unsuffixed path for local dev; rewrite only here.
+          MAJOR="${VERSION#v}"; MAJOR="${MAJOR%%.*}"
+          case "$MAJOR" in ''|*[!0-9]*) MAJOR=0 ;; esac
+          if [ "$MAJOR" -ge 2 ]; then
+            echo "🔧 Rewriting Go module path to /v${MAJOR}"
+            find . -type f \( -name '*.go' -o -name 'go.mod' -o -name '*.md' \) -print0 \
+              | xargs -0 sed -i "s|github.com/${GO_BINDINGS_REPO}|github.com/${GO_BINDINGS_REPO}/v${MAJOR}|g"
+          fi
+
           # Create pre-release branch name
           PRE_RELEASE_BRANCH="pre-release-$VERSION"
           echo "🌿 Pre-release branch: $PRE_RELEASE_BRANCH"
@@ -232,6 +242,12 @@ jobs:
           echo "🖥️  Platform: $PLATFORM_TARGET"
           echo "🔧 Using QEMU ARM64 emulation"
 
+          # Module path mirrors the release job: /vN suffix at major >= 2.
+          MAJOR="${VERSION#v}"; MAJOR="${MAJOR%%.*}"
+          case "$MAJOR" in ''|*[!0-9]*) MAJOR=0 ;; esac
+          MODULE_PATH="github.com/${GO_BINDINGS_REPO_NAME}"
+          [ "$MAJOR" -ge 2 ] && MODULE_PATH="${MODULE_PATH}/v${MAJOR}"
+
           # Determine Go arch for ARM64
           if [[ "$PLATFORM_TARGET" == *"aarch64"* ]]; then
             export GO_ARCH="arm64"
@@ -270,15 +286,16 @@ jobs:
               echo '✅ Created test module'
 
               # Fetch bindings
-              go get github.com/${GO_BINDINGS_REPO_NAME}@$VERSION
+              go get ${MODULE_PATH}@$VERSION
               echo '✅ Fetched bindings package version $VERSION'
 
               # Run setup tool
-              go run github.com/${GO_BINDINGS_REPO_NAME}/cmd/slim-bindings-setup@$VERSION
+              go run ${MODULE_PATH}/cmd/slim-bindings-setup@$VERSION
               echo '✅ Downloaded native libraries'
 
-              # Copy test program from repo
+              # Copy test program and point its import at the /v2 module path.
               cp /repo/.github/tests/go/test_installation.go main.go
+              sed -i \"s|github.com/${GO_BINDINGS_REPO_NAME}|${MODULE_PATH}|g\" main.go
 
               # Run test
               go run main.go
@@ -299,6 +316,12 @@ jobs:
           VERSION="${REF_NAME}"
           VERSION="${VERSION#slim-bindings-}"
           echo "📦 Testing version: $VERSION"
+
+          # Module path mirrors the release job: /vN suffix at major >= 2.
+          MAJOR="${VERSION#v}"; MAJOR="${MAJOR%%.*}"
+          case "$MAJOR" in ''|*[!0-9]*) MAJOR=0 ;; esac
+          MODULE_PATH="github.com/${GO_BINDINGS_REPO_NAME}"
+          [ "$MAJOR" -ge 2 ] && MODULE_PATH="${MODULE_PATH}/v${MAJOR}"
 
           # Create a temporary test directory
           if [ "$RUNNER_OS" = "Windows" ]; then
@@ -324,15 +347,17 @@ jobs:
           echo "✅ Created test module"
 
           # Fetch the bindings using the version tag
-          go get "github.com/${GO_BINDINGS_REPO_NAME}@$VERSION"
+          go get "${MODULE_PATH}@$VERSION"
           echo "✅ Fetched bindings package version $VERSION"
 
           # Run the setup tool to download native libraries
-          go run "github.com/${GO_BINDINGS_REPO_NAME}/cmd/slim-bindings-setup@$VERSION"
+          go run "${MODULE_PATH}/cmd/slim-bindings-setup@$VERSION"
           echo "✅ Downloaded native libraries"
 
-          # Copy test program from repo
+          # Copy test program and point its import at the /v2 module path
+          # (.bak suffix keeps sed portable across BSD/macOS and GNU).
           cp "$GITHUB_WORKSPACE/.github/tests/go/test_installation.go" main.go
+          sed -i.bak "s|github.com/${GO_BINDINGS_REPO_NAME}|${MODULE_PATH}|g" main.go && rm -f main.go.bak
 
           # Run the test program
           go run main.go
@@ -399,41 +424,6 @@ jobs:
           echo "✅ Merged pre-release branch to main"
           echo "✅ Updated tag $VERSION to point to main"
 
-      - name: Cleanup pre-release branch
-        if: always() # Run even if previous steps fail
-        env:
-          REF_NAME: ${{ github.ref_name }}
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          cd ./target-repo
-
-          # Extract version from tag name
-          VERSION="${REF_NAME}"
-          VERSION="${VERSION#slim-bindings-}"
-          PRE_RELEASE_BRANCH="pre-release-$VERSION"
-
-          echo "🧹 Cleaning up pre-release artifacts..."
-
-          # Delete the pre-release branch
-          if git ls-remote --heads origin "$PRE_RELEASE_BRANCH" | grep -q "$PRE_RELEASE_BRANCH"; then
-            git push origin --delete "$PRE_RELEASE_BRANCH" && echo "✅ Deleted pre-release branch: $PRE_RELEASE_BRANCH" || echo "⚠️  Failed to delete branch"
-          else
-            echo "ℹ️  Pre-release branch doesn't exist (may have been deleted already)"
-          fi
-
-          # If the merge step failed, we need to delete the tag too
-          # (it's pointing to pre-release branch, not main)
-          if [ "$JOB_STATUS" != "success" ]; then
-            echo "⚠️  Job failed - cleaning up pre-release tag as well"
-            if git ls-remote --tags origin "$VERSION" | grep -q "$VERSION"; then
-              git push origin --delete "$VERSION" && echo "✅ Deleted pre-release tag: $VERSION" || echo "⚠️  Failed to delete tag"
-            else
-              echo "ℹ️  Tag doesn't exist (may have been deleted already)"
-            fi
-          fi
-
-          echo "✅ Cleanup complete"
-
       - name: Release complete
         env:
           REF_NAME: ${{ github.ref_name }}
@@ -445,3 +435,55 @@ jobs:
           echo "✅ Go bindings published to https://github.com/${GO_BINDINGS_REPO}"
           echo "✅ Tagged as $VERSION"
           echo "✅ All tests passed on 8 platforms"
+
+  # ==========================================================================
+  # Job 4: Cleanup pre-release artifacts (always runs)
+  # The pre-release branch is scratch space and is always removed. The version
+  # tag is kept only when finalize succeeded (it now points at main); on any
+  # failure/skip the tag still points at the pre-release commit, so we delete
+  # it too. Lives in its own always() job because a failed test job skips
+  # finalize entirely — leaving the branch/tag dangling otherwise.
+  cleanup-go-release:
+    name: Cleanup pre-release artifacts
+    runs-on: ubuntu-latest
+    needs: [release-go-bindings, test-go-bindings, finalize-go-release]
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/slim-bindings-') }}
+    steps:
+      - name: Clone target repository
+        env:
+          GH_TOKEN: ${{ secrets.gh-token }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GO_BINDINGS_REPO}.git" ./target-repo
+
+      - name: Remove pre-release branch and dangling tag
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          FINALIZE_RESULT: ${{ needs.finalize-go-release.result }}
+        run: |
+          cd ./target-repo
+
+          VERSION="${REF_NAME}"
+          VERSION="${VERSION#slim-bindings-}"
+          PRE_RELEASE_BRANCH="pre-release-$VERSION"
+
+          echo "🧹 Cleaning up pre-release artifacts (finalize: ${FINALIZE_RESULT})..."
+
+          # The pre-release branch is always scratch — delete it if present.
+          if git ls-remote --heads origin "$PRE_RELEASE_BRANCH" | grep -q "$PRE_RELEASE_BRANCH"; then
+            git push origin --delete "$PRE_RELEASE_BRANCH" && echo "✅ Deleted pre-release branch: $PRE_RELEASE_BRANCH" || echo "⚠️  Failed to delete branch"
+          else
+            echo "ℹ️  Pre-release branch doesn't exist (may have been deleted already)"
+          fi
+
+          # Keep the tag only on a successful finalize (it now points at main).
+          # Otherwise it still points at the pre-release commit — delete it.
+          if [ "$FINALIZE_RESULT" != "success" ]; then
+            echo "⚠️  Finalize did not succeed - removing dangling tag"
+            if git ls-remote --tags origin "$VERSION" | grep -q "$VERSION"; then
+              git push origin --delete "$VERSION" && echo "✅ Deleted pre-release tag: $VERSION" || echo "⚠️  Failed to delete tag"
+            else
+              echo "ℹ️  Tag doesn't exist (may have been deleted already)"
+            fi
+          fi
+
+          echo "✅ Cleanup complete"
