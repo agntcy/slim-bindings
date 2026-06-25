@@ -57,7 +57,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     defaults:
       run:
         shell: bash
@@ -100,29 +99,6 @@ jobs:
           VERSION="${VERSION#v}"
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      # Build and publish to GitHub Packages
-      - name: Publish to GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EXTRACTED_VERSION: ${{ steps.extract-version.outputs.version }}
-          STEP_MAVEN_GROUP_ID: ${{ env.MAVEN_GROUP_ID }}
-          STEP_MAVEN_ARTIFACT_ID: ${{ env.MAVEN_ARTIFACT_ID }}
-        run: |
-          echo "Building and publishing Kotlin bindings to GitHub Packages..."
-
-          VERSION="$EXTRACTED_VERSION"
-          echo "Publishing version: $VERSION"
-
-          # Build and publish using Gradle
-          ./gradlew publish \
-            -PpublishVersion="$VERSION" \
-            --no-daemon \
-            --stacktrace
-
-          echo "✅ Successfully published to GitHub Packages"
-          echo "Package: $STEP_MAVEN_GROUP_ID:$STEP_MAVEN_ARTIFACT_ID:$VERSION"
-          echo "📦 View at: https://github.com/${{ github.repository }}/packages"
 
       # Publish to Maven Central (when credentials are provided)
       # Uses OSSRH Staging API (ossrh-staging-api.central.sonatype.com). OSSRH was shut down June 2025.
