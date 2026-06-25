@@ -117,6 +117,12 @@ jobs:
             echo "🔧 Rewriting Go module path to /v${MAJOR}"
             find . -type f \( -name '*.go' -o -name 'go.mod' -o -name '*.md' \) -print0 \
               | xargs -0 sed -i "s|github.com/${GO_BINDINGS_REPO}|github.com/${GO_BINDINGS_REPO}/v${MAJOR}|g"
+
+            # The /vN suffix adds one directory level to the module's on-disk
+            # location in the consumer's cache, so the cgo LDFLAGS that reach
+            # $GOPATH/.cgo-cache via ${SRCDIR} need one extra '../' to resolve.
+            find . -type f -name '*.go' -print0 \
+              | xargs -0 sed -i 's#/\.\./\.\./\.\./\.\./\.\./\.cgo-cache#/../../../../../../.cgo-cache#g'
           fi
 
           # Create pre-release branch name
