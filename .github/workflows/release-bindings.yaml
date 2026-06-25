@@ -135,7 +135,10 @@ jobs:
   # ==========================================================================
   release-go-bindings:
     name: "Release Go Bindings"
-    needs: build-and-test-bindings
+    # Also needs release-libraries: the Go test matrix downloads the native libs
+    # from the GitHub Release it creates, so that upload must finish first
+    # (otherwise fast native runners race it and fail "library not found").
+    needs: [build-and-test-bindings, release-libraries]
     uses: ./.github/workflows/reusable-go-bindings-release.yaml
     secrets:
       gh-token: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}
