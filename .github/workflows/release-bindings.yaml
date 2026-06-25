@@ -371,10 +371,13 @@ jobs:
 
       - name: Publish to npm
         run: |
+          VERSION="${GITHUB_REF_NAME#slim-bindings-}"; VERSION="${VERSION#v}"
+          if [[ "$VERSION" == *-* ]]; then NPM_TAG="${VERSION#*-}"; NPM_TAG="${NPM_TAG%%.*}"; NPM_TAG="${NPM_TAG:-next}"; else NPM_TAG="latest"; fi
+          echo "Publishing platform packages with dist-tag: $NPM_TAG"
           for tgz in ./node-packages/node-platform-*/*.tgz; do
             [ -f "$tgz" ] || continue
             echo "Publishing $tgz..."
-            npm publish "$tgz" --access public
+            npm publish "$tgz" --access public --tag "$NPM_TAG"
           done
 
   # ==========================================================================
@@ -439,7 +442,12 @@ jobs:
 
       - name: Publish main package to npm
         working-directory: ./node
-        run: npm publish --access public
+        env:
+          BINDINGS_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [[ "$BINDINGS_VERSION" == *-* ]]; then NPM_TAG="${BINDINGS_VERSION#*-}"; NPM_TAG="${NPM_TAG%%.*}"; NPM_TAG="${NPM_TAG:-next}"; else NPM_TAG="latest"; fi
+          echo "Publishing with dist-tag: $NPM_TAG"
+          npm publish --access public --tag "$NPM_TAG"
 
   # ==========================================================================
   # Job 10: Build and publish React Native bindings to npm
@@ -524,7 +532,12 @@ jobs:
 
       - name: Publish to npm
         working-directory: ./react-native
-        run: npm publish --access public
+        env:
+          BINDINGS_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [[ "$BINDINGS_VERSION" == *-* ]]; then NPM_TAG="${BINDINGS_VERSION#*-}"; NPM_TAG="${NPM_TAG%%.*}"; NPM_TAG="${NPM_TAG:-next}"; else NPM_TAG="latest"; fi
+          echo "Publishing with dist-tag: $NPM_TAG"
+          npm publish --access public --tag "$NPM_TAG"
 
   # ==========================================================================
   # Job 6b: Release Kotlin bindings to GitHub Packages
