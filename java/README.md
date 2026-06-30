@@ -8,6 +8,7 @@ Java bindings for SLIM generated via [uniffi-bindgen-java](https://github.com/Ir
 - **Java 21**: Built for modern Java with records and latest language features
 - **JNA Integration**: Seamless native library loading via Java Native Access (JNA)
 - **Complete Examples**: Server, Point-to-Point, and Group messaging examples
+- **slimrpc Support**: Protocol Buffers RPC over SLIM - see [SLIMRPC.md](SLIMRPC.md) for details
 - **Task Automation**: Integrated with Taskfile for easy builds and testing
 
 ## Requirements
