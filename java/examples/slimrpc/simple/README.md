@@ -66,11 +66,11 @@ Implements all four RPC patterns:
 3. **StreamUnary**: Multiple requests, single response (client streaming)
 4. **StreamStream**: Bidirectional streaming
 
-The server implements the `TestServer` interface using anonymous class overrides on `UnimplementedTestServer` for forward compatibility. Sync stream wrappers (`ServerRequestStreamSync`, `ServerResponseStreamSync`, `ServerBidiStreamSync`) provide blocking `send()`/`recv()` methods.
+The server implements the `TestServer` interface using anonymous class overrides on `UnimplementedTestServer` for forward compatibility. Stream wrappers (`ServerRequestStream`, `ServerResponseStream`, `ServerBidiStream`) provide blocking `send()`/`recv()` methods.
 
 ### Client (`src/main/java/.../SlimrpcClientMain.java`)
 
-Demonstrates all four RPC patterns using sync wrappers:
+Demonstrates all four RPC patterns using the generated client:
 
 #### 1. Unary-Unary
 ```java
@@ -80,7 +80,7 @@ ExampleResponse response = client.ExampleUnaryUnary(request, Duration.ofSeconds(
 #### 2. Unary-Stream (Server Streaming)
 ```java
 ResponseStreamReader reader = client.ExampleUnaryStream(request, timeout, null);
-ClientResponseStreamSync<ExampleResponse> stream = ClientResponseStreamSync.create(reader, parser);
+ClientResponseStream<ExampleResponse> stream = ClientResponseStream.create(reader, parser);
 while (true) {
     ExampleResponse resp = stream.recv();
     if (resp == null) break;
@@ -89,14 +89,14 @@ while (true) {
 
 #### 3. Stream-Unary (Client Streaming)
 ```java
-ClientRequestStreamSync<ExampleRequest, ExampleResponse> stream = client.ExampleStreamUnary(timeout, null);
+ClientRequestStream<ExampleRequest, ExampleResponse> stream = client.ExampleStreamUnary(timeout, null);
 stream.send(request);
 ExampleResponse response = stream.finalizeStream();
 ```
 
 #### 4. Stream-Stream (Bidirectional Streaming)
 ```java
-ClientBidiStreamSync<ExampleRequest> stream = client.ExampleStreamStream(timeout, null);
+ClientBidiStream<ExampleRequest> stream = client.ExampleStreamStream(timeout, null);
 stream.send(request);
 stream.closeSend();
 StreamMessage msg = stream.recv();
@@ -107,7 +107,7 @@ StreamMessage msg = stream.recv();
 - All 4 RPC patterns (unary-unary, unary-stream, stream-unary, stream-stream)
 - Multicast (group) RPC across multiple server instances
 - Type-safe client and server interfaces
-- Synchronous stream wrappers for blocking send/recv
+- Stream wrappers with blocking send/recv
 - Automatic serialization/deserialization
 - Proper error handling with RPC exception conversion
 - Stream end detection (null return)

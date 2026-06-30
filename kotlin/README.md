@@ -10,6 +10,7 @@ This package provides Kotlin bindings for SLIM, enabling secure messaging with:
 - **Group messaging**: Multi-party communication with MLS encryption support
 - **Identity management**: Support for shared secrets, JWT, and SPIRE authentication
 - **Coroutine support**: Idiomatic async/await using Kotlin coroutines
+- **slimrpc support**: Protocol Buffers RPC over SLIM - see [SLIMRPC.md](SLIMRPC.md) for details
 
 ## Prerequisites
 

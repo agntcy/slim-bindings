@@ -17,6 +17,10 @@ includes:
   rust:
     taskfile: ../tasks/rust.yaml
     internal: true
+  tools:
+    taskfile: ../tasks/tools.yaml
+    internal: true
+    flatten: true
 
 env:
   SHARED_SECRET: "my_shared_secret_for_testing_purposes_only"
@@ -323,6 +327,27 @@ tasks:
         else
           echo "No test report found. Run tests first: task test"
         fi
+
+  # ==========================================================================
+  # SlimRPC Proto Generation
+  # ==========================================================================
+
+  slimrpc:generate-proto:
+    desc: Install protoc-gen-slimrpc-kotlin and run buf generate for the slimrpc examples
+    deps:
+      - task: rust:run-command
+        vars:
+          COMMAND: |
+            cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-kotlin
+      - task: buf
+    cmds:
+      - |
+        # Find all the buf.gen.yaml files in this directory tree and run buf generate in each
+        find . -name 'buf.gen.yaml' | while read -r file; do
+          echo "Generating proto files for $file"
+          folder=$(dirname "$file")
+          pushd > /dev/null "${folder}" && {{.TOOLS_INSTALL_DIR}}/buf generate && popd > /dev/null
+        done
 
   # ==========================================================================
   # Examples Tasks
