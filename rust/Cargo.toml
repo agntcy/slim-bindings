@@ -10,6 +10,12 @@ description = "UniFFI bindings and FFI adapter for SLIM data plane - enables lan
 name = "slim_bindings"
 crate-type = ["lib", "staticlib", "cdylib"]
 
+[features]
+default = []
+web = ["slim-bindings-impl/web"]
+
 [dependencies]
-slim-bindings-impl = { package = "agntcy-slim-bindings", version = "2.0.0-alpha.8" }
+slim-bindings-impl = { package = "agntcy-slim-bindings", path = "../../slim/crates/slim-bindings", version = "2.0.0-alpha.8", default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 slim-rpc-impl = { package = "agntcy-slim-rpc", version = "2.0.0-alpha.6", features = ["uniffi"] }
