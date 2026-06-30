@@ -74,10 +74,24 @@ jobs:
           find "$GITHUB_WORKSPACE/rust/target" -name "*slim_bindings*" -type f | sort
           rm -rf "$GITHUB_WORKSPACE/target-artifacts"
 
-      # Generate bindings and run tests
-      - name: Generate bindings and run tests
+      # Regenerate slimrpc stubs, build bindings + examples (incl. slimrpc), run tests.
+      # Mirrors the dotnet reusable workflow (generate-proto -> build -> test) so a break
+      # in the slimrpc plugin, the core API, or the example is caught in CI.
+      # slimrpc:generate-proto installs protoc-gen-slimrpc-kotlin via `cargo install` into
+      # ~/.cargo/bin, which is already on PATH (rustup default) for buf's
+      # `local: protoc-gen-slimrpc-kotlin` to resolve.
+      # No git-diff freshness check here: the kotlin buf.gen.yaml uses unpinned remote
+      # protobuf plugins, so a committed-stub diff could fail spuriously when they change
+      # upstream (the java workflow, whose plugin is version-pinned, does check).
+      - name: Generate slimrpc stubs, build and test
         run: |
-          echo "Generate bindings and run tests..."
+          echo "Generating slimrpc proto stubs..."
+          task slimrpc:generate-proto
+
+          echo "Building bindings and compiling examples (incl. slimrpc)..."
+          task build PROFILE=release
+
+          echo "Running bindings tests..."
           task test PROFILE=release
 
       - name: Strip native libraries

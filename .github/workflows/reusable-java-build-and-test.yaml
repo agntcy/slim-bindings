@@ -74,10 +74,31 @@ jobs:
           find "$GITHUB_WORKSPACE/rust/target" -name "*slim_bindings*" -type f | sort
           rm -rf "$GITHUB_WORKSPACE/target-artifacts"
 
-      # Generate bindings and run tests
-      - name: Generate bindings and run tests
+      # Regenerate slimrpc stubs, build bindings + examples (incl. slimrpc), run tests.
+      # Mirrors the dotnet reusable workflow (generate-proto -> build -> test) so a break
+      # in the slimrpc plugin, the core API, or the example is caught in CI.
+      # slimrpc:generate-proto installs protoc-gen-slimrpc-java via `cargo install` into
+      # ~/.cargo/bin, which is already on PATH (rustup default) for buf's
+      # `local: protoc-gen-slimrpc-java` to resolve.
+      - name: Generate slimrpc stubs, build and test
         run: |
-          echo "Generate bindings and run tests..."
+          echo "Generating slimrpc proto stubs..."
+          task slimrpc:generate-proto
+
+          # Assert the committed generated stubs match a fresh generation.
+          # `git add -N` makes any newly generated (untracked) files visible to
+          # `git diff` (buf.gen.yaml uses clean: true, so the dirs are fully regenerated).
+          echo "Verifying committed slimrpc stubs are up to date..."
+          git add -N examples/slimrpc/simple/slimrpc examples/slimrpc/simple/types
+          if ! git diff --exit-code -- examples/slimrpc/simple/slimrpc examples/slimrpc/simple/types; then
+            echo "::error::Committed slimrpc stubs are out of date. Run 'task slimrpc:generate-proto' in java/ and commit the result." >&2
+            exit 1
+          fi
+
+          echo "Building bindings and compiling examples (incl. slimrpc)..."
+          task build PROFILE=release
+
+          echo "Running bindings tests..."
           task test PROFILE=release
 
       - name: Strip native libraries
