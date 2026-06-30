@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="SLIM browser playground for unicast and multicast sessions with optional MLS"
+    />
+    <title>SLIM WASM Browser Chat</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">SLIM · WebSocket · WebAssembly</p>
+          <h1>Browser session playground</h1>
+          <p class="subtitle">
+            Exercise unicast or multicast sessions, with optional MLS, across
+            browser WebSocket, native WebSocket, and native gRPC participants.
+          </p>
+        </div>
+        <div id="wasm-status" class="status status-loading">Loading WASM…</div>
+      </header>
+
+      <section class="panel preset-panel">
+        <div class="panel-heading compact">
+          <div>
+            <p class="step">Quick setup</p>
+            <h2>Choose a demo role</h2>
+          </div>
+        </div>
+        <div class="preset-controls">
+          <label>
+            Scenario preset
+            <select id="scenario-preset">
+              <option value="custom">Custom configuration</option>
+              <option value="unicast-alice">Unicast · Alice creator</option>
+              <option value="unicast-bob">Unicast · Bob receiver</option>
+              <option value="browser-group-moderator">
+                Browser multicast · Moderator
+              </option>
+              <option value="browser-group-one">
+                Browser multicast · Participant one
+              </option>
+              <option value="browser-group-two">
+                Browser multicast · Participant two
+              </option>
+              <option value="mixed-moderator">
+                Mixed transports · Browser moderator
+              </option>
+              <option value="mixed-participant">
+                Mixed transports · Browser participant
+              </option>
+            </select>
+          </label>
+          <button id="apply-preset" type="button" class="secondary" disabled>
+            Apply preset
+          </button>
+        </div>
+        <p id="scenario-description" class="instructions">
+          Configure the fields manually, or select a repeatable demo role.
+        </p>
+        <ul class="feature-list" aria-label="Supported capabilities">
+          <li>Unicast</li>
+          <li>Multicast</li>
+          <li>MLS optional</li>
+          <li>Browser WebSocket</li>
+          <li>Native WebSocket</li>
+          <li>Native gRPC</li>
+        </ul>
+      </section>
+
+      <section class="panel connection-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="step">Step 1</p>
+            <h2>Connect to SLIM</h2>
+          </div>
+          <div id="connection-status" class="connection-state">
+            Disconnected
+          </div>
+        </div>
+
+        <form id="connection-form" class="form-grid">
+          <label>
+            WebSocket endpoint
+            <input id="endpoint" value="ws://127.0.0.1:46357" required />
+          </label>
+          <label>
+            Optional auth token
+            <input id="token" placeholder="JWT query token" />
+          </label>
+          <label>
+            Local name
+            <input id="local-name" value="org/default/alice" required />
+          </label>
+          <label>
+            Shared secret
+            <input
+              id="shared-secret"
+              type="password"
+              value="test-shared-secret-value-0123456789abcdef"
+              minlength="32"
+              required
+            />
+            <span class="hint"
+              >At least 32 characters; every participant must use the same
+              value.</span
+            >
+          </label>
+          <div class="button-row full-width">
+            <button id="connect" type="submit" disabled>Connect</button>
+            <button id="disconnect" type="button" class="secondary" disabled>
+              Disconnect
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel session-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="step">Step 2</p>
+            <h2>Start a session</h2>
+          </div>
+          <div id="session-status" class="connection-state">No session</div>
+        </div>
+        <div class="form-grid session-options">
+          <label>
+            Delivery mode
+            <select id="session-type">
+              <option value="point-to-point">Unicast (point-to-point)</option>
+              <option value="group">Multicast (group)</option>
+            </select>
+          </label>
+          <label class="checkbox-label">
+            <input id="mls-enabled" type="checkbox" />
+            <span>
+              Enable MLS
+              <small>End-to-end encrypted session payloads</small>
+            </span>
+          </label>
+          <div id="point-to-point-fields" class="mode-fields full-width">
+            <label>
+              Remote participant
+              <input id="remote-name" value="org/default/bob" />
+              <span class="hint">A three-component SLIM name.</span>
+            </label>
+          </div>
+          <div id="group-fields" class="mode-fields full-width" hidden>
+            <label>
+              Multicast channel
+              <input id="group-name" value="org/default/browser-demo" />
+              <span class="hint"
+                >A three-component channel shared by every participant.</span
+              >
+            </label>
+            <label>
+              Participants to invite
+              <textarea
+                id="participants"
+                rows="3"
+                spellcheck="false"
+                placeholder="org/default/native-ws&#10;org/default/native-grpc"
+              >org/default/native-ws
+org/default/native-grpc</textarea
+              >
+              <span class="hint"
+                >One three-component participant name per line. Start them
+                before creating the session.</span
+              >
+            </label>
+          </div>
+        </div>
+        <p id="mode-instructions" class="instructions"></p>
+        <div id="session-summary" class="session-summary"></div>
+        <div class="button-row">
+          <button id="listen" type="button" class="secondary" disabled>
+            Wait for incoming
+          </button>
+          <button id="create-session" type="button" disabled>
+            Create session
+          </button>
+          <button id="close-session" type="button" class="danger" disabled>
+            Close session
+          </button>
+        </div>
+      </section>
+
+      <section class="panel chat-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="step">Step 3</p>
+            <h2>Exchange messages</h2>
+          </div>
+        </div>
+        <div id="messages" class="messages" aria-live="polite">
+          <p class="empty-state">
+            Messages will appear here once a session is active.
+          </p>
+        </div>
+        <form id="message-form" class="message-form">
+          <input
+            id="message"
+            placeholder="Write a message…"
+            autocomplete="off"
+            disabled
+          />
+          <button id="send" type="submit" disabled>Send</button>
+        </form>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-heading compact">
+          <div>
+            <p class="step">Diagnostics</p>
+            <h2>Event log</h2>
+          </div>
+          <button id="clear-log" type="button" class="text-button">
+            Clear
+          </button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

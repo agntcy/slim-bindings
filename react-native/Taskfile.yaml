@@ -65,14 +65,22 @@ tasks:
       - npm install -g uniffi-bindgen-react-native
     silent: true
 
+  install-wasm-bindgen:
+    desc: Install the wasm-bindgen CLI version used by the generated Rust crate
+    status:
+      - wasm-bindgen --version | grep -q "0.2.106"
+    cmds:
+      - echo "📦 Installing wasm-bindgen-cli..."
+      - cargo install wasm-bindgen-cli --version 0.2.106
+
   install-wasm-tools:
     desc: Install wasm-bindgen-cli and wasm-pack
+    deps:
+      - install-wasm-bindgen
     status:
-      - which wasm-bindgen
       - which wasm-pack
     cmds:
-      - echo "📦 Installing WASM tools..."
-      - cargo install wasm-bindgen-cli --version 0.2.92
+      - echo "📦 Installing wasm-pack..."
       - cargo install wasm-pack
     silent: true
 
@@ -85,10 +93,23 @@ tasks:
       - task: install-uniffi-bindgen-react-native
     cmds:
       - task: generate:react-native
-      # WASM generation disabled - tokio incompatibility with WASM targets
-      # - task: generate:wasm
       - echo "✅ React Native bindings generated successfully"
     silent: true
+
+  generate:web:
+    desc: Generate browser TypeScript bindings and the WebAssembly package
+    dir: "{{.TASKFILE_DIR}}"
+    deps:
+      - install
+      - install-wasm-bindgen
+    cmds:
+      - echo "🌐 Generating SLIM browser/WASM bindings..."
+      - npx ubrn build web --config ubrn.config.yaml --release
+      - test -f src/index.web.ts
+      - test -d generated/web
+      - npm run typecheck:web
+      - echo "✅ Browser/WASM bindings generated successfully"
+    silent: false
 
   build:ios-simulator:
     desc: Build Rust library for iOS simulator

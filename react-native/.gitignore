@@ -5,6 +5,7 @@ node_modules/
 
 # Generated bindings
 generated/
+wasm/
 
 
 # Build outputs
@@ -49,4 +50,3 @@ yarn-error.log*
 # React Native
 .expo/
 .expo-shared/
-
