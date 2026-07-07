@@ -8,7 +8,7 @@
  * ported from the Go bindings common package.
  */
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime
-import slimBindings from '../generated/slim-bindings-node.js';
+import * as slimBindings from '../generated/index.js';
 
 // Default configuration values (matching Go examples)
 export const DEFAULT_SERVER_ENDPOINT = 'http://localhost:46357';

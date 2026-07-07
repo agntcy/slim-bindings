@@ -2,7 +2,9 @@
 
 This is the npm package for using SLIM from JavaScript and TypeScript. It targets **Node.js** (≥18): servers, services, CLIs, tests, and any workflow where the native addon loads through Node.
 
-Bindings are generated with [uniffi-bindgen-node](https://github.com/livekit/uniffi-bindgen-node) and talk to the Rust core via [ffi-rs](https://www.npmjs.com/package/ffi-rs).
+Bindings are generated with [uniffi-bindgen-react-native](https://github.com/jhugman/uniffi-bindgen-react-native)'s **napi** target and talk to the Rust core via [@ubjs/core](https://www.npmjs.com/package/@ubjs/core) / [@ubjs/node](https://www.npmjs.com/package/@ubjs/node) (the N-API runtime backend).
+
+This package previously used [uniffi-bindgen-node](https://github.com/livekit/uniffi-bindgen-node) + [ffi-rs](https://www.npmjs.com/package/ffi-rs). That tool is no longer actively developed (per its own README, development moved to uniffi-bindgen-react-native's napi target — the one used here). The switch also unlocks something the old toolchain never supported: foreign async callback interfaces, i.e. a plain JS object can now implement a server-side RPC handler (`Server.registerUnaryUnary(...)` and friends) and be genuinely called back into by Rust. This is required for hosting a slimrpc/A2A service in Node — the old toolchain could only run the client (`Channel`) side.
 
 For **using the package** (install, quick start, main API patterns), see the root [README.md](./README.md).
 
@@ -10,10 +12,15 @@ For **using the package** (install, quick start, main API patterns), see the roo
 
 - **Primary JS/TS entry point** — Install `@agntcy/slim-bindings` for Node; optional `@agntcy/slim-bindings-*` packages supply the correct native binary per OS/arch.
 - **Rust-backed core** — Same SLIM logic as other language bindings; native code ships per platform.
-- **TypeScript** — Typed surface and editor support (with known FFI quirks documented below).
+- **TypeScript** — Typed surface and editor support (with known type-shape notes documented below).
 - **Authentication** — Shared secret, JWT, and SPIRE-oriented flows exposed through the generated API.
 - **Async-first** — Promise-based calls aligned with Node conventions.
-- **UniFFI** — Generated from Mozilla’s [UniFFI](https://mozilla.github.io/uniffi-rs/) bindings.
+- **RPC server support** — Server-side handlers can be implemented as plain JS objects (`{ async handle(...) { ... } }`), unlike the previous toolchain.
+- **UniFFI** — Generated from Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) bindings.
+
+## ESM only
+
+This package is **native ESM** (`"type": "module"`) — the generated bindings use `import.meta.url` internally for locating the native library. `require('@agntcy/slim-bindings')` is not supported; use `import` or dynamic `import()`.
 
 ## Installation
 
@@ -66,25 +73,19 @@ task example:bob      # Run Bob sender
 
 ## Build process
 
-Generation applies small patches so output from `uniffi-bindgen-node` works with the shared `uniffi-bindgen-react-native` runtime dependency:
+`task generate` runs `ubrn generate napi bindings --library --lib-colocated` against the compiled `rust/` crate. No post-generation patching is needed — the napi target's output runs as-is against `@ubjs/core`/`@ubjs/node`. `--lib-colocated` bakes in "look for the native library next to the compiled JS file at runtime", matching how each `@agntcy/slim-bindings-<platform>` package is a single self-contained directory (see `scripts/pack-platform.ts`).
 
-- **Naming**: `FfiConverterBytes` → `FfiConverterArrayBuffer`
-- **Buffers**: Correct RustBuffer handling for byte arrays
-- **Pointers**: BigInt ↔ Number at FFI boundaries where needed
-- **Errors**: Clearer extraction from Rust error types
+The compiled output is `generated/index.ts` (public entry — also runs a required one-time init that registers RPC callback vtables, so always import this file, not `slim_bindings.ts` directly), `generated/slim_bindings.ts` (the actual API surface, re-exported by `index.ts`), and `generated/slim_bindings-ffi.ts` (native module loading).
 
-## FFI type conversions
+`scripts/pack-platform.ts` compiles `generated/*.ts` to plain `.js` + `.d.ts` for each platform tarball, then appends `.js` to relative import specifiers in the emitted output — `tsc`'s ESNext module emit does not add extensions to the extensionless relative imports the generator produces, but native Node ESM resolution requires them (unlike `require()` or `tsx`'s resolver).
 
-Generated TypeScript may use `bigint` for some unsigned 64-bit values while the FFI layer returns JavaScript `number` at runtime. Normalize at your API boundary:
+## Type conversions and API notes
 
-```typescript
-const connId = await service.connectAsync(config);
-await app.subscribeAsync(name, BigInt(connId));
-app.setRoute(name, Number(connId));
-```
+A few things changed when moving off the old ffi-rs-based toolchain — generated types are now enforced accurately, so code written against the old loose typing needs small adjustments:
 
-- `connectAsync` often behaves like `number` at runtime → use `BigInt()` when a parameter expects `bigint`.
-- When calling through to FFI with u64 parameters → use `Number()` from `bigint` when required.
+- **u64 params are real `bigint`, not `number`.** The old toolchain silently accepted a `Number()`-cast value for u64 parameters like `App.setRoute`'s `connectionId`; the new one throws `BigintExpected` if you don't pass an actual `bigint`. Don't cast down — pass the `bigint` you already have (e.g. from `connectAsync`) straight through.
+- **Enums are real TS `enum`s, not string literals.** E.g. `SessionConfig.sessionType` is `SessionType.PointToPoint` / `SessionType.Group`, not the string `"pointToPoint"`. Passing a bare string silently corrupts the value on the wire (surfaces as a confusing `Invalid SessionType enum value: <garbage>` from Rust) rather than failing at the call site.
+- **Tagged unions use `.tag`/`.inner`, not `is_data()`/`is_end()` methods.** `StreamMessage` and `MulticastStreamMessage` are discriminated unions (`msg.tag === 'Data' | 'Error' | 'End'`); read the payload via `msg.inner` (a tuple for `StreamMessage`, e.g. `msg.inner[0]`; a named field for `MulticastStreamMessage`, e.g. `msg.inner.item.message`).
 
 ## Build from source
 
@@ -103,8 +104,8 @@ Optional platform packages (`@agntcy/slim-bindings-*`) are version-pinned beside
 
 ## Resources
 
-- [uniffi-bindgen-node](https://github.com/livekit/uniffi-bindgen-node)
+- [uniffi-bindgen-react-native](https://github.com/jhugman/uniffi-bindgen-react-native)
 - [UniFFI](https://mozilla.github.io/uniffi-rs/)
-- [ffi-rs](https://www.npmjs.com/package/ffi-rs)
+- [@ubjs/node](https://www.npmjs.com/package/@ubjs/node)
 - [SLIM](https://github.com/agntcy/slim)
 - [React Native bindings](../react-native/README.md)

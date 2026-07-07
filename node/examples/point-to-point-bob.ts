@@ -11,7 +11,7 @@
  */
 
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime
-import slimBindings from '../generated/slim-bindings-node.js';
+import * as slimBindings from '../generated/index.js';
 import { createAndConnectApp, splitId, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
 
 // Default configuration
@@ -103,15 +103,12 @@ async function runSender(args: CliArgs): Promise<void> {
 
     // Parse remote name
     const remoteName = splitId(args.remote);
-    
-    // Convert bigint -> number for FFI compatibility (ffi-rs requires number type)
-    const connIdNum = Number(connId);
-    
+
     logMessage(instance, '📍 Setting route to remote peer...');
-    
+
     // Set route to Alice (synchronous, but can throw errors)
     try {
-      app.setRoute(remoteName, connIdNum);
+      app.setRoute(remoteName, connId);
       logMessage(instance, '✅ Route established');
     } catch (error: any) {
       // Parse error properly
@@ -146,7 +143,7 @@ async function runSender(args: CliArgs): Promise<void> {
     // Create session configuration
     // SessionType is a string literal: "pointToPoint" or "group"
     const config = {
-      sessionType: "pointToPoint" as const,
+      sessionType: slimBindings.SessionType.PointToPoint,
       enableMls: false,
       maxRetries: 5,
       interval: 5000, // 5 seconds in milliseconds

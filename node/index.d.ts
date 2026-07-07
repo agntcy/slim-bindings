@@ -5,4 +5,4 @@
  * Type definitions for @agntcy/slim-bindings.
  * Full types are in types/ (generated from bindings before publish).
  */
-export * from './types/slim-bindings-node';
+export * from './types/slim_bindings';

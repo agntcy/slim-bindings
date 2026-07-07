@@ -13,7 +13,7 @@ import assert from 'node:assert';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime; generated module has default export at runtime
-import slimBindings from '../generated/slim-bindings-node.js';
+import * as slimBindings from '../generated/index.js';
 
 
 // Test configuration - use random high port to avoid conflicts
@@ -167,7 +167,10 @@ describe('SLIM Node.js Bindings Integration Tests', () => {
         const text = Buffer.from(payload).toString('utf-8');
         aliceCollector.add(payload, receivedMsg.context);
         
-        // Send reply to Bob
+        // Send reply to Bob. Small grace delay: replying immediately upon receipt
+        // can race the session/route settling on the sender's side and exhaust
+        // publishToAndWait's retry budget.
+        await sleep(300);
         await aliceSession.publishToAndWait(
           receivedMsg.context,
           Buffer.from('Hello from Alice'),
@@ -181,14 +184,14 @@ describe('SLIM Node.js Bindings Integration Tests', () => {
       
       // Bob: Set route to Alice
       const aliceRoute = splitId(TEST_ALICE_ID);
-      bobApp.setRoute(aliceRoute, Number(bobConnId));
+      bobApp.setRoute(aliceRoute, bobConnId);
       
       // Small delay for route propagation
       await sleep(100);
       
       // Bob: Create session configuration
       const config = {
-        sessionType: "pointToPoint" as const,
+        sessionType: slimBindings.SessionType.PointToPoint,
         enableMls: false,
         maxRetries: 5,
         interval: 5000,
@@ -274,7 +277,10 @@ describe('SLIM Node.js Bindings Integration Tests', () => {
           const payload = receivedMsg.payload;
           aliceCollector.add(payload, receivedMsg.context);
           
-          // Send reply
+          // Send reply. Small grace delay: replying immediately upon receipt
+          // can race the session/route settling on the sender's side and exhaust
+          // publishToAndWait's retry budget.
+          await sleep(300);
           await aliceSession.publishToAndWait(
             receivedMsg.context,
             Buffer.from(`Reply ${i + 1}`),
@@ -289,11 +295,11 @@ describe('SLIM Node.js Bindings Integration Tests', () => {
       
       // Bob: Set route and create session
       const aliceRoute = splitId('org/test-alice2/app');
-      bobApp.setRoute(aliceRoute, Number(bobConnId));
+      bobApp.setRoute(aliceRoute, bobConnId);
       await sleep(100);
       
       const config = {
-        sessionType: "pointToPoint" as const,
+        sessionType: slimBindings.SessionType.PointToPoint,
         enableMls: false,
         maxRetries: 5,
         interval: 5000,

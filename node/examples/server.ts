@@ -7,7 +7,7 @@
  * This server implementation is ported from the Go bindings example.
  */
 
-import slimBindings from '../generated/slim-bindings-node.js';
+import * as slimBindings from '../generated/index.js';
 
 // Server configuration
 const DEFAULT_ENDPOINT = '0.0.0.0:46357';
