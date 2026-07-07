@@ -61,6 +61,21 @@ task example:alice
 task example:bob
 ```
 
+### 3. Run the group (multicast) example
+
+```bash
+# Terminal 1: Start the server (if not already running)
+task example:server
+
+# Terminal 2: Participant - waits to be invited
+task example:group -- --local org/default/bob
+
+# Terminal 3: Moderator - creates the group session and invites the participant
+task example:group -- --local org/default/alice --remote org/default/chat-topic --invites org/default/bob
+```
+
+Both sides then exchange messages interactively (type a line + Enter to send, `exit`/`quit` to leave). See `task example:group -- --help` for all options (`--invites` accepts a comma-separated list; `--enable-mls` turns on MLS encryption for the group).
+
 ### Available commands
 
 ```bash
@@ -69,6 +84,7 @@ task clean            # Clean build artifacts
 task example:server   # Run server
 task example:alice    # Run Alice receiver
 task example:bob      # Run Bob sender
+task example:group    # Run group (multicast) example (moderator or participant)
 ```
 
 ## Build process

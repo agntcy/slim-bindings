@@ -54,7 +54,7 @@ Full TypeScript types ship under `types/` in the published package (`index.d.ts`
 
 ## Examples
 
-Runnable scripts live under `examples/` (from repo root, use the `Taskfile` targets `example:server`, `example:alice`, `example:bob`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)).
+Runnable scripts live under `examples/` (from repo root, use the `Taskfile` targets `example:server`, `example:alice`, `example:bob`, `example:group`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)). `example:group` demonstrates multicast (group) sessions — a moderator creates a channel and invites participants; see [README_dev.md](./README_dev.md#3-run-the-group-multicast-example) for usage.
 
 ## Type notes
 

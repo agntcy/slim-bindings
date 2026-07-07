@@ -306,6 +306,16 @@ tasks:
       - npm run bob -- {{.CLI_ARGS}}
     silent: false
 
+  example:group:
+    desc: Run the group messaging example (moderator or participant, see --help)
+    deps:
+      - task: install:examples
+    dir: "{{.TASKFILE_DIR}}/examples"
+    cmds:
+      - echo "👥 Starting group example..."
+      - npm run group -- {{.CLI_ARGS}}
+    silent: false
+
   # Tests
   install:tests:
     desc: Install dependencies for tests
