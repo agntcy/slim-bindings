@@ -67,4 +67,25 @@ public static class CommonHelpers
 
         return (app, connId);
     }
+
+    /// <summary>
+    /// Creates a ready App using hierarchical config discovery (slim.yaml + env vars).
+    ///
+    /// Config is loaded from slim.yaml (walking up from the current working directory)
+    /// and/or ~/.slim/config.yaml, with environment variables taking highest priority.
+    /// The app name and a stable instance UUID are read from (or written to) the
+    /// .slim-cache/ directory next to the discovered config file.
+    ///
+    /// Requires app.name to be set in the config or via SLIM_APP_NAME.
+    /// </summary>
+    /// <returns>Created, connected, and subscribed app instance.</returns>
+    public static SlimApp CreateAndConnectAppFromConfig()
+    {
+        Slim.Initialize();
+
+        var config = Slim.LoadSlimConfig();
+
+        using var service = Slim.GetGlobalService();
+        return service.CreateAppFromSlimConfig(config);
+    }
 }

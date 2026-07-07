@@ -108,6 +108,25 @@ export async function createAndConnectApp(
 }
 
 /**
+ * Build a ready App using hierarchical config discovery (slim.yaml + env vars).
+ *
+ * Config is loaded from slim.yaml (walking up from the current working directory)
+ * and/or ~/.slim/config.yaml, with environment variables taking highest priority.
+ * The app name and a stable instance UUID are read from (or written to) the
+ * .slim-cache/ directory next to the discovered config file.
+ *
+ * Requires app.name to be set in the config or via SLIM_APP_NAME.
+ *
+ * @returns The created, connected, and subscribed app instance.
+ */
+export async function createAndConnectAppFromConfig(): Promise<any> {
+  slimBindings.initializeWithDefaults();
+  const config = slimBindings.loadSlimConfig();
+  const service = slimBindings.getGlobalService();
+  return service.createAppFromSlimConfig(config);
+}
+
+/**
  * Format a message with instance ID prefix for console output
  */
 export function logMessage(instance: bigint | number, message: string): void {

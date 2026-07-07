@@ -6,6 +6,7 @@
 // This package provides:
 //   - Identity string parsing (org/namespace/app)
 //   - App creation and connection helper
+//   - Hierarchical config discovery via slim.yaml / env vars
 //   - Default configuration values
 package common
 
@@ -82,4 +83,33 @@ func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64,
 	}
 
 	return app, connID, nil
+}
+
+// CreateAndConnectAppFromConfig builds a ready App using hierarchical config discovery.
+//
+// Config is loaded from slim.yaml (walking up from the current working directory) and/or
+// ~/.slim/config.yaml, with environment variables taking highest priority.
+// The app name and a stable instance UUID are read from (or written to) the .slim-cache/
+// directory next to the discovered config file.
+//
+// Requires app.name to be set in the config or via SLIM_APP_NAME.
+//
+// Returns:
+//
+//	*slim.App: Created, connected, and subscribed app instance
+//	error: If config loading, connection, or subscription fails
+func CreateAndConnectAppFromConfig() (*slim.App, error) {
+	slim.InitializeWithDefaults()
+
+	config, err := slim.LoadSlimConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load slim config: %w", err)
+	}
+
+	app, err := slim.GetGlobalService().CreateAppFromSlimConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("create app from config: %w", err)
+	}
+
+	return app, nil
 }

@@ -200,6 +200,30 @@ def setup_service(enable_opentelemetry: bool = False) -> slim_bindings.Service:
     return service
 
 
+async def create_app_from_config() -> slim_bindings.App:
+    """
+    Build a ready App using hierarchical config discovery (slim.yaml + env vars).
+
+    Config is loaded from slim.yaml (walking up from the current working directory)
+    and/or ~/.slim/config.yaml, with environment variables taking highest priority.
+    The app name and a stable instance UUID are read from (or written to) the
+    .slim-cache/ directory next to the discovered config file.
+
+    Requires app.name to be set in the config or via SLIM_APP_NAME.
+
+    Returns:
+        slim_bindings.App: Created, connected, and subscribed app instance.
+
+    Raises:
+        slim_bindings.SlimError: If config loading, connection, or subscription fails.
+    """
+    slim_bindings.initialize_with_defaults()
+    config = slim_bindings.load_slim_config()
+    return await slim_bindings.get_global_service().create_app_from_slim_config_async(
+        config
+    )
+
+
 async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
     """
     Build a Slim application instance using the global service.
