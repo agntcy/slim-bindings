@@ -2,6 +2,7 @@
   "name": "@agntcy/slim-bindings",
   "version": "0.7.0",
   "description": "SLIM Node.js bindings using UniFFI",
+  "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "files": [
@@ -34,6 +35,10 @@
     "directory": "node"
   },
   "license": "Apache-2.0",
+  "dependencies": {
+    "@ubjs/core": "0.31.0-3",
+    "@ubjs/node": "0.31.0-3"
+  },
   "optionalDependencies": {
     "@agntcy/slim-bindings-darwin-arm64": "0.7.0",
     "@agntcy/slim-bindings-darwin-x64": "0.7.0",
@@ -47,8 +52,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "ffi-rs": "^1.3.0",
     "typescript": "^5.0.0",
-    "uniffi-bindgen-react-native": "^0.29.3-1"
+    "uniffi-bindgen-react-native": "0.31.0-3"
   }
 }

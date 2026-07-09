@@ -1,9 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-'use strict';
-
-const { detectLinuxLibc } = require('./libc-linux.js');
+import { detectLinuxLibc } from './libc-linux.js';
 
 /**
  * Resolves the platform id for the current Node process.
@@ -33,11 +31,18 @@ function getCurrentPlatformId() {
 const platformId = getCurrentPlatformId();
 const packageName = `@agntcy/slim-bindings-${platformId}`;
 
+// The generated bindings (uniffi-bindgen-react-native, napi target) are native ESM
+// (they use import.meta.url for colocated native-library resolution), so the
+// platform package must be loaded via dynamic import rather than require().
+// Importing it also runs its required one-time initialization side effect
+// (registering the UnaryUnaryHandler/etc. callback vtables), so this module
+// must be the sole entry point consumers use - do not import the platform
+// package's inner files directly.
 let bindings;
 try {
-  bindings = require(packageName);
+  bindings = await import(packageName);
 } catch (err) {
-  if (err.code === 'MODULE_NOT_FOUND') {
+  if (err.code === 'ERR_MODULE_NOT_FOUND') {
     throw new Error(
       `Platform package ${packageName} is not installed. ` +
         `Run: npm install @agntcy/slim-bindings (optional dependencies include linux-*-gnu, linux-*-musl, darwin-*, win32-*). ` +
@@ -47,4 +52,4 @@ try {
   throw err;
 }
 
-module.exports = bindings;
+export default bindings;

@@ -180,8 +180,11 @@ jobs:
 
   # ==========================================================================
   # Job 6: Generate Node bindings once (x86_64 Linux) for use by all pack jobs.
-  # uniffi-bindgen-node must load the .so on the host; we only have native lib for
-  # the runner, so we generate once then pack per target with each target's lib.
+  # uniffi-bindgen-react-native's napi generator must dlopen the compiled library
+  # on the host to introspect it; we only have a native lib for the runner, so we
+  # generate once then pack per target with each target's own lib (--lib-colocated
+  # output resolves the library at runtime relative to the JS file, so the same
+  # generated JS is valid for every target).
   # ==========================================================================
   generate-node-bindings-once:
     name: Generate Node bindings (once)
@@ -243,7 +246,8 @@ jobs:
 
   # ==========================================================================
   # Job 7: Build Node platform packages (matrix: one per target with .so/.dylib/.dll).
-  # Uses pre-generated bindings + each target's library (no uniffi-bindgen-node on non-native libs).
+  # Uses pre-generated bindings + each target's library (no re-running the napi
+  # generator against non-native libs it can't dlopen on this host).
   # musl excluded: Rust build produces only static .a for musl, no .so.
   # ==========================================================================
   build-node-packages:

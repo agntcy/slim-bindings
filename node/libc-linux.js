@@ -1,16 +1,14 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-'use strict';
-
-const fs = require('fs');
-const { execFileSync } = require('child_process');
+import fs from 'fs';
+import { execFileSync } from 'child_process';
 
 /**
  * Best-effort libc family for Linux (gnu vs musl).
  * Used to pick the correct @agntcy/slim-bindings-linux-* optional package.
  */
-function detectLinuxLibc() {
+export function detectLinuxLibc() {
   try {
     const maps = fs.readFileSync('/proc/self/maps', 'utf8');
     if (maps.includes('ld-musl')) {
@@ -31,5 +29,3 @@ function detectLinuxLibc() {
   }
   return 'gnu';
 }
-
-module.exports = { detectLinuxLibc };

@@ -12,7 +12,7 @@ npm installs this package and, when published for your OS/arch, the matching opt
 
 ## Module shape
 
-The published entry loads the generated UniFFI/Node bindings (see `package.json` `main` / `types`). From TypeScript or ESM-aware tooling you typically import the default export from the package path your bundler resolves (examples in this repo import from `generated/slim-bindings-node.js` when running inside the bindings workspace).
+This package is **native ESM** (`require()` is not supported — use `import`). The published entry loads the generated UniFFI/Node bindings (see `package.json` `main` / `types`). Examples in this repo import from `generated/index.js` when running inside the bindings workspace.
 
 ```typescript
 import slimBindings from '@agntcy/slim-bindings';
@@ -45,7 +45,7 @@ Full TypeScript types ship under `types/` in the published package (`index.d.ts`
    `await service.connectAsync(config)`  
    Returns a connection id used for routing/subscriptions.
 
-6. **Subscribe** the app to receive traffic for its name (often passing `BigInt(connId)` if the generated API expects `bigint` — see note below).
+6. **Subscribe** the app to receive traffic for its name, passing the connection id as a real `bigint` (e.g. `await app.subscribeAsync(name, connId)` where `connId` is what `connectAsync` returned).
 
 7. **Server** — for a network node that accepts clients, initialize the same way, then build a server config (e.g. `newInsecureServerConfig('0.0.0.0:46357')`) and run:
 
@@ -54,15 +54,15 @@ Full TypeScript types ship under `types/` in the published package (`index.d.ts`
 
 ## Examples
 
-Runnable scripts live under `examples/` (from repo root, use the `Taskfile` targets `example:server`, `example:alice`, `example:bob`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)).
+Runnable scripts live under `examples/` (from repo root, use the `Taskfile` targets `example:server`, `example:alice`, `example:bob`, `example:group`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)). `example:group` demonstrates multicast (group) sessions — a moderator creates a channel and invites participants; see [README_dev.md](./README_dev.md#3-run-the-group-multicast-example) for usage.
 
-## `bigint` vs `number` (FFI)
+## Type notes
 
-Some APIs are typed with `bigint` for 64-bit values, but `connectAsync` may return a JavaScript `number` at runtime. When you pass that value into a method that expects `bigint` (for example `subscribeAsync`), wrap it: `BigInt(connId)`. See [README_dev.md](./README_dev.md#ffi-type-conversions) for details.
+64-bit values (like the connection id from `connectAsync`) are real `bigint` end to end — pass them through as-is rather than converting to `Number`. Enum-typed fields (like `SessionConfig.sessionType`) are real TypeScript enums (`SessionType.PointToPoint`), not string literals. See [README_dev.md](./README_dev.md#type-conversions-and-api-notes) for details.
 
 ## Building from source / contributing
 
-Generator setup, Task commands, publishing, and FFI patches are documented for maintainers in **[README_dev.md](./README_dev.md)**.
+Generator setup, Task commands, and publishing are documented for maintainers in **[README_dev.md](./README_dev.md)**.
 
 ## Links
 

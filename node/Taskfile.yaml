@@ -42,17 +42,15 @@ tasks:
     cmds:
       - task -l
 
-  install-uniffi-bindgen-node:
-    desc: Install uniffi-bindgen-node (>= 0.1.4)
+  install-uniffi-bindgen-react-native:
+    desc: Install uniffi-bindgen-react-native (napi target, >= 0.31.0-3) via npm devDependency
+    dir: "{{.TASKFILE_DIR}}"
     status:
-      - |
-        command -v uniffi-bindgen-node >/dev/null || exit 1
-        v=$(uniffi-bindgen-node --version 2>/dev/null | awk '{print $2}')
-        [ -n "$v" ] || exit 1
-        printf '0.1.4\n%s\n' "$v" | sort -V -C
+      - test -x "{{.TASKFILE_DIR}}/node_modules/.bin/ubrn"
     cmds:
-      - echo "📦 Installing uniffi-bindgen-node 0.1.4..."
-      - cargo install --force --git https://github.com/livekit/uniffi-bindgen-node.git --tag uniffi-bindgen-node@0.1.4
+      - echo "📦 Installing uniffi-bindgen-react-native (napi target)..."
+      - npm install
+    silent: true
 
   # Only builds when library is missing (CI places it from artifact; local dev builds).
   ensure-bindings-lib:
@@ -65,15 +63,15 @@ tasks:
       - task adapter:bindings:build:all TARGET={{.TARGET}} PROFILE=release
 
   generate:
-    desc: Generate Node.js bindings using uniffi-bindgen-node
+    desc: Generate Node.js bindings using uniffi-bindgen-react-native (napi target)
     dir: "{{.TASKFILE_DIR}}"
     deps:
       - task: ensure-bindings-lib
         vars:
           TARGET: "{{.TARGET}}"
-      - task: install-uniffi-bindgen-node
+      - task: install-uniffi-bindgen-react-native
     cmds:
-      - echo "🔧 Generating Node.js bindings..."
+      - echo "🔧 Generating Node.js bindings (napi)..."
       - |
         # Compute library path with release profile.
         # DYLIB_EXT/DYLIB_PREFIX must be derived from TARGET (not host) so CI on Linux finds .dylib for darwin artifacts.
@@ -109,13 +107,21 @@ tasks:
         echo "${DYLIB_PATH}" > /tmp/slim-node-dylib-path.txt
       - mkdir -p generated
       - |
-        # Generate Node.js bindings with uniffi-bindgen-node (0.1.4+ uses generate subcommand)
+        # Generate Node.js (napi) bindings with uniffi-bindgen-react-native.
+        # Must run with the Rust crate dir as cwd (ubrn shells out to `cargo metadata`).
+        # --lib-colocated bakes in "look for the native lib next to the compiled .js
+        # file at runtime" - this matches our packaging model exactly: each
+        # @agntcy/slim-bindings-<platform> tarball is a single self-contained
+        # directory holding one platform's dylib alongside its own copy of the
+        # generated JS (see pack-platform.ts), so no cross-package npm resolution
+        # is needed at runtime.
         DYLIB_PATH=$(cat /tmp/slim-node-dylib-path.txt)
         OUT_DIR="{{.TASKFILE_DIR}}/generated"
+        UBRN="{{.TASKFILE_DIR}}/node_modules/.bin/ubrn"
         cd "{{.BINDINGS_DIR}}"
-        uniffi-bindgen-node generate \
-          --crate-name {{.LIB_NAME}} \
-          --out-dir "${OUT_DIR}" \
+        "$UBRN" generate napi bindings \
+          --library --lib-colocated \
+          --ts-dir "${OUT_DIR}" \
           "${DYLIB_PATH}"
       - |
         # Copy the dynamic library to the generated directory (generated code expects libslim_bindings.<ext>).
@@ -134,10 +140,20 @@ tasks:
         echo "✅ Copied to generated/${CANONICAL_NAME}"
         rm -f /tmp/slim-node-dylib-path.txt
       - |
-        # Apply FFI compatibility patches using TypeScript script
-        cd {{.TASKFILE_DIR}}/generated
-        npx tsx {{.TASKFILE_DIR}}/scripts/patch-generated.ts {{.TASKFILE_DIR}}/generated
-      - echo "✅ Node.js bindings generated and patched in generated/"
+        # No post-generation patching needed: uniffi-bindgen-react-native's napi
+        # target emits directly runnable output against @ubjs/core + @ubjs/node
+        # (unlike the retired uniffi-bindgen-node + ffi-rs pipeline).
+        node -e "
+          const fs = require('fs');
+          const pkg = {
+            name: '@agntcy/slim-bindings-generated',
+            private: true,
+            type: 'module',
+            dependencies: { '@ubjs/core': '0.31.0-3', '@ubjs/node': '0.31.0-3' }
+          };
+          fs.writeFileSync('{{.TASKFILE_DIR}}/generated/package.json', JSON.stringify(pkg, null, 2) + '\n');
+        "
+      - echo "✅ Node.js bindings generated in generated/"
     silent: false
 
   install:
@@ -175,14 +191,13 @@ tasks:
     silent: true
 
   # Emit TypeScript declarations from generated/ to types/ (for main package publish).
-  # Generated code has type mismatches vs uniffi-bindgen-react-native/ffi-rs; we use noEmitOnError: false
-  # and verify output so emit succeeds as long as types/ is produced.
+  # noEmitOnError: false and verify output so emit succeeds as long as types/ is produced.
   emit-types:
     desc: Emit .d.ts from generated/ to types/ (run after generate)
     cmds:
       - test -d {{.TASKFILE_DIR}}/generated || (echo "Run task generate first"; exit 1)
       - npx -p typescript tsc -p {{.TASKFILE_DIR}}/tsconfig.emit-types.json || true
-      - test -f {{.TASKFILE_DIR}}/types/slim-bindings-node.d.ts || (echo "No types emitted; fix tsconfig or generated code"; exit 1)
+      - test -f {{.TASKFILE_DIR}}/types/slim_bindings.d.ts || (echo "No types emitted; fix tsconfig or generated code"; exit 1)
       - echo "✅ Types emitted to types/"
     silent: true
 
@@ -289,6 +304,16 @@ tasks:
     cmds:
       - echo "👨 Starting Bob (sender)..."
       - npm run bob -- {{.CLI_ARGS}}
+    silent: false
+
+  example:group:
+    desc: Run the group messaging example (moderator or participant, see --help)
+    deps:
+      - task: install:examples
+    dir: "{{.TASKFILE_DIR}}/examples"
+    cmds:
+      - echo "👥 Starting group example..."
+      - npm run group -- {{.CLI_ARGS}}
     silent: false
 
   # Tests

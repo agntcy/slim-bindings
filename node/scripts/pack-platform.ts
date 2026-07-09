@@ -12,8 +12,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'node:url';
 import { rustTargetToPlatformId } from './platform-id';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TASKFILE_DIR = path.resolve(__dirname, '..');
 const GENERATED_DIR = path.join(TASKFILE_DIR, 'generated');
 const OUT_DIR = path.join(TASKFILE_DIR, '.platform-pkg');
@@ -84,8 +86,8 @@ function main() {
     JSON.stringify(tsconfig, null, 2)
   );
 
-  // Generated code is from uniffi-bindgen-node + patches; it can have type mismatches
-  // (e.g. with uniffi-bindgen-react-native types). We only need JS + .d.ts for the pack.
+  // Generated code is from uniffi-bindgen-react-native (napi target); it can still have
+  // minor type mismatches. We only need JS + .d.ts for the pack.
   // noEmitOnError: false allows emit despite errors; tsc still exits non-zero, so we run
   // and then verify output exists instead of failing on exit code.
   const tscPath = path.join(TASKFILE_DIR, 'tsconfig.pack-platform.json');
@@ -105,11 +107,30 @@ function main() {
         (combined || '(no output captured)')
     );
   }
-  const expectedJs = path.join(OUT_DIR, 'slim-bindings-node.js');
-  const expectedDts = path.join(OUT_DIR, 'slim-bindings-node.d.ts');
+  const expectedJs = path.join(OUT_DIR, 'index.js');
+  const expectedDts = path.join(OUT_DIR, 'index.d.ts');
   if (!fs.existsSync(expectedJs) || !fs.existsSync(expectedDts)) {
-    console.error('tsc did not emit slim-bindings-node.js or .d.ts. Fix type errors or check compiler config.');
+    console.error('tsc did not emit index.js or .d.ts. Fix type errors or check compiler config.');
     process.exit(1);
+  }
+
+  // tsc's ESNext module emit does not add extensions to extensionless relative
+  // specifiers (the ubrn-generated source imports like `from './slim_bindings'`
+  // have none). Native Node ESM resolution requires an explicit extension for
+  // relative imports (unlike require() or tsx's resolver), so add `.js` to
+  // relative import/export specifiers in the emitted output; bare package
+  // specifiers (e.g. "@ubjs/core") are left untouched.
+  for (const file of fs.readdirSync(OUT_DIR).filter((f) => f.endsWith('.js'))) {
+    const filePath = path.join(OUT_DIR, file);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const fixed = content.replace(
+      /from\s+(["'])(\.\.?\/[^"']+)\1/g,
+      (match, quote, spec) =>
+        /\.(js|json|mjs|cjs)$/.test(spec) ? match : `from ${quote}${spec}.js${quote}`
+    );
+    if (fixed !== content) {
+      fs.writeFileSync(filePath, fixed, 'utf-8');
+    }
   }
 
   // CI merges Linux-generated `generated/` (often includes libslim_bindings.so) with each
@@ -133,8 +154,8 @@ function main() {
     name: packageName,
     version,
     description: `SLIM Node.js bindings (${platformId})`,
-    main: 'slim-bindings-node.js',
-    types: 'slim-bindings-node.d.ts',
+    main: 'index.js',
+    types: 'index.d.ts',
     type: 'module',
     engines: { node: '>=18.0.0' },
     repository: {
