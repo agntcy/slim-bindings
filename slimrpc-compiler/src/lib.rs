@@ -7,3 +7,4 @@ pub mod golang;
 pub mod java;
 pub mod kotlin;
 pub mod python;
+pub mod typescript;
