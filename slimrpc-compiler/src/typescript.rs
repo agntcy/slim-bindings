@@ -231,8 +231,7 @@ const GROUP_STREAM_STREAM: &str = r#"  async *{{METHOD_NAME}}(requests: AsyncIte
 
 const SERVICER_UNARY_UNARY: &str =
     "  {{METHOD_NAME}}(request: {{REQ_TYPE}}, context: ContextLike): Promise<{{RESP_TYPE}}>;\n";
-const SERVICER_UNARY_STREAM: &str =
-    "  {{METHOD_NAME}}(request: {{REQ_TYPE}}, context: ContextLike): AsyncIterable<{{RESP_TYPE}}>;\n";
+const SERVICER_UNARY_STREAM: &str = "  {{METHOD_NAME}}(request: {{REQ_TYPE}}, context: ContextLike): AsyncIterable<{{RESP_TYPE}}>;\n";
 const SERVICER_STREAM_UNARY: &str = "  {{METHOD_NAME}}(requests: AsyncIterable<{{REQ_TYPE}}>, context: ContextLike): Promise<{{RESP_TYPE}}>;\n";
 const SERVICER_STREAM_STREAM: &str = "  {{METHOD_NAME}}(requests: AsyncIterable<{{REQ_TYPE}}>, context: ContextLike): AsyncIterable<{{RESP_TYPE}}>;\n";
 
@@ -408,10 +407,7 @@ fn resolve_type(
     let trimmed = qualified.trim_start_matches('.');
     let bare = trimmed.rsplit('.').next().unwrap_or(trimmed).to_string();
     let schema = format!("{}Schema", bare);
-    let type_pkg = trimmed
-        .rfind('.')
-        .map(|pos| &trimmed[..pos])
-        .unwrap_or("");
+    let type_pkg = trimmed.rfind('.').map(|pos| &trimmed[..pos]).unwrap_or("");
 
     // protobuf-es exports the well-known types (and their schemas) from a
     // dedicated subpath.
@@ -527,7 +523,8 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
         let mut type_imports: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut service_definitions = String::new();
 
-        let add_type = |resolved: &ResolvedType, imports: &mut BTreeMap<String, BTreeSet<String>>| {
+        let add_type = |resolved: &ResolvedType,
+                        imports: &mut BTreeMap<String, BTreeSet<String>>| {
             let members = imports.entry(resolved.module.clone()).or_default();
             members.insert(format!("type {}", resolved.ts_type));
             members.insert(resolved.schema.clone());
@@ -572,42 +569,37 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
                 let is_client_streaming = method.client_streaming.unwrap_or(false);
                 let is_server_streaming = method.server_streaming.unwrap_or(false);
 
-                let (
-                    client_tpl,
-                    group_tpl,
-                    servicer_tpl,
-                    handler_tpl,
-                    rpc_method,
-                ) = match (is_client_streaming, is_server_streaming) {
-                    (false, false) => (
-                        CLIENT_UNARY_UNARY,
-                        GROUP_UNARY_UNARY,
-                        SERVICER_UNARY_UNARY,
-                        HANDLER_UNARY_UNARY,
-                        "UnaryUnary",
-                    ),
-                    (false, true) => (
-                        CLIENT_UNARY_STREAM,
-                        GROUP_UNARY_STREAM,
-                        SERVICER_UNARY_STREAM,
-                        HANDLER_UNARY_STREAM,
-                        "UnaryStream",
-                    ),
-                    (true, false) => (
-                        CLIENT_STREAM_UNARY,
-                        GROUP_STREAM_UNARY,
-                        SERVICER_STREAM_UNARY,
-                        HANDLER_STREAM_UNARY,
-                        "StreamUnary",
-                    ),
-                    (true, true) => (
-                        CLIENT_STREAM_STREAM,
-                        GROUP_STREAM_STREAM,
-                        SERVICER_STREAM_STREAM,
-                        HANDLER_STREAM_STREAM,
-                        "StreamStream",
-                    ),
-                };
+                let (client_tpl, group_tpl, servicer_tpl, handler_tpl, rpc_method) =
+                    match (is_client_streaming, is_server_streaming) {
+                        (false, false) => (
+                            CLIENT_UNARY_UNARY,
+                            GROUP_UNARY_UNARY,
+                            SERVICER_UNARY_UNARY,
+                            HANDLER_UNARY_UNARY,
+                            "UnaryUnary",
+                        ),
+                        (false, true) => (
+                            CLIENT_UNARY_STREAM,
+                            GROUP_UNARY_STREAM,
+                            SERVICER_UNARY_STREAM,
+                            HANDLER_UNARY_STREAM,
+                            "UnaryStream",
+                        ),
+                        (true, false) => (
+                            CLIENT_STREAM_UNARY,
+                            GROUP_STREAM_UNARY,
+                            SERVICER_STREAM_UNARY,
+                            HANDLER_STREAM_UNARY,
+                            "StreamUnary",
+                        ),
+                        (true, true) => (
+                            CLIENT_STREAM_STREAM,
+                            GROUP_STREAM_STREAM,
+                            SERVICER_STREAM_STREAM,
+                            HANDLER_STREAM_STREAM,
+                            "StreamStream",
+                        ),
+                    };
 
                 let fill = |tpl: &str| -> String {
                     tpl.replace("{{METHOD_NAME}}", &method_name)
@@ -623,9 +615,8 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
                 group_methods.push_str(&fill(group_tpl));
                 servicer_methods.push_str(&fill(servicer_tpl));
                 handler_classes.push_str(&fill(handler_tpl));
-                register_methods.push_str(
-                    &fill(REGISTER_METHOD).replace("{{RPC_METHOD}}", rpc_method),
-                );
+                register_methods
+                    .push_str(&fill(REGISTER_METHOD).replace("{{RPC_METHOD}}", rpc_method));
             }
 
             let service_block = SERVICE_TEMPLATE
@@ -643,8 +634,11 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
         let mut type_import_lines = String::new();
         for (module, members) in &type_imports {
             let joined: Vec<String> = members.iter().cloned().collect();
-            type_import_lines
-                .push_str(&format!("import {{ {} }} from \"{}\";\n", joined.join(", "), module));
+            type_import_lines.push_str(&format!(
+                "import {{ {} }} from \"{}\";\n",
+                joined.join(", "),
+                module
+            ));
         }
 
         let content = format!(
@@ -779,16 +773,22 @@ mod tests {
         // Correct channel variant for unary-unary.
         assert!(content.contains("this._channel.callUnaryAsync"));
         // Correct server registration variant.
-        assert!(content.contains("server.registerUnaryUnary(\"test.package.UserService\", \"GetUser\""));
+        assert!(
+            content.contains("server.registerUnaryUnary(\"test.package.UserService\", \"GetUser\"")
+        );
         // Handler adapter class.
-        assert!(content.contains("class _UserService_GetUser_Handler implements UnaryUnaryHandler"));
+        assert!(
+            content.contains("class _UserService_GetUser_Handler implements UnaryUnaryHandler")
+        );
         // Types + schemas imported from the default protoc-gen-es module.
         assert!(content.contains("from \"./user_pb.js\""));
         assert!(content.contains("GetUserRequestSchema"));
         assert!(content.contains("type GetUserResponse"));
         // Serialization boundary helpers.
         assert!(content.contains("toBinary(GetUserRequestSchema, request)"));
-        assert!(content.contains("fromBinary(GetUserResponseSchema, new Uint8Array(responseBytes))"));
+        assert!(
+            content.contains("fromBinary(GetUserResponseSchema, new Uint8Array(responseBytes))")
+        );
         // Runtime import.
         assert!(content.contains("from \"@agntcy/slim-bindings\""));
         assert!(content.contains("import { fromBinary, toBinary } from \"@bufbuild/protobuf\""));
@@ -797,17 +797,32 @@ mod tests {
     #[test]
     fn test_generate_streaming_shapes_use_correct_channel_methods() {
         let methods = vec![
-            create_test_method("UnaryToStream", ".pkg.Request", ".pkg.Response", false, true),
-            create_test_method("StreamToUnary", ".pkg.Request", ".pkg.Response", true, false),
-            create_test_method("StreamToStream", ".pkg.Request", ".pkg.Response", true, true),
+            create_test_method(
+                "UnaryToStream",
+                ".pkg.Request",
+                ".pkg.Response",
+                false,
+                true,
+            ),
+            create_test_method(
+                "StreamToUnary",
+                ".pkg.Request",
+                ".pkg.Response",
+                true,
+                false,
+            ),
+            create_test_method(
+                "StreamToStream",
+                ".pkg.Request",
+                ".pkg.Response",
+                true,
+                true,
+            ),
         ];
         let service = create_test_service("StreamService", methods);
         let file = create_test_file_descriptor("stream.proto", "pkg", vec![service]);
 
-        let content = generate_single(file, None).file[0]
-            .content
-            .clone()
-            .unwrap();
+        let content = generate_single(file, None).file[0].content.clone().unwrap();
 
         // Client dispatches to the matching channel.call* variant per shape.
         assert!(content.contains("async *UnaryToStream("));
@@ -829,7 +844,9 @@ mod tests {
         assert!(content.contains("implements StreamStreamHandler"));
 
         // Servicer signatures.
-        assert!(content.contains("UnaryToStream(request: Request, context: ContextLike): AsyncIterable<Response>;"));
+        assert!(content.contains(
+            "UnaryToStream(request: Request, context: ContextLike): AsyncIterable<Response>;"
+        ));
         assert!(content.contains("StreamToUnary(requests: AsyncIterable<Request>, context: ContextLike): Promise<Response>;"));
         assert!(content.contains("StreamToStream(requests: AsyncIterable<Request>, context: ContextLike): AsyncIterable<Response>;"));
 
@@ -842,18 +859,39 @@ mod tests {
     #[test]
     fn test_group_client_uses_multicast_and_named_field_shape() {
         let methods = vec![
-            create_test_method("UnaryUnary", ".test.Request", ".test.Response", false, false),
-            create_test_method("UnaryStream", ".test.Request", ".test.Response", false, true),
-            create_test_method("StreamUnary", ".test.Request", ".test.Response", true, false),
-            create_test_method("StreamStream", ".test.Request", ".test.Response", true, true),
+            create_test_method(
+                "UnaryUnary",
+                ".test.Request",
+                ".test.Response",
+                false,
+                false,
+            ),
+            create_test_method(
+                "UnaryStream",
+                ".test.Request",
+                ".test.Response",
+                false,
+                true,
+            ),
+            create_test_method(
+                "StreamUnary",
+                ".test.Request",
+                ".test.Response",
+                true,
+                false,
+            ),
+            create_test_method(
+                "StreamStream",
+                ".test.Request",
+                ".test.Response",
+                true,
+                true,
+            ),
         ];
         let service = create_test_service("Test", methods);
         let file = create_test_file_descriptor("example.proto", "test", vec![service]);
 
-        let content = generate_single(file, None).file[0]
-            .content
-            .clone()
-            .unwrap();
+        let content = generate_single(file, None).file[0].content.clone().unwrap();
 
         assert!(content.contains("export class TestGroupClient"));
         assert!(content.contains("callMulticastUnaryAsync"));
@@ -920,10 +958,7 @@ mod tests {
         let service = create_test_service("TestService", vec![method]);
         let file = create_test_file_descriptor("test.proto", "test", vec![service]);
 
-        let content = generate_single(file, None).file[0]
-            .content
-            .clone()
-            .unwrap();
+        let content = generate_single(file, None).file[0].content.clone().unwrap();
 
         assert!(content.contains("from \"@bufbuild/protobuf/wkt\""));
         assert!(content.contains("EmptySchema"));
@@ -943,10 +978,7 @@ mod tests {
         );
         let file = create_test_file_descriptor("multi.proto", "pkg", vec![s1, s2]);
 
-        let content = generate_single(file, None).file[0]
-            .content
-            .clone()
-            .unwrap();
+        let content = generate_single(file, None).file[0].content.clone().unwrap();
 
         assert!(content.contains("export class Service1Client"));
         assert!(content.contains("export class Service2Client"));
@@ -1029,10 +1061,7 @@ mod tests {
         let service = create_test_service("DataService", vec![method]);
         let file = create_test_file_descriptor("data.proto", "test.package", vec![service]);
 
-        let content = generate_single(file, None).file[0]
-            .content
-            .clone()
-            .unwrap();
+        let content = generate_single(file, None).file[0].content.clone().unwrap();
 
         // Unknown package falls back to the local module.
         assert!(content.contains("from \"./data_pb.js\""));
@@ -1045,10 +1074,7 @@ mod tests {
         let service = create_test_service("TestService", vec![method]);
         let file = create_test_file_descriptor("test.proto", "", vec![service]);
 
-        let content = generate_single(file, None).file[0]
-            .content
-            .clone()
-            .unwrap();
+        let content = generate_single(file, None).file[0].content.clone().unwrap();
 
         assert!(content.contains("export class TestServiceClient"));
         // No package -> unqualified service name in the registration string.
@@ -1057,7 +1083,10 @@ mod tests {
 
     #[test]
     fn test_relative_pb_module() {
-        assert_eq!(relative_pb_module("example.proto", "example.proto"), "./example_pb.js");
+        assert_eq!(
+            relative_pb_module("example.proto", "example.proto"),
+            "./example_pb.js"
+        );
         assert_eq!(
             relative_pb_module("service/api.proto", "common/types.proto"),
             "../common/types_pb.js"
