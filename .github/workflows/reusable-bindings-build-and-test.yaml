@@ -476,6 +476,28 @@ jobs:
         run: |
           task generate TARGET=x86_64-unknown-linux-gnu
 
+      # Prove the slimrpc node target end-to-end: generate stubs from the
+      # in-repo plugin, type-check the generated example, then run it against a
+      # live in-process SLIM broker so a break in the generator, the runtime
+      # bindings, or the example is caught here (not just at type-check time).
+      - name: Generate slimrpc stubs (node example)
+        run: task generate-proto
+
+      - name: Install generated bindings deps
+        working-directory: ./node/generated
+        run: npm install
+
+      - name: Install slimrpc example deps
+        working-directory: ./node/examples/slimrpc/simple
+        run: npm install
+
+      - name: Type-check slimrpc example
+        working-directory: ./node/examples/slimrpc/simple
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Run slimrpc example end-to-end (broker round-trip)
+        run: bash "${GITHUB_WORKSPACE}/.github/tests/node/slimrpc_e2e.sh" examples/slimrpc/simple
+
   dotnet-bindings-build-and-test:
     name: "Dotnet Bindings Build and Test"
     permissions:

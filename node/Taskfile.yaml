@@ -324,15 +324,15 @@ tasks:
   generate-proto:
     desc: "Generate slimrpc + protobuf-es TypeScript for the Node.js examples"
     deps:
-      - task: rust:run-command
-        vars:
-          COMMAND: |
-            cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-node
       - task: buf
     cmds:
+      # Build the slimrpc node plugin from the in-repo source (the crates.io
+      # release of agntcy-protoc-slimrpc-plugin does not yet ship the node
+      # target) and install it into ~/.cargo/bin, which is on PATH for buf's
+      # `local: protoc-gen-slimrpc-node` to resolve.
+      - cargo install --locked --path "{{.TASKFILE_DIR}}/../slimrpc-compiler" --bin protoc-gen-slimrpc-node
       - |
         # Find every buf.gen.yaml under node/ and run buf generate in its folder.
-        # `protoc-gen-slimrpc-node` must be on PATH (installed above into ~/.cargo/bin).
         cd "{{.TASKFILE_DIR}}"
         find . -name 'buf.gen.yaml' | while read -r file; do
           echo "Generating proto files for $file"

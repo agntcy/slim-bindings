@@ -9,7 +9,6 @@
     "client-group": "tsx client_group.ts"
   },
   "dependencies": {
-    "@agntcy/slim-bindings": "file:../../..",
     "@bufbuild/protobuf": "^2.12.1"
   },
   "devDependencies": {
