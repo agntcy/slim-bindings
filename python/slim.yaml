@@ -1,0 +1,7 @@
+node:
+  address: "http://localhost:46357"
+app:
+  name: "org/ns/alice"
+identity:
+  type: shared_secret
+  data: "longlonglonglonglonglonglonglonglong-secret"
