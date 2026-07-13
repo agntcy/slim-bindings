@@ -78,8 +78,11 @@ public static class CommonHelpers
     ///
     /// Requires app.name to be set in the config or via SLIM_APP_NAME.
     /// </summary>
-    /// <returns>Created, connected, and subscribed app instance.</returns>
-    public static SlimApp CreateAndConnectAppFromConfig()
+    /// <returns>
+    /// A <see cref="SlimAppHandle"/> containing the App, its routing Name,
+    /// and the active connection ID.
+    /// </returns>
+    public static SlimAppHandle CreateAndConnectAppFromConfig()
     {
         Slim.Initialize();
 

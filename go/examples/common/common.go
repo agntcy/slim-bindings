@@ -96,9 +96,9 @@ func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64,
 //
 // Returns:
 //
-//	*slim.App: Created, connected, and subscribed app instance
+//	*slim.SlimAppHandle: Handle containing the App, its routing Name, and the connection ID
 //	error: If config loading, connection, or subscription fails
-func CreateAndConnectAppFromConfig() (*slim.App, error) {
+func CreateAndConnectAppFromConfig() (*slim.SlimAppHandle, error) {
 	slim.InitializeWithDefaults()
 
 	config, err := slim.LoadSlimConfig()
@@ -106,10 +106,10 @@ func CreateAndConnectAppFromConfig() (*slim.App, error) {
 		return nil, fmt.Errorf("load slim config: %w", err)
 	}
 
-	app, err := slim.GetGlobalService().CreateAppFromSlimConfig(config)
+	handle, err := slim.GetGlobalService().CreateAppFromSlimConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("create app from config: %w", err)
 	}
 
-	return app, nil
+	return handle, nil
 }

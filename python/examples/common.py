@@ -200,7 +200,7 @@ def setup_service(enable_opentelemetry: bool = False) -> slim_bindings.Service:
     return service
 
 
-async def create_app_from_config() -> slim_bindings.App:
+async def create_app_from_config() -> slim_bindings.SlimAppHandle:
     """
     Build a ready App using hierarchical config discovery (slim.yaml + env vars).
 
@@ -212,7 +212,7 @@ async def create_app_from_config() -> slim_bindings.App:
     Requires app.name to be set in the config or via SLIM_APP_NAME.
 
     Returns:
-        slim_bindings.App: Created, connected, and subscribed app instance.
+        slim_bindings.SlimAppHandle: Handle with .app, .name, and .conn_id fields.
 
     Raises:
         slim_bindings.SlimError: If config loading, connection, or subscription fails.

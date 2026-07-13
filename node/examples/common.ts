@@ -117,7 +117,7 @@ export async function createAndConnectApp(
  *
  * Requires app.name to be set in the config or via SLIM_APP_NAME.
  *
- * @returns The created, connected, and subscribed app instance.
+ * @returns A SlimAppHandle with `.app`, `.name`, and `.connId` fields.
  */
 export async function createAndConnectAppFromConfig(): Promise<any> {
   slimBindings.initializeWithDefaults();
