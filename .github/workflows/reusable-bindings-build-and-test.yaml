@@ -480,7 +480,8 @@ jobs:
       # the generated bindings surface so `import { Channel } from
       # '@agntcy/slim-bindings'` (and slimrpc-generated stubs) keep resolving.
       - name: Check named-export barrel
-        run: node "${GITHUB_WORKSPACE}/.github/tests/node/check_named_exports.mjs" node
+        # CWD is ./node (job default working-directory), so the node dir is ".".
+        run: node "${GITHUB_WORKSPACE}/.github/tests/node/check_named_exports.mjs" .
 
       # Prove the slimrpc node target end-to-end: generate stubs from the
       # in-repo plugin, type-check the generated example, then run it against a
