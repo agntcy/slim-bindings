@@ -11,6 +11,8 @@ slimrpc framework.
 - **Go**: `protoc-gen-slimrpc-go`
 - **Java**: `protoc-gen-slimrpc-java`
 - **C#**: `protoc-gen-slimrpc-csharp`
+- **Kotlin**: `protoc-gen-slimrpc-kotlin`
+- **TypeScript / Node.js**: `protoc-gen-slimrpc-node`
 
 ## Features
 
@@ -42,11 +44,13 @@ cargo build --release
    - `target/release/protoc-gen-slimrpc-go`
    - `target/release/protoc-gen-slimrpc-java`
    - `target/release/protoc-gen-slimrpc-csharp`
+   - `target/release/protoc-gen-slimrpc-kotlin`
+   - `target/release/protoc-gen-slimrpc-node`
 
 ## Usage
 
 The recommended way to use the slimrpc compiler is through `buf`. The Python,
-Go, Java, and C# examples all use this approach.
+Go, Java, C#, and TypeScript/Node examples all use this approach.
 
 ### Using with buf (Recommended)
 
@@ -141,6 +145,32 @@ plugins:
 ```
 
 **Output file naming**: For `example.proto`, the C# plugin generates `example_slimrpc.cs` (alongside the standard protobuf `Example.cs` from the csharp plugin).
+
+#### TypeScript / Node.js Example
+
+Create a `buf.gen.yaml` file in your project:
+
+```yaml
+version: v2
+clean: false
+managed:
+  enabled: true
+inputs:
+  - proto_file: example.proto
+plugins:
+  # Generate slimrpc stubs (example_slimrpc.ts)
+  - local: protoc-gen-slimrpc-node
+    out: types
+  # Generate protobuf-es message types (example_pb.ts)
+  - remote: buf.build/bufbuild/es:v2.12.1
+    out: types
+    opt:
+      - target=ts
+      - import_extension=js
+```
+
+**Output file naming**: For `example.proto`, the node plugin generates `example_slimrpc.ts` (alongside the protobuf-es `example_pb.ts` from the `es` plugin). The generated stubs target the `@agntcy/slim-bindings` runtime and `@bufbuild/protobuf` (protobuf-es v2). See [`node/SLIMRPC.md`](https://github.com/agntcy/slim-bindings/blob/main/node/SLIMRPC.md) for the full reference.
+
 #### Generate Code
 
 ```bash
@@ -152,6 +182,7 @@ This will generate:
 - **Go**: `*.pb.go` (protobuf types) and `*_slimrpc.pb.go` (slimrpc stubs)
 - **Java**: Standard protobuf Java classes and `*Slimrpc.java` (slimrpc stubs)
 - **C#**: `*.cs` (protobuf types from csharp plugin) and `*_slimrpc.cs` (slimrpc stubs)
+- **TypeScript/Node**: `*_pb.ts` (protobuf-es types) and `*_slimrpc.ts` (slimrpc stubs)
 
 ### Using with protoc (Alternative)
 
@@ -195,6 +226,17 @@ protoc \
   --csharp_out=Generated \
   --plugin=protoc-gen-slimrpc-csharp=/path/to/protoc-gen-slimrpc-csharp \
   --slimrpc-csharp_out=Generated \
+  example.proto
+```
+
+#### TypeScript / Node.js
+
+```bash
+protoc \
+  --plugin=protoc-gen-es=./node_modules/.bin/protoc-gen-es \
+  --es_out=types --es_opt=target=ts,import_extension=js \
+  --plugin=protoc-gen-slimrpc-node=/path/to/protoc-gen-slimrpc-node \
+  --slimrpc-node_out=types \
   example.proto
 ```
 
@@ -354,6 +396,42 @@ public interface ITestServer
 TestServerRegistration.RegisterTestServer(server, impl);
 ```
 
+### TypeScript / Node.js
+
+For a service definition, the generated `*_slimrpc.ts` contains:
+
+#### Client Stub
+
+```ts
+export class TestClient {
+  constructor(_channel: ChannelLike);
+  ExampleUnaryUnary(request: ExampleRequest, timeout?: number, metadata?: Map<string, string>): Promise<ExampleResponse>;
+  ExampleUnaryStream(request: ExampleRequest, timeout?: number, metadata?: Map<string, string>): AsyncGenerator<ExampleResponse>;
+  ExampleStreamUnary(requests: AsyncIterable<ExampleRequest>, timeout?: number, metadata?: Map<string, string>): Promise<ExampleResponse>;
+  ExampleStreamStream(requests: AsyncIterable<ExampleRequest>, timeout?: number, metadata?: Map<string, string>): AsyncGenerator<ExampleResponse>;
+}
+
+// Multicast/group variant: each method yields one { context, response } per member.
+export class TestGroupClient { /* ... */ }
+```
+
+#### Server Servicer
+
+```ts
+export interface TestServicer {
+  ExampleUnaryUnary(request: ExampleRequest, context: ContextLike): Promise<ExampleResponse>;
+  ExampleUnaryStream(request: ExampleRequest, context: ContextLike): AsyncIterable<ExampleResponse>;
+  ExampleStreamUnary(requests: AsyncIterable<ExampleRequest>, context: ContextLike): Promise<ExampleResponse>;
+  ExampleStreamStream(requests: AsyncIterable<ExampleRequest>, context: ContextLike): AsyncIterable<ExampleResponse>;
+}
+```
+
+#### Registration Function
+
+```ts
+export function registerTestServicer(server: ServerLike, servicer: TestServicer): void;
+```
+
 ## Examples
 
 Complete working examples are available in the
@@ -363,6 +441,7 @@ Complete working examples are available in the
 - **Go**: [`go/examples/slimrpc/simple`](https://github.com/agntcy/slim-bindings/tree/main/go/examples/slimrpc/simple)
 - **Java**: [`java/examples/slimrpc/simple`](https://github.com/agntcy/slim-bindings/tree/main/java/examples/slimrpc/simple)
 - **C#**: [`dotnet/Slim.Examples.SlimRpc`](https://github.com/agntcy/slim-bindings/tree/main/dotnet/Slim.Examples.SlimRpc)
+- **TypeScript/Node**: [`node/examples/slimrpc/simple`](https://github.com/agntcy/slim-bindings/tree/main/node/examples/slimrpc/simple)
 
 All examples demonstrate all four RPC patterns with comprehensive client and
 server implementations.
@@ -411,6 +490,19 @@ cd data-plane && cargo run --bin slim -- --config ./config/base/server-config.ya
   - Default: same as base_namespace
 
 - `file_extension`: Output file suffix (default: `_slimrpc.cs`)
+
+### TypeScript / Node Plugin
+
+- `types_import`: Override the module specifier for the current file's protobuf
+  message types (and their `*Schema` companions).
+  - Example: `types_import=@myorg/generated/example_pb.js`
+  - Default: a sibling `./<base>_pb.js` (the `protoc-gen-es` default output).
+    Cross-file types resolve to their own relative `*_pb.js`; `google.protobuf.*`
+    well-known types come from `@bufbuild/protobuf/wkt`.
+
+- `bindings_import`: Module specifier for the slimrpc runtime.
+  - Example: `bindings_import=../../../../generated/index.js`
+  - Default: `@agntcy/slim-bindings`
 
 ## Troubleshooting
 

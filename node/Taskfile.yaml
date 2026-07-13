@@ -10,6 +10,10 @@ includes:
   rust:
     taskfile: ../tasks/rust.yaml
     internal: true
+  tools:
+    taskfile: ../tasks/tools.yaml
+    internal: true
+    flatten: true
 
 vars:
   BINDINGS_DIR: "{{.TASKFILE_DIR}}/../rust"
@@ -314,6 +318,68 @@ tasks:
     cmds:
       - echo "👥 Starting group example..."
       - npm run group -- {{.CLI_ARGS}}
+    silent: false
+
+  # SlimRPC (protoc-gen-slimrpc-node) proto generation + example
+  generate-proto:
+    desc: "Generate slimrpc + protobuf-es TypeScript for the Node.js examples"
+    deps:
+      - task: buf
+    cmds:
+      # Build the slimrpc node plugin from the in-repo source (the crates.io
+      # release of agntcy-protoc-slimrpc-plugin does not yet ship the node
+      # target) and install it into ~/.cargo/bin, which is on PATH for buf's
+      # `local: protoc-gen-slimrpc-node` to resolve.
+      - cargo install --locked --path "{{.TASKFILE_DIR}}/../slimrpc-compiler" --bin protoc-gen-slimrpc-node
+      - |
+        # Find every buf.gen.yaml under node/ and run buf generate in its folder.
+        cd "{{.TASKFILE_DIR}}"
+        find . -name 'buf.gen.yaml' | while read -r file; do
+          echo "Generating proto files for $file"
+          folder=$(dirname "$file")
+          pushd > /dev/null "${folder}" && \
+            PATH="${HOME}/.cargo/bin:${PATH}" {{.TOOLS_INSTALL_DIR}}/buf generate && \
+            popd > /dev/null
+        done
+
+  example:slimrpc:install:
+    desc: Install dependencies for the SlimRPC simple example
+    deps:
+      - task: install
+    dir: "{{.TASKFILE_DIR}}/examples/slimrpc/simple"
+    cmds:
+      - echo "📦 Installing SlimRPC example dependencies..."
+      - npm install
+    silent: true
+
+  example:slimrpc:server:
+    desc: Run the SlimRPC example server (use --instance server1/server2 for group)
+    deps:
+      - task: example:slimrpc:install
+    dir: "{{.TASKFILE_DIR}}/examples/slimrpc/simple"
+    cmds:
+      - echo "🚀 Starting SlimRPC server..."
+      - npm run server -- {{.CLI_ARGS}}
+    silent: false
+
+  example:slimrpc:client:
+    desc: Run the SlimRPC point-to-point example client
+    deps:
+      - task: example:slimrpc:install
+    dir: "{{.TASKFILE_DIR}}/examples/slimrpc/simple"
+    cmds:
+      - echo "📞 Starting SlimRPC client..."
+      - npm run client -- {{.CLI_ARGS}}
+    silent: false
+
+  example:slimrpc:client-group:
+    desc: Run the SlimRPC multicast (group) example client
+    deps:
+      - task: example:slimrpc:install
+    dir: "{{.TASKFILE_DIR}}/examples/slimrpc/simple"
+    cmds:
+      - echo "📢 Starting SlimRPC group client..."
+      - npm run client-group -- {{.CLI_ARGS}}
     silent: false
 
   # Tests

@@ -1,0 +1,28 @@
+# buf generate configuration for the Node.js / TypeScript slimrpc example.
+#
+# Produces two artefacts under types/ for example.proto:
+#   * example_pb.ts       — protobuf-es message types (remote protoc-gen-es)
+#   * example_slimrpc.ts   — slimrpc client/server stubs (local slimrpc plugin)
+version: v2
+clean: false
+managed:
+  enabled: true
+inputs:
+  - proto_file: example.proto
+plugins:
+  # Generates <base>_slimrpc.ts (slimrpc client stub, group stub, servicer
+  # interface, handler adapters, and registration function).
+  # Requires `protoc-gen-slimrpc-node` on PATH:
+  #   cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-node
+  - local: protoc-gen-slimrpc-node
+    out: types
+    opt:
+      # Point the generated stubs at the locally built bindings. Downstream
+      # consumers should drop this to use the default "@agntcy/slim-bindings".
+      - bindings_import=../../../../generated/index.js
+  # Generates <base>_pb.ts (protobuf-es v2 message types + schemas).
+  - remote: buf.build/bufbuild/es:v2.12.1
+    out: types
+    opt:
+      - target=ts
+      - import_extension=js
