@@ -42,16 +42,15 @@ from .common import (
 from .config import PointToPointConfig, load_config_with_cli_override
 
 
-async def run_client(config: PointToPointConfig, use_slim_config: bool = False):
+async def run_client(config: PointToPointConfig):
     """
     Core coroutine that performs either active send or passive listen logic.
 
     Args:
         config: PointToPointConfig instance containing all configuration.
-        use_slim_config: When True, build the App from a discovered slim.yaml
-            (or env vars) instead of from the explicit CLI identity flags.
-            The app name, instance UUID, and identity are all resolved
-            automatically via ``create_app_from_config()``.
+            When ``config.use_slim_config`` is ``True``, the App is built from
+            a discovered ``slim.yaml`` / env vars via ``create_app_from_config()``
+            instead of the explicit identity fields in ``config``.
 
     Behavior:
         - Builds Slim app using global service.
@@ -59,7 +58,7 @@ async def run_client(config: PointToPointConfig, use_slim_config: bool = False):
         - If message not supplied -> wait indefinitely for inbound sessions and echo payloads.
     """
     # Build the Slim application — either from slim.yaml / env vars or from CLI flags.
-    if use_slim_config:
+    if config.use_slim_config:
         handle = await create_app_from_config()
         local_app = handle.app
         conn_id = handle.conn_id
@@ -201,38 +200,16 @@ def main():
         help="Number of request/reply cycles in sender mode (default: 10)",
     )
 
-    parser.add_argument(
-        "--use-slim-config",
-        action="store_true",
-        dest="use_slim_config",
-        help=(
-            "Discover connection and identity from slim.yaml / env vars "
-            "(SLIM_NODE_ADDRESS, SLIM_APP_NAME, SLIM_IDENTITY_*) instead of "
-            "explicit --local / --slim / --shared-secret flags. "
-            "When set, --local is not required."
-        ),
-    )
-
-    # --local is required by default but can be omitted when --use-slim-config is set.
-    for action in parser._actions:
-        if "--local" in getattr(action, "option_strings", []):
-            action.required = False
-            break
-
     # Parse arguments
     args = parser.parse_args()
-
-    # Validate: --local is required unless --use-slim-config is set.
-    if not args.use_slim_config and not args.local:
-        parser.error("--local is required unless --use-slim-config is specified")
 
     # Convert to dictionary
     args_dict = parse_args_to_dict(args)
 
     # Load configuration (CLI args override env vars and config file).
-    # When --use-slim-config is active we still build a PointToPointConfig for the
-    # session-level fields (message, remote, iterations, enable_mls); the app/conn
-    # fields (local, slim, shared_secret, …) are sourced from slim.yaml instead.
+    # BaseConfig.require_local_unless_slim_config validates that local is present
+    # when use_slim_config is False; session-level fields (message, remote,
+    # iterations, enable_mls) are always sourced from CLI / env vars.
     try:
         config = load_config_with_cli_override(PointToPointConfig, args_dict)
     except Exception as e:
@@ -241,7 +218,7 @@ def main():
 
     # Run the client
     try:
-        asyncio.run(run_client(config, use_slim_config=args.use_slim_config))
+        asyncio.run(run_client(config))
     except KeyboardInterrupt:
         print("\nClient interrupted by user.")
     except Exception as e:
