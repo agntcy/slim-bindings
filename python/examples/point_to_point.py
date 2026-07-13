@@ -59,7 +59,7 @@ async def run_client(config: PointToPointConfig):
     """
     # Build the Slim application — either from slim.yaml / env vars or from CLI flags.
     if config.use_slim_config:
-        handle = await create_app_from_config()
+        handle = create_app_from_config()
         local_app = handle.app
         conn_id = handle.conn_id
     else:

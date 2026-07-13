@@ -200,7 +200,7 @@ def setup_service(enable_opentelemetry: bool = False) -> slim_bindings.Service:
     return service
 
 
-async def create_app_from_config() -> Any:
+def create_app_from_config() -> Any:
     """
     Build a ready App using hierarchical config discovery (slim.yaml + env vars).
 
@@ -219,7 +219,7 @@ async def create_app_from_config() -> Any:
     """
     service = setup_service()
     config = slim_bindings.load_slim_config()
-    return await service.create_app_from_slim_config_async(config)
+    return service.create_app_from_slim_config(config)
 
 
 async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
