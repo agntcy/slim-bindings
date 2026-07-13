@@ -7,6 +7,8 @@ yarn-error.log*
 # Generated bindings
 generated/
 types/
+# Generated runtime named-export barrel (see scripts/gen-named-exports.mjs)
+named-exports.js
 
 # TypeScript
 dist/

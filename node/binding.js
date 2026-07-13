@@ -1,0 +1,64 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+import { detectLinuxLibc } from './libc-linux.js';
+
+/**
+ * Resolves the platform id for the current Node process.
+ * Must match the optionalDependency package suffixes.
+ */
+function getCurrentPlatformId() {
+  const platform = process.platform;
+  const arch = process.arch;
+  if (platform === 'darwin') {
+    return arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
+  }
+  if (platform === 'linux') {
+    const libc = detectLinuxLibc();
+    if (arch === 'arm64') {
+      return `linux-arm64-${libc}`;
+    }
+    if (arch === 'x64') {
+      return `linux-x64-${libc}`;
+    }
+  }
+  if (platform === 'win32') {
+    return arch === 'arm64' ? 'win32-arm64-msvc' : 'win32-x64-msvc';
+  }
+  throw new Error(`Unsupported platform: ${platform} ${arch}`);
+}
+
+const platformId = getCurrentPlatformId();
+const packageName = `@agntcy/slim-bindings-${platformId}`;
+
+// The generated bindings (uniffi-bindgen-react-native, napi target) are native ESM
+// (they use import.meta.url for colocated native-library resolution), so the
+// platform package must be loaded via dynamic import rather than require().
+// Importing it also runs its required one-time initialization side effect
+// (registering the UnaryUnaryHandler/etc. callback vtables), so this module
+// must be the sole entry point consumers use - do not import the platform
+// package's inner files directly.
+let bindings;
+try {
+  bindings = await import(packageName);
+} catch (err) {
+  if (err.code === 'ERR_MODULE_NOT_FOUND') {
+    throw new Error(
+      `Platform package ${packageName} is not installed. ` +
+        `Run: npm install @agntcy/slim-bindings (optional dependencies include linux-*-gnu, linux-*-musl, darwin-*, win32-*). ` +
+        `On Alpine or other musl Linux, ensure the linux-*-musl optional package is available for your Node arch.`
+    );
+  }
+  throw err;
+}
+
+/**
+ * The resolved platform-binding module namespace. Holds every named export of
+ * the generated bindings (Channel, Server, RpcError, ...). Because the platform
+ * package name is computed at runtime, ESM cannot statically `export *` from it;
+ * `named-exports.js` (generated) re-exports these names individually so that
+ * `import { Channel } from '@agntcy/slim-bindings'` works.
+ */
+export const ns = bindings;
+
+export default bindings;

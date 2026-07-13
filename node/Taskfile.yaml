@@ -157,8 +157,20 @@ tasks:
           };
           fs.writeFileSync('{{.TASKFILE_DIR}}/generated/package.json', JSON.stringify(pkg, null, 2) + '\n');
         "
+      - task: emit-named-exports
       - echo "✅ Node.js bindings generated in generated/"
     silent: false
+
+  # Generate node/named-exports.js: the runtime named-export barrel for the main
+  # package (so `import { Channel } from '@agntcy/slim-bindings'` resolves).
+  # Derived from generated/slim_bindings.ts; must run after generate.
+  emit-named-exports:
+    desc: Generate the runtime named-export barrel (named-exports.js)
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - test -f {{.TASKFILE_DIR}}/generated/slim_bindings.ts || (echo "Run task generate first"; exit 1)
+      - node {{.TASKFILE_DIR}}/scripts/gen-named-exports.mjs
+    silent: true
 
   install:
     desc: Install dependencies for generated bindings
@@ -202,6 +214,8 @@ tasks:
       - test -d {{.TASKFILE_DIR}}/generated || (echo "Run task generate first"; exit 1)
       - npx -p typescript tsc -p {{.TASKFILE_DIR}}/tsconfig.emit-types.json || true
       - test -f {{.TASKFILE_DIR}}/types/slim_bindings.d.ts || (echo "No types emitted; fix tsconfig or generated code"; exit 1)
+      # The published main package also needs the runtime named-export barrel.
+      - task: emit-named-exports
       - echo "✅ Types emitted to types/"
     silent: true
 
