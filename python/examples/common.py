@@ -217,11 +217,9 @@ async def create_app_from_config() -> Any:
     Raises:
         slim_bindings.SlimError: If config loading, connection, or subscription fails.
     """
-    slim_bindings.initialize_with_defaults()
+    service = setup_service()
     config = slim_bindings.load_slim_config()
-    return await slim_bindings.get_global_service().create_app_from_slim_config_async(
-        config
-    )
+    return await service.create_app_from_slim_config_async(config)
 
 
 async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
