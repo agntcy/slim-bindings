@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-alpha.3](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.0.0-alpha.2...slim-bindings-v2.0.0-alpha.3) - 2026-07-14
+
+### Added
+
+- named exports for `@agntcy/slim-bindings` to unblock slimrpc/A2A stubs ([#25](https://github.com/agntcy/slim-bindings/pull/25))
+- slimrpc support for js/ts bindings ([#22](https://github.com/agntcy/slim-bindings/pull/22))
+- validate slimrpc in java/kotlin CI + fix python proto task ([#17](https://github.com/agntcy/slim-bindings/pull/17))
+- java and kotlin docs and task file updates ([#14](https://github.com/agntcy/slim-bindings/pull/14))
+
+### Other
+
+- migrate to uniffi-bindgen-react-native and update Node.js bindings ([#20](https://github.com/agntcy/slim-bindings/pull/20))
+
 ## [2.0.0-alpha.2](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.0.0-alpha.1...slim-bindings-v2.0.0-alpha.2) - 2026-06-29
 
 ### Other
