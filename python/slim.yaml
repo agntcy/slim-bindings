@@ -1,7 +1,7 @@
 node:
   address: "http://localhost:46357"
 app:
-  name: "org/ns/alice"
+  name: "agntcy/ns/alice"
 identity:
   type: shared_secret
-  data: "longlonglonglonglonglonglonglonglong-secret"
+  data: "my_shared_secret_for_testing_purposes_only"

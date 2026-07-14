@@ -268,7 +268,7 @@ tasks:
   python:bindings:install-examples:
     desc: "Install slim-bindings with examples dependencies"
     cmds:
-      - uv pip install 'slim-bindings[examples]'
+      - uv sync --extra examples
 
   python:build:
     desc: "Build Python bindings and install example dependencies"
@@ -296,6 +296,16 @@ tasks:
         uv run slim-bindings-p2p                                                      \
           --local agntcy/ns/alice                                                     \
           --shared-secret $SHARED_SECRET {{.EXTRA_ARGS}}
+    vars:
+      EXTRA_ARGS: '{{.EXTRA_ARGS | default ""}}'
+
+  examples:p2p:alice:slim-config:
+    desc: "Point to Point example - Alice will listen for messages and echo them"
+    deps:
+      - python:build
+    cmds:
+      - |
+        uv run slim-bindings-p2p --use-slim-config
     vars:
       EXTRA_ARGS: '{{.EXTRA_ARGS | default ""}}'
 
