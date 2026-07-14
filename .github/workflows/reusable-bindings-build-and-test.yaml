@@ -476,6 +476,13 @@ jobs:
         run: |
           task generate TARGET=x86_64-unknown-linux-gnu
 
+      # Guard the main package's named-export barrel: it must stay in sync with
+      # the generated bindings surface so `import { Channel } from
+      # '@agntcy/slim-bindings'` (and slimrpc-generated stubs) keep resolving.
+      - name: Check named-export barrel
+        # CWD is ./node (job default working-directory), so the node dir is ".".
+        run: node "${GITHUB_WORKSPACE}/.github/tests/node/check_named_exports.mjs" .
+
       # Prove the slimrpc node target end-to-end: generate stubs from the
       # in-repo plugin, type-check the generated example, then run it against a
       # live in-process SLIM broker so a break in the generator, the runtime
