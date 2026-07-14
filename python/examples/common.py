@@ -218,7 +218,7 @@ def create_app_from_config() -> Any:
         slim_bindings.SlimError: If config loading, connection, or subscription fails.
     """
     service = setup_service()
-    config = slim_bindings.load_slim_config()
+    config = slim_bindings.load_slim_config(None)
     return service.create_app_from_slim_config(config)
 
 
