@@ -340,7 +340,11 @@ tasks:
     deps:
       - task: buf
     cmds:
-      - cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-node
+      # Build the slimrpc node plugin from the in-repo source (the crates.io
+      # release of agntcy-protoc-slimrpc-plugin does not yet ship the node
+      # target) and install it into ~/.cargo/bin, which is on PATH for buf's
+      # `local: protoc-gen-slimrpc-node` to resolve.
+      - cargo install --locked --path "{{.TASKFILE_DIR}}/../slimrpc-compiler" --bin protoc-gen-slimrpc-node
       - |
         # Find every buf.gen.yaml under node/ and run buf generate in its folder.
         cd "{{.TASKFILE_DIR}}"

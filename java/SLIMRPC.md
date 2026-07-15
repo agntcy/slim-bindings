@@ -16,7 +16,7 @@ protocol.
 This README provides a guide to understanding how slimrpc functions and how you can
 implement it in your applications. For detailed instructions on compiling a
 protobuf file to obtain the necessary slimrpc stub code, please refer to the
-dedicated [README file of the slimrpc compiler](https://github.com/agntcy/slim/blob/main/crates/slimrpc-compiler/README.md).
+dedicated [README file of the slimrpc compiler](../slimrpc-compiler/README.md).
 
 ## SLIM naming in slimrpc
 

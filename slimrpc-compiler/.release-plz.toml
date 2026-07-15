@@ -6,12 +6,12 @@ release_always = false
 release = false
 
 # Remove agntcy- from git tag and release names so they look like:
-#   slim-bindings-v1.4.1
+#   protoc-slimrpc-plugin-v1.4.1
 git_tag_name = "{{ package | replace(from='agntcy-', to='') }}-v{{ version }}"
 git_release_name = "{{ package | replace(from='agntcy-', to='') }} v{{ version }}"
 
 [[package]]
-name = "agntcy-slim-bindings"
-publish = false
-release = false
-changelog_update = false
+name = "agntcy-protoc-slimrpc-plugin"
+publish = true
+release = true
+changelog_update = true
