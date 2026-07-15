@@ -43,7 +43,7 @@ pub enum Direction {
     Send,          // Can only send data messages (shutdown_send: false, shutdown_receive: true)
     Recv,          // Can only receive data messages (shutdown_send: true, shutdown_receive: false)
     Bidirectional, // Can send and receive data messages (shutdown_send: false, shutdown_receive: false)
-    None, // Neither send nor receive data messages (shutdown_send: true, shutdown_receive: true)
+    None,          // Neither send nor receive data messages (shutdown_send: true, shutdown_receive: true)
 }
 
 impl From<Direction> for CoreDirection {
