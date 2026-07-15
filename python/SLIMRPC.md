@@ -16,7 +16,7 @@ protocol.
 This README provides a guide to understanding how slimrpc functions and how you can
 implement it in your applications. For detailed instructions on compiling a
 protobuf file to obtain the necessary slimrpc stub code, please refer to the
-dedicated [README file of the slimrpc compiler](../../slimrpc-compiler/README.md).
+dedicated [README file of the slimrpc compiler](https://github.com/agntcy/slim/blob/main/crates/slimrpc-compiler/README.md).
 
 ## SLIM naming in slimrpc
 
@@ -70,7 +70,7 @@ interaction, leveraging the simple example provided in the
 
 The foundation of this example is the `example.proto` file, which is a
 standard Protocol Buffers definition file. This file is compiled using the slimrpc
-compiler (refer to the [slimrpc Compiler README](../../slimrpc-compiler/README.md)
+compiler (refer to the [slimrpc Compiler README](https://github.com/agntcy/slim/blob/main/crates/slimrpc-compiler/README.md)
 for installation and usage instructions) to generate the necessary Python stub
 code. The generated code is available in two files: `example_pb2.py` and
 `example_pb2_slimrpc.py`. Specifically, `example_pb2_slimrpc.py` contains the

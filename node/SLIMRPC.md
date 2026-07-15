@@ -1,7 +1,7 @@
 # SlimRPC for Node.js / TypeScript
 
 `protoc-gen-slimrpc-node` generates TypeScript client stubs and server handlers
-for [slimrpc](../slimrpc-compiler) from Protocol Buffer service definitions. The
+for [slimrpc](https://github.com/agntcy/slim/tree/main/crates/slimrpc-compiler) from Protocol Buffer service definitions. The
 generated code runs on the `@agntcy/slim-bindings` runtime (built with
 `uniffi-bindgen-react-native`, napi target) and uses
 [protobuf-es](https://github.com/bufbuild/protobuf-es) (`@bufbuild/protobuf`,
@@ -32,8 +32,9 @@ cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-nod
 `PATH`. Alternatively, build from source:
 
 ```bash
-cd slimrpc-compiler
-cargo build --release --bin protoc-gen-slimrpc-node
+git clone https://github.com/agntcy/slim
+cd slim
+cargo build --release -p agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-node
 # binary at target/release/protoc-gen-slimrpc-node
 ```
 

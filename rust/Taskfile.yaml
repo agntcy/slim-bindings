@@ -102,17 +102,3 @@ tasks:
     cmds:
       - cargo clean
 
-  example:p2p:sender:
-    desc: Start point to point SLIM sender example
-    cmds:
-      - cargo run --example sender -- --local agntcy/ns/bob --shared-secret {{.SHARED_SECRET}}  --session-type p2p --participants agntcy/ns/alice
-
-  example:group:sender:
-    desc: Start group SLIM sender example (agntcy/ns/alice and agntcy/ns/charlie receivers need to be running)
-    cmds:
-      - cargo run --example sender -- --local agntcy/ns/bob --shared-secret {{.SHARED_SECRET}}  --session-type group --participants agntcy/ns/alice agntcy/ns/charlie
-
-  example:receiver:
-    desc: SLIM receiver example (set local name by the LOCAL environment variable)
-    cmds:
-      - cargo run --example receiver -- --local {{.LOCAL}} --shared-secret {{.SHARED_SECRET}}

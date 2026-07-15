@@ -14,7 +14,7 @@ from the inherent security features and efficiency provided by the SLIM
 protocol.
 
 For detailed instructions on compiling a protobuf file to obtain the necessary
-slimrpc stub code, see the [slimrpc compiler README](../../slimrpc-compiler/README.md).
+slimrpc stub code, see the [slimrpc compiler README](https://github.com/agntcy/slim/blob/main/crates/slimrpc-compiler/README.md).
 
 ## SLIM naming in slimrpc
 
@@ -39,7 +39,7 @@ when a message arrives for a defined RPC method.
 
 - .NET 8.0 or higher
 - [buf](https://buf.build/docs/installation) CLI
-- [protoc-gen-slimrpc-csharp](../../slimrpc-compiler/README.md) plugin (build from source)
+- [protoc-gen-slimrpc-csharp](https://github.com/agntcy/slim/blob/main/crates/slimrpc-compiler/README.md) plugin (build from source)
 
 ### Code Generation
 
