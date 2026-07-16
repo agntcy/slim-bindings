@@ -327,7 +327,10 @@ tasks:
     deps:
       - task: install-cargo-binstall
     cmds:
-      - cargo binstall --no-confirm {{.COMPONENTS}}
+      # These are host tools. Clear any cross-compile bindgen args (e.g. iOS
+      # sysroot/target) so native build scripts of components (or their fallback
+      # source builds) don't inherit an incompatible sysroot/target.
+      - env -u BINDGEN_EXTRA_CLANG_ARGS cargo binstall --no-confirm {{.COMPONENTS}}
     vars:
       COMPONENTS: '{{ .COMPONENTS | default "" }}'
 
@@ -337,4 +340,8 @@ tasks:
     status:
       - cargo binstall --help >/dev/null 2>&1
     cmds:
-      - cargo install cargo-binstall --locked
+      # cargo-binstall is a host tool; building it (and its native deps such as
+      # aws-lc-sys) must not inherit cross-compile bindgen args like
+      # BINDGEN_EXTRA_CLANG_ARGS, which would point clang at an iOS sysroot/target
+      # while targeting the host and fail with an incompatible-sysroot error.
+      - env -u BINDGEN_EXTRA_CLANG_ARGS cargo install cargo-binstall --locked
