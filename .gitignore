@@ -142,3 +142,6 @@ libslim_bindings.a
 
 # Backup files
 *.bak
+
+# Slim config cache
+.slim-cache/
