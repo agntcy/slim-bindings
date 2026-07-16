@@ -101,7 +101,7 @@ func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64,
 func CreateAndConnectAppFromConfig() (*slim.SlimAppHandle, error) {
 	slim.InitializeWithDefaults()
 
-	config, err := slim.LoadSlimConfig()
+	config, err := slim.LoadSlimConfig(nil)
 	if err != nil {
 		return nil, fmt.Errorf("load slim config: %w", err)
 	}
@@ -111,5 +111,5 @@ func CreateAndConnectAppFromConfig() (*slim.SlimAppHandle, error) {
 		return nil, fmt.Errorf("create app from config: %w", err)
 	}
 
-	return handle, nil
+	return &handle, nil
 }
