@@ -83,6 +83,8 @@ tasks:
   patch-slimrpc:
     desc: Relocate the generated slim_rpc namespace package into the slim-bindings-go module
     internal: true
+    vars:
+      VERSION: '{{.VERSION | default "devel"}}'
     cmds:
       - echo "Relocating slim_rpc namespace package into module..."
       - |
@@ -102,15 +104,24 @@ tasks:
 
         GO_FILE="$DEST_DIR/slim_rpc.go"
 
-        # Rewrite the cgo preamble: add CFLAGS so <slim_rpc.h> is found, and (on darwin) allow
-        # slim_rpc's C symbols to resolve at final link against the archive linked by the
-        # slim_bindings package. slim_rpc must NOT re-link the archive itself.
+        # Rewrite the cgo preamble. slim_rpc links the SAME static archive as the
+        # slim_bindings package (one archive holds both namespaces' symbols via
+        # uniffi_reexport_scaffolding!); it must link it explicitly so the
+        # slim_rpc-specific archive members get pulled in on every platform
+        # (relying on the slim_bindings package alone only works on darwin, where
+        # -undefined,dynamic_lookup defers resolution — linux/windows need the -l).
+        # slim_rpc.go lives one directory deeper than slim_bindings.go, so the -L
+        # paths gain one extra '../' relative to the slim_bindings.go directives.
         cat > /tmp/slimrpc_preamble.txt << 'EOF'
         package slim_rpc
 
         /*
         #cgo CFLAGS: -I${SRCDIR}
-        #cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
+        #cgo linux,amd64 LDFLAGS: -L${SRCDIR}/.. -L${SRCDIR}/../../../../../../.cgo-cache/slim-bindings/{{.VERSION}} -lslim_bindings_x86_64_linux_gnu -lm
+        #cgo linux,arm64 LDFLAGS: -L${SRCDIR}/.. -L${SRCDIR}/../../../../../../.cgo-cache/slim-bindings/{{.VERSION}} -lslim_bindings_aarch64_linux_gnu -lm
+        #cgo darwin,amd64 LDFLAGS: -L${SRCDIR}/.. -L${SRCDIR}/../../../../../../.cgo-cache/slim-bindings/{{.VERSION}} -lslim_bindings_x86_64_darwin -Wl,-undefined,dynamic_lookup
+        #cgo darwin,arm64 LDFLAGS: -L${SRCDIR}/.. -L${SRCDIR}/../../../../../../.cgo-cache/slim-bindings/{{.VERSION}} -lslim_bindings_aarch64_darwin -Wl,-undefined,dynamic_lookup
+        #cgo windows,amd64 LDFLAGS: -L${SRCDIR}/.. -L${SRCDIR}/../../../../../../.cgo-cache/slim-bindings/{{.VERSION}} -lslim_bindings_x86_64_windows_gnu -lws2_32 -lbcrypt -ladvapi32 -luserenv -lntdll -lgcc_eh -lgcc -lkernel32 -lole32
         #include <slim_rpc.h>
         */
         import "C"
@@ -188,6 +199,8 @@ tasks:
         vars:
           VERSION: "{{.VERSION}}"
       - task: patch-slimrpc
+        vars:
+          VERSION: "{{.VERSION}}"
       - echo "Bindings generated in slim_bindings/"
     silent: true
 
@@ -269,6 +282,8 @@ tasks:
         vars:
           VERSION: "{{.VERSION}}"
       - task: patch-slimrpc
+        vars:
+          VERSION: "{{.VERSION}}"
       - echo "Bindings generated in slim_bindings/"
     silent: true
 
