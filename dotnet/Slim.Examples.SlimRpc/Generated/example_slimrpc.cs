@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using uniffi.slim_bindings;
+using uniffi.slim_rpc;
 namespace ExampleService;
 
 

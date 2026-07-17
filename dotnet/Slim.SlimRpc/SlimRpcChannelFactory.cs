@@ -18,14 +18,14 @@ public static class SlimRpcChannelFactory
     /// <param name="remote">The remote service name.</param>
     /// <param name="connectionId">Optional connection ID to use.</param>
     /// <returns>A channel for making RPC calls.</returns>
-    public static uniffi.slim_bindings.Channel CreateChannel(
+    public static uniffi.slim_rpc.Channel CreateChannel(
         SlimApp app,
         SlimName remote,
         ulong? connectionId = null)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(remote);
-        return uniffi.slim_bindings.Channel.NewWithConnection(app._inner, remote._inner, connectionId);
+        return uniffi.slim_rpc.Channel.NewWithConnection(app._inner, remote._inner, connectionId);
     }
 
     /// <summary>
@@ -35,7 +35,7 @@ public static class SlimRpcChannelFactory
     /// <param name="members">The remote service names to broadcast to.</param>
     /// <param name="connectionId">Optional connection ID to use.</param>
     /// <returns>A channel for making multicast RPC calls.</returns>
-    public static uniffi.slim_bindings.Channel CreateGroupChannel(
+    public static uniffi.slim_rpc.Channel CreateGroupChannel(
         SlimApp app,
         SlimName[] members,
         ulong? connectionId = null)
@@ -43,6 +43,6 @@ public static class SlimRpcChannelFactory
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(members);
         var innerNames = members.Select(m => m._inner).ToArray();
-        return uniffi.slim_bindings.Channel.NewGroupWithConnection(app._inner, innerNames, connectionId);
+        return uniffi.slim_rpc.Channel.NewGroupWithConnection(app._inner, innerNames, connectionId);
     }
 }
