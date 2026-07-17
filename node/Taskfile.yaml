@@ -128,6 +128,16 @@ tasks:
           --ts-dir "${OUT_DIR}" \
           "${DYLIB_PATH}"
       - |
+        # slimrpc is a re-exported second UniFFI namespace whose symbols live in the
+        # single slim_bindings cdylib (uniffi_reexport_scaffolding!). ubrn emits
+        # slim_rpc-ffi.ts with crateName "slim_rpc", which would look for a separate
+        # libslim_rpc.<ext> that does not exist. Point it at the core library instead.
+        if [ -f "{{.TASKFILE_DIR}}/generated/slim_rpc-ffi.ts" ]; then
+          perl -i -pe 's/crateName: "slim_rpc"/crateName: "slim_bindings"/' \
+            "{{.TASKFILE_DIR}}/generated/slim_rpc-ffi.ts"
+          echo "🔧 Patched slim_rpc-ffi.ts to load the slim_bindings library."
+        fi
+      - |
         # Copy the dynamic library to the generated directory (generated code expects libslim_bindings.<ext>).
         DYLIB_PATH=$(cat /tmp/slim-node-dylib-path.txt)
         LIB_NAME="{{.LIB_NAME}}"
