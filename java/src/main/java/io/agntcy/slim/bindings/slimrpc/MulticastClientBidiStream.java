@@ -3,9 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc;
 
-import io.agntcy.slim.bindings.MulticastBidiStreamHandler;
-import io.agntcy.slim.bindings.MulticastStreamMessage;
-import io.agntcy.slim.bindings.RpcException;
 
 import java.util.function.Function;
 

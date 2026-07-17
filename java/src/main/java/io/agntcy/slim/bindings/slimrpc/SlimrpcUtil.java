@@ -3,8 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc;
 
-import io.agntcy.slim.bindings.RpcCode;
-import io.agntcy.slim.bindings.RpcException;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Parser;

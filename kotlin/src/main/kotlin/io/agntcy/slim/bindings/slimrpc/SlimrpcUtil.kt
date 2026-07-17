@@ -5,8 +5,6 @@ package io.agntcy.slim.bindings.slimrpc
 
 import com.google.protobuf.InvalidProtocolBufferException
 import com.google.protobuf.Parser
-import io.agntcy.slim.bindings.RpcCode
-import io.agntcy.slim.bindings.RpcException
 import java.util.concurrent.CompletionException
 
 fun <T> parse(data: ByteArray, parser: Parser<T>): T {

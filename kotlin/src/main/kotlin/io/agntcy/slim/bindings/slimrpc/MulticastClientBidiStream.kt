@@ -3,8 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc
 
-import io.agntcy.slim.bindings.MulticastBidiStreamHandler
-import io.agntcy.slim.bindings.MulticastStreamMessage
 
 class MulticastClientBidiStream<ReqT, RespT>(
     private val inner: MulticastBidiStreamHandler,
