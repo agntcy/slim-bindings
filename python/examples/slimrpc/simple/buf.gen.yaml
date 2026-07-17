@@ -10,7 +10,7 @@ inputs:
   - proto_file: example.proto
 plugins:
   # Generates _pb2_slimrpc.py files
-  # Requires `protoc-gen-slimrpc-python` on PATH (installed via `cargo install agntcy-protoc-slimrpc-plugin`).
+  # Requires `protoc-gen-slimrpc-python` on PATH (built from the in-repo slimrpc-compiler by `task generate-proto`).
   - local: protoc-gen-slimrpc-python
     out: types
   # Generate python protobuf related code

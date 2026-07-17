@@ -9,7 +9,7 @@ plugins:
       - paths=source_relative
 
   # Generates _slimrpc.pb.go files
-  # Requires `protoc-gen-slimrpc-go` on PATH (installed via `cargo install agntcy-protoc-slimrpc-plugin`).
+  # Requires `protoc-gen-slimrpc-go` on PATH (built from the in-repo slimrpc-compiler by `task generate-proto`).
   - local: protoc-gen-slimrpc-go
     out: types
     opt:

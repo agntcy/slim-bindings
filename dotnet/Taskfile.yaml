@@ -393,7 +393,7 @@ tasks:
     cmds:
       - |
         echo "Installing protoc-gen-slimrpc-csharp from crates.io..."
-        cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-csharp
+        cargo install --locked --path "{{.TASKFILE_DIR}}/../slimrpc-compiler" --bin protoc-gen-slimrpc-csharp
         echo "Plugin installed"
       - task: buf
       - |
