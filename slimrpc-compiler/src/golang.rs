@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"time"
 
-	slim_bindings "github.com/agntcy/slim-bindings-go"
+	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 	"github.com/agntcy/slim-bindings-go/slimrpc"
 	"google.golang.org/protobuf/proto"
 {{PROTO_IMPORTS}})
@@ -40,11 +40,11 @@ type {{SERVICE_NAME}}Client interface {
 }
 
 type {{SERVICE_NAME}}ClientImpl struct {
-	channel slim_bindings.ChannelInterface
+	channel slim_rpc.ChannelInterface
 }
 
 // New{{SERVICE_NAME}}Client creates a new {{SERVICE_NAME}} client.
-func New{{SERVICE_NAME}}Client(channel slim_bindings.ChannelInterface) {{SERVICE_NAME}}Client {
+func New{{SERVICE_NAME}}Client(channel slim_rpc.ChannelInterface) {{SERVICE_NAME}}Client {
 	return &{{SERVICE_NAME}}ClientImpl{
 		channel: channel,
 	}
@@ -187,8 +187,8 @@ type Unimplemented{{SERVICE_NAME}}Server struct {
 
 {{UNIMPLEMENTED_METHODS}}
 
-// Register{{SERVICE_NAME}}Server registers the server with slim_bindings.
-func Register{{SERVICE_NAME}}Server(server slim_bindings.ServerInterface, impl {{SERVICE_NAME}}Server) {
+// Register{{SERVICE_NAME}}Server registers the server with slim_rpc.
+func Register{{SERVICE_NAME}}Server(server slim_rpc.ServerInterface, impl {{SERVICE_NAME}}Server) {
 {{REGISTER_METHODS}}
 }
 
@@ -206,29 +206,29 @@ type {{SERVICE_NAME}}_{{METHOD_NAME}}_Handler struct {
 	impl {{SERVICE_NAME}}Server
 }
 
-func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcContext *slim_bindings.Context) ([]byte, error) {
+func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcContext *slim_rpc.Context) ([]byte, error) {
 	req := &{{INPUT_TYPE}}{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
 	}
 
-	// Convert slim_bindings.Context to context.Context
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
 	resp, err := h.impl.{{METHOD_NAME}}(ctx, req)
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			return nil, rpcErr
 		}
 		// Convert generic errors to RpcError
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -236,8 +236,8 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcCon
 
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -284,11 +284,11 @@ type {{SERVICE_NAME}}_{{METHOD_NAME}}_Handler struct {
 	impl {{SERVICE_NAME}}Server
 }
 
-func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
+func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
 	req := &{{INPUT_TYPE}}{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
@@ -296,7 +296,7 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcCon
 		return rpcErr
 	}
 
-	// Convert slim_bindings.Context to context.Context
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -311,13 +311,13 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcCon
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -334,8 +334,8 @@ type {{SERVICE_NAME}}_{{METHOD_NAME}}_Handler struct {
 	impl {{SERVICE_NAME}}Server
 }
 
-func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_bindings.RequestStream, rpcContext *slim_bindings.Context) ([]byte, error) {
-	// Convert slim_bindings.Context to context.Context
+func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context) ([]byte, error) {
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -343,11 +343,11 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_bindings.
 
 	resp, err := h.impl.{{METHOD_NAME}}(ctx, responseStream)
 	if err != nil {
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			return nil, rpcErr
 		}
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -355,8 +355,8 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_bindings.
 
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -370,8 +370,8 @@ type {{SERVICE_NAME}}_{{METHOD_NAME}}_Handler struct {
 	impl {{SERVICE_NAME}}Server
 }
 
-func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_bindings.RequestStream, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
-	// Convert slim_bindings.Context to context.Context
+func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -386,13 +386,13 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_bindings.
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -415,17 +415,17 @@ const REGISTER_STREAM_STREAM_METHOD: &str = r#"	server.RegisterStreamStream("{{P
 
 const GROUP_CLIENT_INTERFACE_TEMPLATE: &str = r#"
 // {{SERVICE_NAME}}GroupClient is the multicast (group) client API for {{SERVICE_NAME}} service.
-// Requires a slim_bindings.ChannelInterface backed by a channel created with ChannelNewGroup* targeting multiple server instances.
+// Requires a slim_rpc.ChannelInterface backed by a channel created with ChannelNewGroup* targeting multiple server instances.
 type {{SERVICE_NAME}}GroupClient interface {
 {{GROUP_CLIENT_METHODS}}
 }
 
 type {{SERVICE_NAME}}GroupClientImpl struct {
-	channel slim_bindings.ChannelInterface
+	channel slim_rpc.ChannelInterface
 }
 
 // New{{SERVICE_NAME}}GroupClient creates a new multicast {{SERVICE_NAME}} client.
-func New{{SERVICE_NAME}}GroupClient(channel slim_bindings.ChannelInterface) {{SERVICE_NAME}}GroupClient {
+func New{{SERVICE_NAME}}GroupClient(channel slim_rpc.ChannelInterface) {{SERVICE_NAME}}GroupClient {
 	return &{{SERVICE_NAME}}GroupClientImpl{channel: channel}
 }
 

@@ -4,8 +4,8 @@ version = 4
 
 [[package]]
 name = "agntcy-slim"
-version = "2.0.0-alpha.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "2.0.0-alpha.4"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-service",
@@ -28,8 +28,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-auth"
-version = "0.11.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.12.1"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-version",
  "aws-lc-rs",
@@ -75,8 +75,16 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-bindings"
-version = "2.0.0-alpha.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "2.0.0-alpha.3"
+dependencies = [
+ "agntcy-slim-bindings 2.0.0-alpha.6",
+ "agntcy-slim-rpc",
+]
+
+[[package]]
+name = "agntcy-slim-bindings"
+version = "2.0.0-alpha.6"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim",
  "agntcy-slim-auth",
@@ -88,10 +96,7 @@ dependencies = [
  "agntcy-slim-signal",
  "agntcy-slim-tracing",
  "agntcy-slim-version",
- "async-stream",
- "async-trait",
  "display-error-chain",
- "drain",
  "futures",
  "futures-timer",
  "parking_lot",
@@ -99,23 +104,14 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tokio-stream",
  "tracing",
  "uniffi",
- "uuid",
-]
-
-[[package]]
-name = "agntcy-slim-bindings"
-version = "2.0.0-alpha.3"
-dependencies = [
- "agntcy-slim-bindings 2.0.0-alpha.2",
 ]
 
 [[package]]
 name = "agntcy-slim-config"
-version = "0.12.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.12.3"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-version",
@@ -169,8 +165,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-controller"
-version = "0.10.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.11.2"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-config",
@@ -201,8 +197,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-datapath"
-version = "0.16.1"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.16.4"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-proto",
@@ -246,8 +242,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-mls"
-version = "0.2.1"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.2.3"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-version",
@@ -267,8 +263,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-proto"
-version = "0.2.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.3.2"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-version",
@@ -285,9 +281,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "agntcy-slim-rpc"
+version = "2.0.0-alpha.4"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
+dependencies = [
+ "agntcy-slim-auth",
+ "agntcy-slim-bindings 2.0.0-alpha.6",
+ "agntcy-slim-datapath",
+ "agntcy-slim-service",
+ "agntcy-slim-session",
+ "async-stream",
+ "async-trait",
+ "display-error-chain",
+ "drain",
+ "futures",
+ "futures-timer",
+ "parking_lot",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "uniffi",
+ "uuid",
+]
+
+[[package]]
 name = "agntcy-slim-service"
-version = "0.11.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.11.3"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-config",
@@ -311,8 +332,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-session"
-version = "0.5.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.5.3"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-datapath",
@@ -343,8 +364,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-signal"
-version = "0.1.10"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.1.12"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-version",
  "tokio",
@@ -353,8 +374,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-tracing"
-version = "0.4.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "0.4.5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-version",
@@ -377,8 +398,8 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-version"
-version = "2.0.0-alpha.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fmove-bindings#e166aca89bc64a63cc6bbca5e5d6f26dc3c48c0d"
+version = "2.0.0-alpha.4"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fremove-slimrpc-from-bindings#c0a403741d409df4042bcb5e0b0c7a014e18da18"
 
 [[package]]
 name = "ahash"
