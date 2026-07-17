@@ -13,6 +13,7 @@ import (
 	"time"
 
 	slim_bindings "github.com/agntcy/slim-bindings-go"
+	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 	"github.com/agntcy/slim-bindings/go/examples/common"
 	pb "github.com/agntcy/slim-bindings/go/examples/slimrpc/simple/types"
 )
@@ -171,7 +172,7 @@ func main() {
 	}
 
 	// Group channel targeting all server instances
-	channel, err := slim_bindings.ChannelNewGroupWithConnection(app, serverNames, &connId)
+	channel, err := slim_rpc.ChannelNewGroupWithConnection(app, serverNames, &connId)
 	if err != nil {
 		log.Fatalf("Failed to create group channel: %v", err)
 	}

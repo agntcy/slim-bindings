@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	slim_bindings "github.com/agntcy/slim-bindings-go"
+	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 	"github.com/agntcy/slim-bindings-go/slimrpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -24,11 +24,11 @@ type TestClient interface {
 }
 
 type TestClientImpl struct {
-	channel slim_bindings.ChannelInterface
+	channel slim_rpc.ChannelInterface
 }
 
 // NewTestClient creates a new Test client.
-func NewTestClient(channel slim_bindings.ChannelInterface) TestClient {
+func NewTestClient(channel slim_rpc.ChannelInterface) TestClient {
 	return &TestClientImpl{
 		channel: channel,
 	}
@@ -202,8 +202,8 @@ func (UnimplementedTestServer) ExampleStreamStream(ctx context.Context, stream s
 }
 
 
-// RegisterTestServer registers the server with slim_bindings.
-func RegisterTestServer(server slim_bindings.ServerInterface, impl TestServer) {
+// RegisterTestServer registers the server with slim_rpc.
+func RegisterTestServer(server slim_rpc.ServerInterface, impl TestServer) {
 	server.RegisterUnaryUnary("example_service.Test", "ExampleUnaryUnary", &Test_ExampleUnaryUnary_Handler{impl: impl})
 	server.RegisterUnaryStream("example_service.Test", "ExampleUnaryStream", &Test_ExampleUnaryStream_Handler{impl: impl})
 	server.RegisterUnaryStream("example_service.Test", "ExampleUnaryStreamTwo", &Test_ExampleUnaryStreamTwo_Handler{impl: impl})
@@ -216,29 +216,29 @@ type Test_ExampleUnaryUnary_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleUnaryUnary_Handler) Handle(request []byte, rpcContext *slim_bindings.Context) ([]byte, error) {
+func (h *Test_ExampleUnaryUnary_Handler) Handle(request []byte, rpcContext *slim_rpc.Context) ([]byte, error) {
 	req := &ExampleRequest{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
 	}
 
-	// Convert slim_bindings.Context to context.Context
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
 	resp, err := h.impl.ExampleUnaryUnary(ctx, req)
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			return nil, rpcErr
 		}
 		// Convert generic errors to RpcError
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -246,8 +246,8 @@ func (h *Test_ExampleUnaryUnary_Handler) Handle(request []byte, rpcContext *slim
 
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -259,11 +259,11 @@ type Test_ExampleUnaryStream_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
+func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
 	req := &ExampleRequest{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
@@ -271,7 +271,7 @@ func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *sli
 		return rpcErr
 	}
 
-	// Convert slim_bindings.Context to context.Context
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -286,13 +286,13 @@ func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *sli
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -307,11 +307,11 @@ type Test_ExampleUnaryStreamTwo_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
+func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
 	req := &ExampleRequest{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
@@ -319,7 +319,7 @@ func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *
 		return rpcErr
 	}
 
-	// Convert slim_bindings.Context to context.Context
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -334,13 +334,13 @@ func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -355,8 +355,8 @@ type Test_ExampleStreamUnary_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_bindings.RequestStream, rpcContext *slim_bindings.Context) ([]byte, error) {
-	// Convert slim_bindings.Context to context.Context
+func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context) ([]byte, error) {
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -364,11 +364,11 @@ func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_bindings.RequestSt
 
 	resp, err := h.impl.ExampleStreamUnary(ctx, responseStream)
 	if err != nil {
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			return nil, rpcErr
 		}
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -376,8 +376,8 @@ func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_bindings.RequestSt
 
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -389,8 +389,8 @@ type Test_ExampleStreamStream_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_bindings.RequestStream, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
-	// Convert slim_bindings.Context to context.Context
+func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
+	// Convert slim_rpc.Context to context.Context
 	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
@@ -405,13 +405,13 @@ func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_bindings.RequestS
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -424,7 +424,7 @@ func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_bindings.RequestS
 
 
 // TestGroupClient is the multicast (group) client API for Test service.
-// Requires a slim_bindings.ChannelInterface backed by a channel created with ChannelNewGroup* targeting multiple server instances.
+// Requires a slim_rpc.ChannelInterface backed by a channel created with ChannelNewGroup* targeting multiple server instances.
 type TestGroupClient interface {
 	ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error)
 	ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error)
@@ -434,11 +434,11 @@ type TestGroupClient interface {
 }
 
 type TestGroupClientImpl struct {
-	channel slim_bindings.ChannelInterface
+	channel slim_rpc.ChannelInterface
 }
 
 // NewTestGroupClient creates a new multicast Test client.
-func NewTestGroupClient(channel slim_bindings.ChannelInterface) TestGroupClient {
+func NewTestGroupClient(channel slim_rpc.ChannelInterface) TestGroupClient {
 	return &TestGroupClientImpl{channel: channel}
 }
 

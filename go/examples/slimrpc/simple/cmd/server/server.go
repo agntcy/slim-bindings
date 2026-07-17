@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	slim_bindings "github.com/agntcy/slim-bindings-go"
+	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 	"github.com/agntcy/slim-bindings-go/slimrpc"
 	"github.com/agntcy/slim-bindings/go/examples/common"
 	pb "github.com/agntcy/slim-bindings/go/examples/slimrpc/simple/types"
@@ -30,8 +31,8 @@ func (s *TestServiceImpl) ExampleUnaryUnary(ctx context.Context, req *pb.Example
 	}, nil
 
 	// If you need to return a specific error
-	// return nil, slim_bindings.NewRpcErrorRpc(
-	// 	   slim_bindings.RpcCodeInvalidArgument,
+	// return nil, slim_rpc.NewRpcErrorRpc(
+	// 	   slim_rpc.RpcCodeInvalidArgument,
 	// 	   "Invalid argument..",
 	// 	   nil,
 	// )
@@ -140,7 +141,7 @@ func main() {
 	}
 
 	// Create server
-	server := slim_bindings.ServerNewWithConnection(app, localName, &connId)
+	server := slim_rpc.ServerNewWithConnection(app, localName, &connId)
 
 	// Register service
 	pb.RegisterTestServer(server, &TestServiceImpl{})
