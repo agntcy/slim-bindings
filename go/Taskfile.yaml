@@ -381,6 +381,8 @@ tasks:
       - cd {{.BINDINGS_DIR}} && cargo clean
       - rm slim_bindings/slim_bindings.go || true
       - rm slim_bindings/slim_bindings.h || true
+      - rm slim_bindings/slim_rpc/slim_rpc.go || true
+      - rm slim_bindings/slim_rpc/slim_rpc.h || true
       - rm slim_bindings/libslim_bindings_*.a || true
       - echo "Clean complete"
     silent: true

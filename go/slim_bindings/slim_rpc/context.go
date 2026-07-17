@@ -1,9 +1,7 @@
-package slimrpc
+package slim_rpc
 
 import (
 	"context"
-
-	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 )
 
 type contextKey int
@@ -37,9 +35,9 @@ func SessionIdFromContext(ctx context.Context) (string, bool) {
 	return sessionId, ok
 }
 
-// ContextFromRpcContext creates a Go context.Context from a slim_rpc.Context
+// ContextFromRpcContext creates a Go context.Context from a Context
 // It extracts the deadline, metadata, and session ID and applies them to the context
-func ContextFromRpcContext(rpcContext *slim_rpc.Context) (context.Context, context.CancelFunc) {
+func ContextFromRpcContext(rpcContext *Context) (context.Context, context.CancelFunc) {
 	ctx := context.Background()
 
 	// Get deadline and create context with timeout/deadline
@@ -69,7 +67,7 @@ func ContextFromRpcContext(rpcContext *slim_rpc.Context) (context.Context, conte
 
 // ContextWithTimeout creates a Go context.Context with a timeout based on RemainingTime
 // This is useful when you want to use the remaining time as a timeout instead of an absolute deadline
-func ContextWithTimeout(rpcContext *slim_rpc.Context) (context.Context, context.CancelFunc) {
+func ContextWithTimeout(rpcContext *Context) (context.Context, context.CancelFunc) {
 	ctx := context.Background()
 
 	// Get remaining time and create context with timeout

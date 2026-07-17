@@ -26,7 +26,6 @@ import (
 	"time"
 
 	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
-	"github.com/agntcy/slim-bindings-go/slimrpc"
 	"google.golang.org/protobuf/proto"
 {{PROTO_IMPORTS}})
 
@@ -73,7 +72,7 @@ func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -93,11 +92,11 @@ func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{
 }
 "#;
 
-const UNARY_STREAM_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slimrpc.ResponseStream[*{{OUTPUT_TYPE}}], error)
+const UNARY_STREAM_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slim_rpc.ResponseStream[*{{OUTPUT_TYPE}}], error)
 "#;
 
 const UNARY_STREAM_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slimrpc.ResponseStream[*{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slim_rpc.ResponseStream[*{{OUTPUT_TYPE}}], error) {
 	// Serialize request
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
@@ -113,7 +112,7 @@ func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -123,15 +122,15 @@ func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{
 		return nil, err
 	}
 
-	return slimrpc.NewClientResponseStream[*{{OUTPUT_TYPE}}](stream), nil
+	return slim_rpc.NewClientResponseStream[*{{OUTPUT_TYPE}}](stream), nil
 }
 "#;
 
-const STREAM_UNARY_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slimrpc.ClientRequestStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
+const STREAM_UNARY_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slim_rpc.ClientRequestStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
 "#;
 
 const STREAM_UNARY_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context) (slimrpc.ClientRequestStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context) (slim_rpc.ClientRequestStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
 	// Extract timeout from context
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
@@ -141,20 +140,20 @@ func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context) (slimr
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	stream := c.channel.CallStreamUnary("{{PACKAGE_NAME}}.{{SERVICE_NAME}}", "{{METHOD_NAME}}", timeout, metadata)
-	return slimrpc.NewClientRequestStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](stream), nil
+	return slim_rpc.NewClientRequestStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](stream), nil
 }
 "#;
 
-const STREAM_STREAM_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slimrpc.ClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
+const STREAM_STREAM_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slim_rpc.ClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
 "#;
 
 const STREAM_STREAM_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context) (slimrpc.ClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context) (slim_rpc.ClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
 	// Extract timeout from context
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
@@ -164,12 +163,12 @@ func (c *{{SERVICE_NAME}}ClientImpl) {{METHOD_NAME}}(ctx context.Context) (slimr
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	stream := c.channel.CallStreamStream("{{PACKAGE_NAME}}.{{SERVICE_NAME}}", "{{METHOD_NAME}}", timeout, metadata)
-	return slimrpc.NewClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](stream), nil
+	return slim_rpc.NewClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](stream), nil
 }
 "#;
 
@@ -217,7 +216,7 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcCon
 	}
 
 	// Convert slim_rpc.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
 	resp, err := h.impl.{{METHOD_NAME}}(ctx, req)
@@ -252,29 +251,29 @@ const REGISTER_METHOD: &str = r#"	server.RegisterUnaryUnary("{{PACKAGE_NAME}}.{{
 const UNARY_UNARY_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (*{{OUTPUT_TYPE}}, error)
 "#;
 
-const UNARY_STREAM_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}, stream slimrpc.RequestStream[*{{OUTPUT_TYPE}}]) error
+const UNARY_STREAM_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}, stream slim_rpc.ServerStream[*{{OUTPUT_TYPE}}]) error
 "#;
 
-const STREAM_UNARY_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, stream slimrpc.ResponseStream[*{{INPUT_TYPE}}]) (*{{OUTPUT_TYPE}}, error)
+const STREAM_UNARY_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, stream slim_rpc.ResponseStream[*{{INPUT_TYPE}}]) (*{{OUTPUT_TYPE}}, error)
 "#;
 
-const STREAM_STREAM_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, stream slimrpc.ServerBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}]) error
+const STREAM_STREAM_SERVER_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, stream slim_rpc.ServerBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}]) error
 "#;
 
 const UNIMPLEMENTED_UNARY_STREAM_METHOD: &str = r#"
-func (Unimplemented{{SERVICE_NAME}}Server) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}, stream slimrpc.RequestStream[*{{OUTPUT_TYPE}}]) error {
+func (Unimplemented{{SERVICE_NAME}}Server) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}, stream slim_rpc.ServerStream[*{{OUTPUT_TYPE}}]) error {
 	return fmt.Errorf("method {{METHOD_NAME}} not implemented")
 }
 "#;
 
 const UNIMPLEMENTED_STREAM_UNARY_METHOD: &str = r#"
-func (Unimplemented{{SERVICE_NAME}}Server) {{METHOD_NAME}}(ctx context.Context, stream slimrpc.ResponseStream[*{{INPUT_TYPE}}]) (*{{OUTPUT_TYPE}}, error) {
+func (Unimplemented{{SERVICE_NAME}}Server) {{METHOD_NAME}}(ctx context.Context, stream slim_rpc.ResponseStream[*{{INPUT_TYPE}}]) (*{{OUTPUT_TYPE}}, error) {
 	return nil, fmt.Errorf("method {{METHOD_NAME}} not implemented")
 }
 "#;
 
 const UNIMPLEMENTED_STREAM_STREAM_METHOD: &str = r#"
-func (Unimplemented{{SERVICE_NAME}}Server) {{METHOD_NAME}}(ctx context.Context, stream slimrpc.ServerBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}]) error {
+func (Unimplemented{{SERVICE_NAME}}Server) {{METHOD_NAME}}(ctx context.Context, stream slim_rpc.ServerBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}]) error {
 	return fmt.Errorf("method {{METHOD_NAME}} not implemented")
 }
 "#;
@@ -297,10 +296,10 @@ func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(request []byte, rpcCon
 	}
 
 	// Convert slim_rpc.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	stream := slimrpc.NewServerRequestStream[*{{OUTPUT_TYPE}}](sink)
+	stream := slim_rpc.NewServerRequestStream[*{{OUTPUT_TYPE}}](sink)
 	err := h.impl.{{METHOD_NAME}}(ctx, req, stream)
 
 	// Close the stream after handler returns
@@ -336,10 +335,10 @@ type {{SERVICE_NAME}}_{{METHOD_NAME}}_Handler struct {
 
 func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context) ([]byte, error) {
 	// Convert slim_rpc.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	responseStream := slimrpc.NewServerResponseStream[*{{INPUT_TYPE}}](stream)
+	responseStream := slim_rpc.NewServerResponseStream[*{{INPUT_TYPE}}](stream)
 
 	resp, err := h.impl.{{METHOD_NAME}}(ctx, responseStream)
 	if err != nil {
@@ -372,10 +371,10 @@ type {{SERVICE_NAME}}_{{METHOD_NAME}}_Handler struct {
 
 func (h *{{SERVICE_NAME}}_{{METHOD_NAME}}_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
 	// Convert slim_rpc.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	serverStream := slimrpc.NewServerBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](stream, sink)
+	serverStream := slim_rpc.NewServerBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](stream, sink)
 	err := h.impl.{{METHOD_NAME}}(ctx, serverStream)
 
 	// Close the stream after handler returns
@@ -432,11 +431,11 @@ func New{{SERVICE_NAME}}GroupClient(channel slim_rpc.ChannelInterface) {{SERVICE
 {{GROUP_CLIENT_METHOD_IMPLS}}
 "#;
 
-const UNARY_UNARY_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slimrpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error)
+const UNARY_UNARY_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slim_rpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error)
 "#;
 
 const UNARY_UNARY_GROUP_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slimrpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slim_rpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -449,7 +448,7 @@ func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, r
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -457,15 +456,15 @@ func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, r
 	if err != nil {
 		return nil, err
 	}
-	return slimrpc.NewMulticastResponseStream[*{{OUTPUT_TYPE}}](reader), nil
+	return slim_rpc.NewMulticastResponseStream[*{{OUTPUT_TYPE}}](reader), nil
 }
 "#;
 
-const UNARY_STREAM_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slimrpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error)
+const UNARY_STREAM_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slim_rpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error)
 "#;
 
 const UNARY_STREAM_GROUP_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slimrpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, req *{{INPUT_TYPE}}) (slim_rpc.MulticastResponseStream[*{{OUTPUT_TYPE}}], error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -478,7 +477,7 @@ func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, r
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -486,15 +485,15 @@ func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context, r
 	if err != nil {
 		return nil, err
 	}
-	return slimrpc.NewMulticastResponseStream[*{{OUTPUT_TYPE}}](reader), nil
+	return slim_rpc.NewMulticastResponseStream[*{{OUTPUT_TYPE}}](reader), nil
 }
 "#;
 
-const STREAM_UNARY_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slimrpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
+const STREAM_UNARY_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
 "#;
 
 const STREAM_UNARY_GROUP_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context) (slimrpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
 		t := time.Until(deadline)
@@ -502,20 +501,20 @@ func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context) (
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	handler := c.channel.CallMulticastStreamUnary("{{PACKAGE_NAME}}.{{SERVICE_NAME}}", "{{METHOD_NAME}}", timeout, metadata)
-	return slimrpc.NewMulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](handler), nil
+	return slim_rpc.NewMulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](handler), nil
 }
 "#;
 
-const STREAM_STREAM_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slimrpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
+const STREAM_STREAM_GROUP_CLIENT_METHOD: &str = r#"	{{METHOD_NAME}}(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error)
 "#;
 
 const STREAM_STREAM_GROUP_CLIENT_IMPL: &str = r#"
-func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context) (slimrpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
+func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}], error) {
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
 		t := time.Until(deadline)
@@ -523,12 +522,12 @@ func (c *{{SERVICE_NAME}}GroupClientImpl) {{METHOD_NAME}}(ctx context.Context) (
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	handler := c.channel.CallMulticastStreamStream("{{PACKAGE_NAME}}.{{SERVICE_NAME}}", "{{METHOD_NAME}}", timeout, metadata)
-	return slimrpc.NewMulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](handler), nil
+	return slim_rpc.NewMulticastClientBidiStream[*{{INPUT_TYPE}}, *{{OUTPUT_TYPE}}](handler), nil
 }
 "#;
 

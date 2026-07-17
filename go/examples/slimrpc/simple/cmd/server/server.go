@@ -14,7 +14,6 @@ import (
 
 	slim_bindings "github.com/agntcy/slim-bindings-go"
 	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
-	"github.com/agntcy/slim-bindings-go/slimrpc"
 	"github.com/agntcy/slim-bindings/go/examples/common"
 	pb "github.com/agntcy/slim-bindings/go/examples/slimrpc/simple/types"
 )
@@ -42,7 +41,7 @@ func (s *TestServiceImpl) ExampleUnaryUnary(ctx context.Context, req *pb.Example
 	// This will be trated with an "INTERNAL" error code
 }
 
-func (s *TestServiceImpl) ExampleUnaryStream(ctx context.Context, req *pb.ExampleRequest, stream slimrpc.RequestStream[*pb.ExampleResponse]) error {
+func (s *TestServiceImpl) ExampleUnaryStream(ctx context.Context, req *pb.ExampleRequest, stream slim_rpc.ServerStream[*pb.ExampleResponse]) error {
 	log.Printf("Received unary-stream request: %+v", req)
 
 	// Generate response stream
@@ -59,7 +58,7 @@ func (s *TestServiceImpl) ExampleUnaryStream(ctx context.Context, req *pb.Exampl
 	return nil
 }
 
-func (s *TestServiceImpl) ExampleStreamUnary(ctx context.Context, stream slimrpc.ResponseStream[*pb.ExampleRequest]) (*pb.ExampleResponse, error) {
+func (s *TestServiceImpl) ExampleStreamUnary(ctx context.Context, stream slim_rpc.ResponseStream[*pb.ExampleRequest]) (*pb.ExampleResponse, error) {
 	log.Println("Received stream-unary request")
 
 	var sum int64
@@ -86,7 +85,7 @@ func (s *TestServiceImpl) ExampleStreamUnary(ctx context.Context, stream slimrpc
 	}, nil
 }
 
-func (s *TestServiceImpl) ExampleStreamStream(ctx context.Context, stream slimrpc.ServerBidiStream[*pb.ExampleRequest, *pb.ExampleResponse]) error {
+func (s *TestServiceImpl) ExampleStreamStream(ctx context.Context, stream slim_rpc.ServerBidiStream[*pb.ExampleRequest, *pb.ExampleResponse]) error {
 	log.Println("Received stream-stream request")
 
 	for {

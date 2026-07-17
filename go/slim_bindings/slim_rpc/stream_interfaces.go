@@ -1,11 +1,9 @@
-package slimrpc
+package slim_rpc
 
 import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-
-	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 )
 
 // ResponseStream is a generic stream for receiving responses
@@ -13,8 +11,8 @@ type ResponseStream[T proto.Message] interface {
 	Recv() (T, error)
 }
 
-// RequestStream is a generic stream for sending requests
-type RequestStream[T proto.Message] interface {
+// ServerStream is a generic stream a server handler uses to send responses
+type ServerStream[T proto.Message] interface {
 	Send(T) error
 }
 
@@ -41,10 +39,10 @@ type ServerBidiStream[TReq proto.Message, TResp proto.Message] interface {
 
 // Generic client response stream implementation
 type genericClientResponseStream[T proto.Message] struct {
-	stream *slim_rpc.ResponseStreamReader
+	stream *ResponseStreamReader
 }
 
-func NewClientResponseStream[T proto.Message](stream *slim_rpc.ResponseStreamReader) ResponseStream[T] {
+func NewClientResponseStream[T proto.Message](stream *ResponseStreamReader) ResponseStream[T] {
 	return &genericClientResponseStream[T]{stream: stream}
 }
 
@@ -52,11 +50,11 @@ func (s *genericClientResponseStream[T]) Recv() (T, error) {
 	var zero T
 	msg := s.stream.NextAsync()
 	switch m := msg.(type) {
-	case slim_rpc.StreamMessageEnd:
+	case StreamMessageEnd:
 		return zero, nil
-	case slim_rpc.StreamMessageError:
+	case StreamMessageError:
 		return zero, m.Field0.AsError()
-	case slim_rpc.StreamMessageData:
+	case StreamMessageData:
 		resp := zero.ProtoReflect().New().Interface().(T)
 		if err := proto.Unmarshal(m.Field0, resp); err != nil {
 			return zero, err
@@ -69,10 +67,10 @@ func (s *genericClientResponseStream[T]) Recv() (T, error) {
 
 // Generic client request stream implementation
 type genericClientRequestStream[TReq proto.Message, TResp proto.Message] struct {
-	stream *slim_rpc.RequestStreamWriter
+	stream *RequestStreamWriter
 }
 
-func NewClientRequestStream[TReq proto.Message, TResp proto.Message](stream *slim_rpc.RequestStreamWriter) ClientRequestStream[TReq, TResp] {
+func NewClientRequestStream[TReq proto.Message, TResp proto.Message](stream *RequestStreamWriter) ClientRequestStream[TReq, TResp] {
 	return &genericClientRequestStream[TReq, TResp]{stream: stream}
 }
 
@@ -100,10 +98,10 @@ func (s *genericClientRequestStream[TReq, TResp]) CloseAndRecv() (TResp, error) 
 
 // Generic client bidi stream implementation
 type genericClientBidiStream[TReq proto.Message, TResp proto.Message] struct {
-	stream *slim_rpc.BidiStreamHandler
+	stream *BidiStreamHandler
 }
 
-func NewClientBidiStream[TReq proto.Message, TResp proto.Message](stream *slim_rpc.BidiStreamHandler) ClientBidiStream[TReq, TResp] {
+func NewClientBidiStream[TReq proto.Message, TResp proto.Message](stream *BidiStreamHandler) ClientBidiStream[TReq, TResp] {
 	return &genericClientBidiStream[TReq, TResp]{stream: stream}
 }
 
@@ -119,11 +117,11 @@ func (s *genericClientBidiStream[TReq, TResp]) Recv() (TResp, error) {
 	var zero TResp
 	msg := s.stream.RecvAsync()
 	switch m := msg.(type) {
-	case slim_rpc.StreamMessageEnd:
+	case StreamMessageEnd:
 		return zero, nil
-	case slim_rpc.StreamMessageError:
+	case StreamMessageError:
 		return zero, m.Field0.AsError()
-	case slim_rpc.StreamMessageData:
+	case StreamMessageData:
 		resp := zero.ProtoReflect().New().Interface().(TResp)
 		if err := proto.Unmarshal(m.Field0, resp); err != nil {
 			return zero, err
@@ -140,10 +138,10 @@ func (s *genericClientBidiStream[TReq, TResp]) CloseSend() error {
 
 // Generic server response stream implementation
 type genericServerResponseStream[T proto.Message] struct {
-	stream *slim_rpc.RequestStream
+	stream *RequestStream
 }
 
-func NewServerResponseStream[T proto.Message](stream *slim_rpc.RequestStream) ResponseStream[T] {
+func NewServerResponseStream[T proto.Message](stream *RequestStream) ResponseStream[T] {
 	return &genericServerResponseStream[T]{stream: stream}
 }
 
@@ -151,11 +149,11 @@ func (s *genericServerResponseStream[T]) Recv() (T, error) {
 	var zero T
 	msg := s.stream.NextAsync()
 	switch m := msg.(type) {
-	case slim_rpc.StreamMessageEnd:
+	case StreamMessageEnd:
 		return zero, nil
-	case slim_rpc.StreamMessageError:
+	case StreamMessageError:
 		return zero, m.Field0.AsError()
-	case slim_rpc.StreamMessageData:
+	case StreamMessageData:
 		req := zero.ProtoReflect().New().Interface().(T)
 		if err := proto.Unmarshal(m.Field0, req); err != nil {
 			return zero, err
@@ -168,10 +166,10 @@ func (s *genericServerResponseStream[T]) Recv() (T, error) {
 
 // Generic server request stream implementation
 type genericServerRequestStream[T proto.Message] struct {
-	sink *slim_rpc.ResponseSink
+	sink *ResponseSink
 }
 
-func NewServerRequestStream[T proto.Message](sink *slim_rpc.ResponseSink) RequestStream[T] {
+func NewServerRequestStream[T proto.Message](sink *ResponseSink) ServerStream[T] {
 	return &genericServerRequestStream[T]{sink: sink}
 }
 
@@ -185,11 +183,11 @@ func (s *genericServerRequestStream[T]) Send(resp T) error {
 
 // Generic server bidi stream implementation
 type genericServerBidiStream[TReq proto.Message, TResp proto.Message] struct {
-	stream *slim_rpc.RequestStream
-	sink   *slim_rpc.ResponseSink
+	stream *RequestStream
+	sink   *ResponseSink
 }
 
-func NewServerBidiStream[TReq proto.Message, TResp proto.Message](stream *slim_rpc.RequestStream, sink *slim_rpc.ResponseSink) ServerBidiStream[TReq, TResp] {
+func NewServerBidiStream[TReq proto.Message, TResp proto.Message](stream *RequestStream, sink *ResponseSink) ServerBidiStream[TReq, TResp] {
 	return &genericServerBidiStream[TReq, TResp]{stream: stream, sink: sink}
 }
 
@@ -205,11 +203,11 @@ func (s *genericServerBidiStream[TReq, TResp]) Recv() (TReq, error) {
 	var zero TReq
 	msg := s.stream.NextAsync()
 	switch m := msg.(type) {
-	case slim_rpc.StreamMessageEnd:
+	case StreamMessageEnd:
 		return zero, nil
-	case slim_rpc.StreamMessageError:
+	case StreamMessageError:
 		return zero, m.Field0.AsError()
-	case slim_rpc.StreamMessageData:
+	case StreamMessageData:
 		req := zero.ProtoReflect().New().Interface().(TReq)
 		if err := proto.Unmarshal(m.Field0, req); err != nil {
 			return zero, err
@@ -222,7 +220,7 @@ func (s *genericServerBidiStream[TReq, TResp]) Recv() (TReq, error) {
 
 // MulticastItem pairs a decoded response with the context of the server that sent it.
 type MulticastItem[T any] struct {
-	Context slim_rpc.RpcMessageContext
+	Context RpcMessageContext
 	Value   T
 }
 
@@ -244,10 +242,10 @@ type MulticastClientBidiStream[TReq proto.Message, TResp proto.Message] interfac
 // --- generic implementations ---
 
 type genericMulticastResponseStream[T proto.Message] struct {
-	reader *slim_rpc.MulticastResponseReader
+	reader *MulticastResponseReader
 }
 
-func NewMulticastResponseStream[T proto.Message](reader *slim_rpc.MulticastResponseReader) MulticastResponseStream[T] {
+func NewMulticastResponseStream[T proto.Message](reader *MulticastResponseReader) MulticastResponseStream[T] {
 	return &genericMulticastResponseStream[T]{reader: reader}
 }
 
@@ -255,12 +253,12 @@ func (s *genericMulticastResponseStream[T]) Recv() (*MulticastItem[T], error) {
 	var zero T
 	msg := s.reader.NextAsync()
 	switch v := msg.(type) {
-	case slim_rpc.MulticastStreamMessageEnd:
+	case MulticastStreamMessageEnd:
 		_ = v
 		return nil, nil
-	case slim_rpc.MulticastStreamMessageError:
+	case MulticastStreamMessageError:
 		return nil, v.Error.AsError()
-	case slim_rpc.MulticastStreamMessageData:
+	case MulticastStreamMessageData:
 		resp := zero.ProtoReflect().New().Interface().(T)
 		if err := proto.Unmarshal(v.Item.Message, resp); err != nil {
 			return nil, err
@@ -272,10 +270,10 @@ func (s *genericMulticastResponseStream[T]) Recv() (*MulticastItem[T], error) {
 }
 
 type genericMulticastClientBidiStream[TReq proto.Message, TResp proto.Message] struct {
-	handler *slim_rpc.MulticastBidiStreamHandler
+	handler *MulticastBidiStreamHandler
 }
 
-func NewMulticastClientBidiStream[TReq proto.Message, TResp proto.Message](handler *slim_rpc.MulticastBidiStreamHandler) MulticastClientBidiStream[TReq, TResp] {
+func NewMulticastClientBidiStream[TReq proto.Message, TResp proto.Message](handler *MulticastBidiStreamHandler) MulticastClientBidiStream[TReq, TResp] {
 	return &genericMulticastClientBidiStream[TReq, TResp]{handler: handler}
 }
 
@@ -295,12 +293,12 @@ func (s *genericMulticastClientBidiStream[TReq, TResp]) Recv() (*MulticastItem[T
 	var zero TResp
 	msg := s.handler.RecvAsync()
 	switch v := msg.(type) {
-	case slim_rpc.MulticastStreamMessageEnd:
+	case MulticastStreamMessageEnd:
 		_ = v
 		return nil, nil
-	case slim_rpc.MulticastStreamMessageError:
+	case MulticastStreamMessageError:
 		return nil, v.Error.AsError()
-	case slim_rpc.MulticastStreamMessageData:
+	case MulticastStreamMessageData:
 		resp := zero.ProtoReflect().New().Interface().(TResp)
 		if err := proto.Unmarshal(v.Item.Message, resp); err != nil {
 			return nil, err
