@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "agntcy-protoc-slimrpc-plugin"
-version = "1.5.0"
+version = "2.0.0-alpha.4"
 dependencies = [
  "anyhow",
  "heck",

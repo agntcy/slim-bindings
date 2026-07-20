@@ -8,7 +8,7 @@ This repository hosts the Rust FFI adapter crate and the per-language wrappers t
 
 | Directory | Language | Distribution |
 |-----------|----------|--------------|
-| [`rust/`](./rust) | Rust (FFI adapter + UniFFI source of truth) | [`agntcy-slim-bindings`](https://crates.io/crates/agntcy-slim-bindings) on crates.io |
+| [`rust/`](./rust) | Rust (UniFFI cdylib; aggregates slim's FFI crates) | `agntcy-slim-bindings-ffi` (internal, not published) |
 | [`python/`](./python) | Python | [`slim-bindings`](https://pypi.org/project/slim-bindings/) on PyPI |
 | [`go/`](./go) | Go (hand-written idiomatic wrappers + setup CLI) | Published to [`agntcy/slim-bindings-go`](https://github.com/agntcy/slim-bindings-go) by CI; consumed via `go get github.com/agntcy/slim-bindings-go` |
 | [`dotnet/`](./dotnet) | .NET / C# | `Agntcy.Slim` NuGet package |

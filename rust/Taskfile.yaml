@@ -21,7 +21,7 @@ vars:
   PROFILE: '{{.PROFILE | default "release"}}'
   RELEASE:
     sh: '[[ {{.PROFILE}} == "release" ]] && echo "--release" || echo ""'
-  BINDINGS_PACKAGE: agntcy-slim-bindings
+  BINDINGS_PACKAGE: agntcy-slim-bindings-ffi
   CURRENT_TARGET:
     sh: 'rustc -vV | sed -n "s|host: ||p"'
   TARGET: "{{.TARGET | default .CURRENT_TARGET}}"
