@@ -13,5 +13,5 @@ crate-type = ["lib", "staticlib", "cdylib"]
 [dependencies]
 # TODO: switch to version dep once agntcy-slim-bindings is published to crates.io
 # slim-bindings-impl = { package = "agntcy-slim-bindings", version = "2.0.0-alpha.2" }
-slim-bindings-impl = { package = "agntcy-slim-bindings", git = "https://github.com/agntcy/slim", branch = "feat/remove-slimrpc-from-bindings" }
-slim-rpc-impl = { package = "agntcy-slim-rpc", git = "https://github.com/agntcy/slim", branch = "feat/remove-slimrpc-from-bindings", features = ["uniffi"] }
+slim-bindings-impl = { package = "agntcy-slim-bindings", git = "https://github.com/agntcy/slim", branch = "feat/hierarchical-slim-config-loading" }
+slim-rpc-impl = { package = "agntcy-slim-rpc", git = "https://github.com/agntcy/slim", branch = "feat/hierarchical-slim-config-loading", features = ["uniffi"] }
