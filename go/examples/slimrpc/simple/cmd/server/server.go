@@ -153,7 +153,7 @@ func main() {
 	go func() {
 		fmt.Println("SLIM_RPC_SERVER_READY")
 		log.Printf("Server '%s' starting...", *instance)
-		if err := server.Serve(); err != nil {
+		if err := server.ServeBlocking(); err != nil {
 			log.Printf("Server error: %v", err)
 		}
 	}()
