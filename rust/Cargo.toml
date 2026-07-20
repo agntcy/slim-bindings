@@ -1,6 +1,6 @@
 [package]
 name = "agntcy-slim-bindings"
-version = "2.0.0-alpha.8"
+version = "2.0.0-alpha.4"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/agntcy/slim-bindings"
@@ -11,5 +11,5 @@ name = "slim_bindings"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-slim-bindings-impl = { package = "agntcy-slim-bindings", git = "https://github.com/agntcy/slim", branch = "main" }
-slim-rpc-impl = { package = "agntcy-slim-rpc", git = "https://github.com/agntcy/slim", branch = "main", features = ["uniffi"] }
+slim-bindings-impl = { package = "agntcy-slim-bindings", version = "2.0.0-alpha.8" }
+slim-rpc-impl = { package = "agntcy-slim-rpc", version = "2.0.0-alpha.6", features = ["uniffi"] }
