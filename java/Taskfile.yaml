@@ -175,10 +175,28 @@ tasks:
         # UniFFI crate_name in metadata is the lib crate name (slim_bindings), not the Cargo package name.
         CONFIG_PATH="$(pwd)/uniffi.toml"
         OUT_DIR="$(pwd)/generated/uniffi"
+        PROJ_DIR="$(pwd)"
+        # The library re-exports two UniFFI namespaces (slim_bindings + slim_rpc).
+        # uniffi-bindgen-java emits the FFI downcall table (UniffiLib) only for the
+        # primary namespace, so the two namespaces cannot be generated correctly in
+        # one pass. Generate each with --crate into its own package:
+        #   core  -> io.agntcy.slim.bindings         (generated/uniffi/.../bindings)
+        #   slimrpc -> io.agntcy.slim.bindings.slimrpc (generated/uniffi/.../bindings/slimrpc)
+        # Each keeps its own self-contained runtime; slimrpc references core types
+        # (App, Name, ...) which stay in the parent package.
         (cd "{{.BINDINGS_DIR}}" && uniffi-bindgen-java generate "$LIB" \
           --out-dir "${OUT_DIR}" \
           --config "${CONFIG_PATH}" \
           --crate slim_bindings)
+        RPC_TMP="$(mktemp -d)"
+        (cd "{{.BINDINGS_DIR}}" && uniffi-bindgen-java generate "$LIB" \
+          --out-dir "${RPC_TMP}" \
+          --config "${CONFIG_PATH}" \
+          --crate slim_rpc)
+        python3 "${PROJ_DIR}/relocate-slimrpc.py" \
+          "${RPC_TMP}/io/agntcy/slim/bindings" \
+          "${OUT_DIR}/io/agntcy/slim/bindings/slimrpc"
+        rm -rf "${RPC_TMP}"
         n=$(find generated/uniffi -type f -name '*.java' 2>/dev/null | wc -l | tr -d ' ')
         if [ "${n:-0}" -lt 1 ]; then
           echo "error: uniffi-bindgen-java produced no Java files under generated/uniffi (count=${n:-0}). cwd=$(pwd) lib=$LIB" >&2

@@ -96,7 +96,10 @@ func TestNameStructure(t *testing.T) {
 				// Pad components to 3 elements
 				padded := make([]string, 3)
 				copy(padded, tt.components)
-				name = slim.NameNewWithId(padded[0], padded[1], padded[2], *tt.id)
+				_, err := slim.NameNewWithId(padded[0], padded[1], padded[2], *tt.id)
+				if err != nil {
+					t.Fatalf("Failed to create name with ID: %v", err)
+				}
 			}
 
 			// Just verify the struct is created
@@ -215,7 +218,10 @@ func TestMultipleApps(t *testing.T) {
 // TestNameWithID tests creating names with explicit IDs
 func TestNameWithID(t *testing.T) {
 	testID := "00000000-0000-0000-0000-000000000001"
-	name := slim.NameNewWithId("org", "app", "v1", testID)
+	name, err := slim.NameNewWithId("org", "app", "v1", testID)
+	if err != nil {
+		t.Fatalf("Failed to create name with ID: %v", err)
+	}
 
 	if name.Id() != testID {
 		t.Errorf("Expected ID %s, got %s", testID, name.Id())

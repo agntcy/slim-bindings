@@ -8,6 +8,7 @@ import com.example_service.ExampleResponse
 import com.example_service.TestSlimrpc
 import com.example_service.exampleResponse
 import io.agntcy.slim.bindings.*
+import io.agntcy.slim.bindings.slimrpc.*
 import io.agntcy.slim.bindings.slimrpc.ServerBidiStream
 import io.agntcy.slim.bindings.slimrpc.ServerRequestStream
 import io.agntcy.slim.bindings.slimrpc.ServerResponseStream

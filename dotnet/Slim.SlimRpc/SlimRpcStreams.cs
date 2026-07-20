@@ -34,7 +34,7 @@ public static class SlimRpcStreams
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Async enumerable of parsed messages.</returns>
     public static async IAsyncEnumerable<T> ReadResponseStreamAsync<T>(
-        uniffi.slim_bindings.ResponseStreamReader reader,
+        uniffi.slim_rpc.ResponseStreamReader reader,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : IMessage<T>, new()
     {
@@ -46,12 +46,12 @@ public static class SlimRpcStreams
             var msg = await reader.NextAsync();
             switch (msg)
             {
-                case uniffi.slim_bindings.StreamMessage.Data data:
+                case uniffi.slim_rpc.StreamMessage.Data data:
                     yield return parser.ParseFrom(data.V1);
                     break;
-                case uniffi.slim_bindings.StreamMessage.Error err:
+                case uniffi.slim_rpc.StreamMessage.Error err:
                     throw err.V1;
-                case uniffi.slim_bindings.StreamMessage.End:
+                case uniffi.slim_rpc.StreamMessage.End:
                     yield break;
             }
         }
@@ -65,7 +65,7 @@ public static class SlimRpcStreams
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Async enumerable of parsed messages.</returns>
     public static async IAsyncEnumerable<T> ReadRequestStreamAsync<T>(
-        uniffi.slim_bindings.RequestStream stream,
+        uniffi.slim_rpc.RequestStream stream,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : IMessage<T>, new()
     {
@@ -77,12 +77,12 @@ public static class SlimRpcStreams
             var msg = await stream.NextAsync();
             switch (msg)
             {
-                case uniffi.slim_bindings.StreamMessage.Data data:
+                case uniffi.slim_rpc.StreamMessage.Data data:
                     yield return parser.ParseFrom(data.V1);
                     break;
-                case uniffi.slim_bindings.StreamMessage.Error err:
+                case uniffi.slim_rpc.StreamMessage.Error err:
                     throw err.V1;
-                case uniffi.slim_bindings.StreamMessage.End:
+                case uniffi.slim_rpc.StreamMessage.End:
                     yield break;
             }
         }
@@ -96,7 +96,7 @@ public static class SlimRpcStreams
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Async enumerable of parsed messages.</returns>
     public static async IAsyncEnumerable<T> ReadBidiStreamAsync<T>(
-        uniffi.slim_bindings.BidiStreamHandler bidi,
+        uniffi.slim_rpc.BidiStreamHandler bidi,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : IMessage<T>, new()
     {
@@ -108,19 +108,19 @@ public static class SlimRpcStreams
             var msg = await bidi.RecvAsync();
             switch (msg)
             {
-                case uniffi.slim_bindings.StreamMessage.Data data:
+                case uniffi.slim_rpc.StreamMessage.Data data:
                     yield return parser.ParseFrom(data.V1);
                     break;
-                case uniffi.slim_bindings.StreamMessage.Error err:
+                case uniffi.slim_rpc.StreamMessage.Error err:
                     throw err.V1;
-                case uniffi.slim_bindings.StreamMessage.End:
+                case uniffi.slim_rpc.StreamMessage.End:
                     yield break;
             }
         }
     }
 
     /// <summary>
-    /// Read typed multicast items from a <see cref="uniffi.slim_bindings.MulticastResponseReader"/>
+    /// Read typed multicast items from a <see cref="uniffi.slim_rpc.MulticastResponseReader"/>
     /// (used by multicast unary-unary and unary-stream patterns).
     /// </summary>
     /// <typeparam name="T">Protobuf message type (must have a static Parser property).</typeparam>
@@ -128,7 +128,7 @@ public static class SlimRpcStreams
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Async enumerable of <see cref="MulticastItem{T}"/> items.</returns>
     public static async IAsyncEnumerable<MulticastItem<T>> ReadMulticastStreamAsync<T>(
-        uniffi.slim_bindings.MulticastResponseReader reader,
+        uniffi.slim_rpc.MulticastResponseReader reader,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : IMessage<T>, new()
     {
@@ -140,21 +140,21 @@ public static class SlimRpcStreams
             var msg = await reader.NextAsync();
             switch (msg)
             {
-                case uniffi.slim_bindings.MulticastStreamMessage.Data data:
+                case uniffi.slim_rpc.MulticastStreamMessage.Data data:
                     var source = data.Item.Context.Source.ToString();
                     var value = parser.ParseFrom(data.Item.Message);
                     yield return new MulticastItem<T>(source, value);
                     break;
-                case uniffi.slim_bindings.MulticastStreamMessage.Error err:
+                case uniffi.slim_rpc.MulticastStreamMessage.Error err:
                     throw err.ErrorValue;
-                case uniffi.slim_bindings.MulticastStreamMessage.End:
+                case uniffi.slim_rpc.MulticastStreamMessage.End:
                     yield break;
             }
         }
     }
 
     /// <summary>
-    /// Read typed multicast items from a <see cref="uniffi.slim_bindings.MulticastBidiStreamHandler"/>
+    /// Read typed multicast items from a <see cref="uniffi.slim_rpc.MulticastBidiStreamHandler"/>
     /// (used by multicast stream-unary and stream-stream patterns on the receive side).
     /// </summary>
     /// <typeparam name="T">Protobuf message type (must have a static Parser property).</typeparam>
@@ -162,7 +162,7 @@ public static class SlimRpcStreams
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Async enumerable of <see cref="MulticastItem{T}"/> items.</returns>
     public static async IAsyncEnumerable<MulticastItem<T>> ReadMulticastBidiStreamAsync<T>(
-        uniffi.slim_bindings.MulticastBidiStreamHandler bidi,
+        uniffi.slim_rpc.MulticastBidiStreamHandler bidi,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
         where T : IMessage<T>, new()
     {
@@ -174,14 +174,14 @@ public static class SlimRpcStreams
             var msg = await bidi.RecvAsync();
             switch (msg)
             {
-                case uniffi.slim_bindings.MulticastStreamMessage.Data data:
+                case uniffi.slim_rpc.MulticastStreamMessage.Data data:
                     var source = data.Item.Context.Source.ToString();
                     var value = parser.ParseFrom(data.Item.Message);
                     yield return new MulticastItem<T>(source, value);
                     break;
-                case uniffi.slim_bindings.MulticastStreamMessage.Error err:
+                case uniffi.slim_rpc.MulticastStreamMessage.Error err:
                     throw err.ErrorValue;
-                case uniffi.slim_bindings.MulticastStreamMessage.End:
+                case uniffi.slim_rpc.MulticastStreamMessage.End:
                     yield break;
             }
         }

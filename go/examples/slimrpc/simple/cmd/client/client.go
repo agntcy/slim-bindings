@@ -11,6 +11,7 @@ import (
 	"time"
 
 	slim_bindings "github.com/agntcy/slim-bindings-go"
+	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 	"github.com/agntcy/slim-bindings/go/examples/common"
 	pb "github.com/agntcy/slim-bindings/go/examples/slimrpc/simple/types"
 )
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	// Create channel
-	channel := slim_bindings.ChannelNewWithConnection(app, remoteName, &connId)
+	channel := slim_rpc.ChannelNewWithConnection(app, remoteName, &connId)
 
 	// Create client
 	client := pb.NewTestClient(channel)

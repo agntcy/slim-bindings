@@ -1,0 +1,13 @@
+node:
+  endpoint: "http://localhost:46357"
+
+app:
+  name: "agntcy/ns/alice"
+
+  identity:
+    type: shared_secret
+    data: "a-very-long-shared-secret-abcdef1234567890"
+
+  identity_verifier:
+    type: shared_secret
+    data: "a-very-long-shared-secret-abcdef1234567890"

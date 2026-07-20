@@ -11,50 +11,7 @@ name = "slim_bindings"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-# SLIM core crates from crates.io
-agntcy-slim = "2.0.0-alpha.1"
-agntcy-slim-auth = "0.10.0"
-agntcy-slim-config = "0.11.0"
-agntcy-slim-controller = "0.8.0"
-agntcy-slim-datapath = "0.15.0"
-agntcy-slim-service = { version = "0.10.0", default-features = false, features = ["session"] }
-agntcy-slim-session = "0.3.0"
-agntcy-slim-signal = "0.1.10"
-agntcy-slim-tracing = "0.4.0"
-agntcy-slim-version = "2.0.0-alpha.1"
-
-# External dependencies
-async-stream = "0.3"
-async-trait = "0.1.88"
-display-error-chain = "0.2"
-drain = { version = "0.2", features = ["retain"] }
-futures = "0.3.31"
-futures-timer = "3.0.3"
-parking_lot = "0.12.3"
-serde = "1.0.217"
-serde_json = "1.0"
-thiserror = "2.0.9"
-tokio = "1.52.2"
-tokio-stream = "0.1"
-tracing = "0.1.41"
-uniffi = { version = "0.31.1", features = ["cli"] }
-uuid = { version = "1.15.1", features = ["v4"] }
-
-[build-dependencies]
-agntcy-slim-version = "2.0.0-alpha.1"
-uniffi = { version = "0.31.1", features = ["build"] }
-
-[dev-dependencies]
-bincode = "2.0.1"
-clap = { version = "4.5.23", features = ["derive", "env"] }
-test-fork = "0.1.3"
-tokio-test = "0.4.4"
-tracing-test = { version = "0.2.5", features = ["no-env-filter"] }
-
-[[example]]
-name = "receiver"
-path = "examples/receiver.rs"
-
-[[example]]
-name = "sender"
-path = "examples/sender.rs"
+# TODO: switch to version dep once agntcy-slim-bindings is published to crates.io
+# slim-bindings-impl = { package = "agntcy-slim-bindings", version = "2.0.0-alpha.2" }
+slim-bindings-impl = { package = "agntcy-slim-bindings", git = "https://github.com/agntcy/slim", branch = "feat/hierarchical-slim-config-loading" }
+slim-rpc-impl = { package = "agntcy-slim-rpc", git = "https://github.com/agntcy/slim", branch = "feat/hierarchical-slim-config-loading", features = ["uniffi"] }

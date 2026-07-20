@@ -69,6 +69,12 @@ async def handle_invite(session, invite_id):
 
     print(f"Inviting participant: {invite_id}")
     invite_name = slim_bindings.Name.from_string(invite_id)
+    if not invite_name:
+        print_formatted_text(
+            f"Error: Invalid participant ID '{invite_id}'", style=custom_style
+        )
+        return
+
     try:
         handle = await session.invite_async(invite_name)
         await handle.wait_async()
@@ -288,7 +294,7 @@ async def run_client(config: GroupConfig):
     if chat_channel and config.invites:
         # We are the moderator; create the group session now.
         format_message_print(
-            f"Creating new group session (moderator)... {slim_bindings.Name.from_string(config.local)}"
+            f"Creating new group session (moderator)... {config.local}"
         )
 
         # Create group session configuration

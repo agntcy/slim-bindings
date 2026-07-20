@@ -3,8 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc
 
-import io.agntcy.slim.bindings.RequestStream
-import io.agntcy.slim.bindings.StreamMessage
 
 interface ServerResponseStream<ReqT> {
     suspend fun recv(): ReqT?

@@ -3,8 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc;
 
-import io.agntcy.slim.bindings.ResponseSink;
-import io.agntcy.slim.bindings.RpcException;
 
 import java.util.function.Function;
 

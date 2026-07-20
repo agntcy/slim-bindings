@@ -10,9 +10,9 @@ namespace Agntcy.Slim.SlimRpc;
 /// </summary>
 public sealed class SlimRpcContext
 {
-    private readonly uniffi.slim_bindings.Context _inner;
+    private readonly uniffi.slim_rpc.Context _inner;
 
-    internal SlimRpcContext(uniffi.slim_bindings.Context inner)
+    internal SlimRpcContext(uniffi.slim_rpc.Context inner)
     {
         _inner = inner;
     }
@@ -20,7 +20,7 @@ public sealed class SlimRpcContext
     /// <summary>
     /// Create a SlimRpcContext from the raw FFI Context (used by protoc-gen-slimrpc-csharp-generated code in the app assembly).
     /// </summary>
-    public static SlimRpcContext FromContext(uniffi.slim_bindings.Context context)
+    public static SlimRpcContext FromContext(uniffi.slim_rpc.Context context)
     {
         return new SlimRpcContext(context);
     }

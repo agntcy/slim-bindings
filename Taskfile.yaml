@@ -25,7 +25,7 @@ tasks:
     desc: "Python binding linter"
     dir: ./python
     cmds:
-      - task bindings:lint
+      - task python:bindings:lint
 
   bindings:go:lint:
     desc: "Go binding linter"
@@ -38,18 +38,6 @@ tasks:
     dir: ./dotnet
     cmds:
       - task lint
-
-  slimrpc-compiler:build:
-    desc: "Build the slimrpc protoc plugin binaries"
-    dir: ./slimrpc-compiler
-    cmds:
-      - cargo build --release
-
-  slimrpc-compiler:test:
-    desc: "Run slimrpc-compiler tests"
-    dir: ./slimrpc-compiler
-    cmds:
-      - cargo test --locked --all-targets
 
   lint:
     desc: "Run linters for all bindings that support it"

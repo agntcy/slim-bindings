@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	slim_bindings "github.com/agntcy/slim-bindings-go"
-	"github.com/agntcy/slim-bindings-go/slimrpc"
+	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,18 +16,18 @@ import (
 // TestClient is the client API for Test service.
 type TestClient interface {
 	ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
-	ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slimrpc.ResponseStream[*ExampleResponse], error)
-	ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slimrpc.ResponseStream[*ExampleResponse], error)
-	ExampleStreamUnary(ctx context.Context) (slimrpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error)
-	ExampleStreamStream(ctx context.Context) (slimrpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error)
+	ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+	ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+	ExampleStreamUnary(ctx context.Context) (slim_rpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error)
+	ExampleStreamStream(ctx context.Context) (slim_rpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error)
 }
 
 type TestClientImpl struct {
-	channel slim_bindings.ChannelInterface
+	channel slim_rpc.ChannelInterface
 }
 
 // NewTestClient creates a new Test client.
-func NewTestClient(channel slim_bindings.ChannelInterface) TestClient {
+func NewTestClient(channel slim_rpc.ChannelInterface) TestClient {
 	return &TestClientImpl{
 		channel: channel,
 	}
@@ -51,7 +50,7 @@ func (c *TestClientImpl) ExampleUnaryUnary(ctx context.Context, req *ExampleRequ
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -70,7 +69,7 @@ func (c *TestClientImpl) ExampleUnaryUnary(ctx context.Context, req *ExampleRequ
 	return resp, nil
 }
 
-func (c *TestClientImpl) ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slimrpc.ResponseStream[*ExampleResponse], error) {
+func (c *TestClientImpl) ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error) {
 	// Serialize request
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
@@ -86,7 +85,7 @@ func (c *TestClientImpl) ExampleUnaryStream(ctx context.Context, req *ExampleReq
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -96,10 +95,10 @@ func (c *TestClientImpl) ExampleUnaryStream(ctx context.Context, req *ExampleReq
 		return nil, err
 	}
 
-	return slimrpc.NewClientResponseStream[*ExampleResponse](stream), nil
+	return slim_rpc.NewClientResponseStream[*ExampleResponse](stream), nil
 }
 
-func (c *TestClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slimrpc.ResponseStream[*ExampleResponse], error) {
+func (c *TestClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error) {
 	// Serialize request
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
@@ -115,7 +114,7 @@ func (c *TestClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *Example
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -125,10 +124,10 @@ func (c *TestClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *Example
 		return nil, err
 	}
 
-	return slimrpc.NewClientResponseStream[*ExampleResponse](stream), nil
+	return slim_rpc.NewClientResponseStream[*ExampleResponse](stream), nil
 }
 
-func (c *TestClientImpl) ExampleStreamUnary(ctx context.Context) (slimrpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error) {
+func (c *TestClientImpl) ExampleStreamUnary(ctx context.Context) (slim_rpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error) {
 	// Extract timeout from context
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
@@ -138,15 +137,15 @@ func (c *TestClientImpl) ExampleStreamUnary(ctx context.Context) (slimrpc.Client
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	stream := c.channel.CallStreamUnary("example_service.Test", "ExampleStreamUnary", timeout, metadata)
-	return slimrpc.NewClientRequestStream[*ExampleRequest, *ExampleResponse](stream), nil
+	return slim_rpc.NewClientRequestStream[*ExampleRequest, *ExampleResponse](stream), nil
 }
 
-func (c *TestClientImpl) ExampleStreamStream(ctx context.Context) (slimrpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error) {
+func (c *TestClientImpl) ExampleStreamStream(ctx context.Context) (slim_rpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error) {
 	// Extract timeout from context
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
@@ -156,12 +155,12 @@ func (c *TestClientImpl) ExampleStreamStream(ctx context.Context) (slimrpc.Clien
 
 	// Extract metadata from context
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	stream := c.channel.CallStreamStream("example_service.Test", "ExampleStreamStream", timeout, metadata)
-	return slimrpc.NewClientBidiStream[*ExampleRequest, *ExampleResponse](stream), nil
+	return slim_rpc.NewClientBidiStream[*ExampleRequest, *ExampleResponse](stream), nil
 }
 
 
@@ -170,10 +169,10 @@ func (c *TestClientImpl) ExampleStreamStream(ctx context.Context) (slimrpc.Clien
 // for forward compatibility
 type TestServer interface {
 	ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
-	ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slimrpc.RequestStream[*ExampleResponse]) error
-	ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest, stream slimrpc.RequestStream[*ExampleResponse]) error
-	ExampleStreamUnary(ctx context.Context, stream slimrpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error)
-	ExampleStreamStream(ctx context.Context, stream slimrpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error
+	ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+	ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+	ExampleStreamUnary(ctx context.Context, stream slim_rpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error)
+	ExampleStreamStream(ctx context.Context, stream slim_rpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error
 }
 
 // UnimplementedTestServer must be embedded to have forward compatible implementations.
@@ -185,25 +184,25 @@ func (UnimplementedTestServer) ExampleUnaryUnary(ctx context.Context, req *Examp
 	return nil, fmt.Errorf("method ExampleUnaryUnary not implemented")
 }
 
-func (UnimplementedTestServer) ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slimrpc.RequestStream[*ExampleResponse]) error {
+func (UnimplementedTestServer) ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error {
 	return fmt.Errorf("method ExampleUnaryStream not implemented")
 }
 
-func (UnimplementedTestServer) ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest, stream slimrpc.RequestStream[*ExampleResponse]) error {
+func (UnimplementedTestServer) ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error {
 	return fmt.Errorf("method ExampleUnaryStreamTwo not implemented")
 }
 
-func (UnimplementedTestServer) ExampleStreamUnary(ctx context.Context, stream slimrpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error) {
+func (UnimplementedTestServer) ExampleStreamUnary(ctx context.Context, stream slim_rpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error) {
 	return nil, fmt.Errorf("method ExampleStreamUnary not implemented")
 }
 
-func (UnimplementedTestServer) ExampleStreamStream(ctx context.Context, stream slimrpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error {
+func (UnimplementedTestServer) ExampleStreamStream(ctx context.Context, stream slim_rpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error {
 	return fmt.Errorf("method ExampleStreamStream not implemented")
 }
 
 
-// RegisterTestServer registers the server with slim_bindings.
-func RegisterTestServer(server slim_bindings.ServerInterface, impl TestServer) {
+// RegisterTestServer registers the server with slim_rpc.
+func RegisterTestServer(server slim_rpc.ServerInterface, impl TestServer) {
 	server.RegisterUnaryUnary("example_service.Test", "ExampleUnaryUnary", &Test_ExampleUnaryUnary_Handler{impl: impl})
 	server.RegisterUnaryStream("example_service.Test", "ExampleUnaryStream", &Test_ExampleUnaryStream_Handler{impl: impl})
 	server.RegisterUnaryStream("example_service.Test", "ExampleUnaryStreamTwo", &Test_ExampleUnaryStreamTwo_Handler{impl: impl})
@@ -216,29 +215,29 @@ type Test_ExampleUnaryUnary_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleUnaryUnary_Handler) Handle(request []byte, rpcContext *slim_bindings.Context) ([]byte, error) {
+func (h *Test_ExampleUnaryUnary_Handler) Handle(request []byte, rpcContext *slim_rpc.Context) ([]byte, error) {
 	req := &ExampleRequest{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
 	}
 
-	// Convert slim_bindings.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	// Convert slim_rpc.Context to context.Context
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
 	resp, err := h.impl.ExampleUnaryUnary(ctx, req)
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			return nil, rpcErr
 		}
 		// Convert generic errors to RpcError
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -246,8 +245,8 @@ func (h *Test_ExampleUnaryUnary_Handler) Handle(request []byte, rpcContext *slim
 
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -259,11 +258,11 @@ type Test_ExampleUnaryStream_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
+func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
 	req := &ExampleRequest{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
@@ -271,11 +270,11 @@ func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *sli
 		return rpcErr
 	}
 
-	// Convert slim_bindings.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	// Convert slim_rpc.Context to context.Context
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	stream := slimrpc.NewServerRequestStream[*ExampleResponse](sink)
+	stream := slim_rpc.NewServerRequestStream[*ExampleResponse](sink)
 	err := h.impl.ExampleUnaryStream(ctx, req, stream)
 
 	// Close the stream after handler returns
@@ -286,13 +285,13 @@ func (h *Test_ExampleUnaryStream_Handler) Handle(request []byte, rpcContext *sli
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -307,11 +306,11 @@ type Test_ExampleUnaryStreamTwo_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
+func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
 	req := &ExampleRequest{}
 	if err := proto.Unmarshal(request, req); err != nil {
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInvalidArgument,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInvalidArgument,
 			err.Error(),
 			nil,
 		)
@@ -319,11 +318,11 @@ func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *
 		return rpcErr
 	}
 
-	// Convert slim_bindings.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+	// Convert slim_rpc.Context to context.Context
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	stream := slimrpc.NewServerRequestStream[*ExampleResponse](sink)
+	stream := slim_rpc.NewServerRequestStream[*ExampleResponse](sink)
 	err := h.impl.ExampleUnaryStreamTwo(ctx, req, stream)
 
 	// Close the stream after handler returns
@@ -334,13 +333,13 @@ func (h *Test_ExampleUnaryStreamTwo_Handler) Handle(request []byte, rpcContext *
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -355,20 +354,20 @@ type Test_ExampleStreamUnary_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_bindings.RequestStream, rpcContext *slim_bindings.Context) ([]byte, error) {
-	// Convert slim_bindings.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context) ([]byte, error) {
+	// Convert slim_rpc.Context to context.Context
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	responseStream := slimrpc.NewServerResponseStream[*ExampleRequest](stream)
+	responseStream := slim_rpc.NewServerResponseStream[*ExampleRequest](stream)
 
 	resp, err := h.impl.ExampleStreamUnary(ctx, responseStream)
 	if err != nil {
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			return nil, rpcErr
 		}
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -376,8 +375,8 @@ func (h *Test_ExampleStreamUnary_Handler) Handle(stream *slim_bindings.RequestSt
 
 	respBytes, err := proto.Marshal(resp)
 	if err != nil {
-		return nil, slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		return nil, slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -389,12 +388,12 @@ type Test_ExampleStreamStream_Handler struct {
 	impl TestServer
 }
 
-func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_bindings.RequestStream, rpcContext *slim_bindings.Context, sink *slim_bindings.ResponseSink) error {
-	// Convert slim_bindings.Context to context.Context
-	ctx, cancel := slimrpc.ContextFromRpcContext(rpcContext)
+func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_rpc.RequestStream, rpcContext *slim_rpc.Context, sink *slim_rpc.ResponseSink) error {
+	// Convert slim_rpc.Context to context.Context
+	ctx, cancel := slim_rpc.ContextFromRpcContext(rpcContext)
 	defer cancel()
 
-	serverStream := slimrpc.NewServerBidiStream[*ExampleRequest, *ExampleResponse](stream, sink)
+	serverStream := slim_rpc.NewServerBidiStream[*ExampleRequest, *ExampleResponse](stream, sink)
 	err := h.impl.ExampleStreamStream(ctx, serverStream)
 
 	// Close the stream after handler returns
@@ -405,13 +404,13 @@ func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_bindings.RequestS
 
 	if err != nil {
 		// Check if it's already an RpcError
-		if rpcErr, ok := err.(*slim_bindings.RpcError); ok {
+		if rpcErr, ok := err.(*slim_rpc.RpcError); ok {
 			sink.SendErrorAsync(rpcErr)
 			return rpcErr
 		}
 		// Convert generic errors to RpcError
-		rpcErr := slim_bindings.NewRpcErrorRpc(
-			slim_bindings.RpcCodeInternal,
+		rpcErr := slim_rpc.NewRpcErrorRpc(
+			slim_rpc.RpcCodeInternal,
 			err.Error(),
 			nil,
 		)
@@ -424,26 +423,26 @@ func (h *Test_ExampleStreamStream_Handler) Handle(stream *slim_bindings.RequestS
 
 
 // TestGroupClient is the multicast (group) client API for Test service.
-// Requires a slim_bindings.ChannelInterface backed by a channel created with ChannelNewGroup* targeting multiple server instances.
+// Requires a slim_rpc.ChannelInterface backed by a channel created with ChannelNewGroup* targeting multiple server instances.
 type TestGroupClient interface {
-	ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error)
-	ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error)
-	ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error)
-	ExampleStreamUnary(ctx context.Context) (slimrpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error)
-	ExampleStreamStream(ctx context.Context) (slimrpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error)
+	ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error)
+	ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error)
+	ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error)
+	ExampleStreamUnary(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error)
+	ExampleStreamStream(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error)
 }
 
 type TestGroupClientImpl struct {
-	channel slim_bindings.ChannelInterface
+	channel slim_rpc.ChannelInterface
 }
 
 // NewTestGroupClient creates a new multicast Test client.
-func NewTestGroupClient(channel slim_bindings.ChannelInterface) TestGroupClient {
+func NewTestGroupClient(channel slim_rpc.ChannelInterface) TestGroupClient {
 	return &TestGroupClientImpl{channel: channel}
 }
 
 
-func (c *TestGroupClientImpl) ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error) {
+func (c *TestGroupClientImpl) ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -456,7 +455,7 @@ func (c *TestGroupClientImpl) ExampleUnaryUnary(ctx context.Context, req *Exampl
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -464,10 +463,10 @@ func (c *TestGroupClientImpl) ExampleUnaryUnary(ctx context.Context, req *Exampl
 	if err != nil {
 		return nil, err
 	}
-	return slimrpc.NewMulticastResponseStream[*ExampleResponse](reader), nil
+	return slim_rpc.NewMulticastResponseStream[*ExampleResponse](reader), nil
 }
 
-func (c *TestGroupClientImpl) ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error) {
+func (c *TestGroupClientImpl) ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -480,7 +479,7 @@ func (c *TestGroupClientImpl) ExampleUnaryStream(ctx context.Context, req *Examp
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -488,10 +487,10 @@ func (c *TestGroupClientImpl) ExampleUnaryStream(ctx context.Context, req *Examp
 	if err != nil {
 		return nil, err
 	}
-	return slimrpc.NewMulticastResponseStream[*ExampleResponse](reader), nil
+	return slim_rpc.NewMulticastResponseStream[*ExampleResponse](reader), nil
 }
 
-func (c *TestGroupClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slimrpc.MulticastResponseStream[*ExampleResponse], error) {
+func (c *TestGroupClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error) {
 	reqBytes, err := proto.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -504,7 +503,7 @@ func (c *TestGroupClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *Ex
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
@@ -512,10 +511,10 @@ func (c *TestGroupClientImpl) ExampleUnaryStreamTwo(ctx context.Context, req *Ex
 	if err != nil {
 		return nil, err
 	}
-	return slimrpc.NewMulticastResponseStream[*ExampleResponse](reader), nil
+	return slim_rpc.NewMulticastResponseStream[*ExampleResponse](reader), nil
 }
 
-func (c *TestGroupClientImpl) ExampleStreamUnary(ctx context.Context) (slimrpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error) {
+func (c *TestGroupClientImpl) ExampleStreamUnary(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error) {
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
 		t := time.Until(deadline)
@@ -523,15 +522,15 @@ func (c *TestGroupClientImpl) ExampleStreamUnary(ctx context.Context) (slimrpc.M
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	handler := c.channel.CallMulticastStreamUnary("example_service.Test", "ExampleStreamUnary", timeout, metadata)
-	return slimrpc.NewMulticastClientBidiStream[*ExampleRequest, *ExampleResponse](handler), nil
+	return slim_rpc.NewMulticastClientBidiStream[*ExampleRequest, *ExampleResponse](handler), nil
 }
 
-func (c *TestGroupClientImpl) ExampleStreamStream(ctx context.Context) (slimrpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error) {
+func (c *TestGroupClientImpl) ExampleStreamStream(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error) {
 	var timeout *time.Duration
 	if deadline, ok := ctx.Deadline(); ok {
 		t := time.Until(deadline)
@@ -539,12 +538,12 @@ func (c *TestGroupClientImpl) ExampleStreamStream(ctx context.Context) (slimrpc.
 	}
 
 	var metadata *map[string]string
-	if md, ok := slimrpc.MetadataFromContext(ctx); ok {
+	if md, ok := slim_rpc.MetadataFromContext(ctx); ok {
 		metadata = &md
 	}
 
 	handler := c.channel.CallMulticastStreamStream("example_service.Test", "ExampleStreamStream", timeout, metadata)
-	return slimrpc.NewMulticastClientBidiStream[*ExampleRequest, *ExampleResponse](handler), nil
+	return slim_rpc.NewMulticastClientBidiStream[*ExampleRequest, *ExampleResponse](handler), nil
 }
 
 

@@ -200,6 +200,28 @@ def setup_service(enable_opentelemetry: bool = False) -> slim_bindings.Service:
     return service
 
 
+def create_app_from_config() -> Any:
+    """
+    Build a ready App using hierarchical config discovery (slim.yaml + env vars).
+
+    Config is loaded from slim.yaml (walking up from the current working directory)
+    and/or ~/.slim/config.yaml, with environment variables taking highest priority.
+    The app name and a stable instance UUID are read from (or written to) the
+    .slim-cache/ directory next to the discovered config file.
+
+    Requires app.name to be set in the config or via SLIM_APP_NAME.
+
+    Returns:
+        SlimAppHandle: Handle with ``.app``, ``.name``, and ``.conn_id`` fields.
+
+    Raises:
+        slim_bindings.SlimError: If config loading, connection, or subscription fails.
+    """
+    service = setup_service()
+    config = slim_bindings.load_slim_config(None)
+    return service.create_app_from_slim_config(config)
+
+
 async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
     """
     Build a Slim application instance using the global service.
@@ -217,6 +239,9 @@ async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
     """
     # Initialize tracing and global state
     service = setup_service()
+
+    # config.local is guaranteed non-None by BaseConfig.require_local_unless_slim_config
+    assert config.local is not None
 
     # Convert local identifier to a strongly typed Name.
     local_name = slim_bindings.Name.from_string(config.local)
@@ -287,11 +312,11 @@ def create_base_parser(description: str) -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    # Core identity settings
+    # Core identity settings (required unless --use-slim-config is passed;
+    # cross-field validation is handled by the Pydantic BaseConfig model)
     parser.add_argument(
         "--local",
         type=str,
-        required=True,
         help="Local ID in the format organization/namespace/application",
     )
 
@@ -387,6 +412,18 @@ def create_base_parser(description: str) -> argparse.ArgumentParser:
         "--config",
         type=str,
         help="Path to configuration file (JSON, YAML, or TOML)",
+    )
+
+    # Hierarchical slim.yaml config discovery
+    parser.add_argument(
+        "--use-slim-config",
+        action="store_true",
+        dest="use_slim_config",
+        help=(
+            "Discover connection and identity from slim.yaml / env vars "
+            "(SLIM_NODE_ADDRESS, SLIM_APP_NAME, SLIM_IDENTITY_*) instead of "
+            "explicit --local / --slim / --shared-secret flags."
+        ),
     )
 
     return parser

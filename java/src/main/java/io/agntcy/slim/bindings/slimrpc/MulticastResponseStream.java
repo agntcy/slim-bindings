@@ -3,8 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc;
 
-import io.agntcy.slim.bindings.MulticastResponseReader;
-import io.agntcy.slim.bindings.MulticastStreamMessage;
 
 import java.util.function.Function;
 

@@ -3,7 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc
 
-import io.agntcy.slim.bindings.RequestStreamWriter
 
 class ClientRequestStream<ReqT, ResT>(
     private val inner: RequestStreamWriter,

@@ -33,6 +33,7 @@ import sys
 import slim_bindings
 
 from .common import (
+    create_app_from_config,
     create_base_parser,
     create_local_app,
     format_message_print,
@@ -47,14 +48,22 @@ async def run_client(config: PointToPointConfig):
 
     Args:
         config: PointToPointConfig instance containing all configuration.
+            When ``config.use_slim_config`` is ``True``, the App is built from
+            a discovered ``slim.yaml`` / env vars via ``create_app_from_config()``
+            instead of the explicit identity fields in ``config``.
 
     Behavior:
         - Builds Slim app using global service.
         - If message is supplied -> create session & publish + receive replies.
         - If message not supplied -> wait indefinitely for inbound sessions and echo payloads.
     """
-    # Build the Slim application using global service
-    local_app, conn_id = await create_local_app(config)
+    # Build the Slim application — either from slim.yaml / env vars or from CLI flags.
+    if config.use_slim_config:
+        handle = create_app_from_config()
+        local_app = handle.app
+        conn_id = handle.conn_id
+    else:
+        local_app, conn_id = await create_local_app(config)
 
     # Numeric unique instance ID (useful for distinguishing multiple processes).
     instance = str(local_app.id())
@@ -197,7 +206,10 @@ def main():
     # Convert to dictionary
     args_dict = parse_args_to_dict(args)
 
-    # Load configuration (CLI args override env vars and config file)
+    # Load configuration (CLI args override env vars and config file).
+    # BaseConfig.require_local_unless_slim_config validates that local is present
+    # when use_slim_config is False; session-level fields (message, remote,
+    # iterations, enable_mls) are always sourced from CLI / env vars.
     try:
         config = load_config_with_cli_override(PointToPointConfig, args_dict)
     except Exception as e:

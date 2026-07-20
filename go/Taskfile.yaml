@@ -80,6 +80,52 @@ tasks:
         fi
     silent: true
 
+  patch-slimrpc:
+    desc: Relocate the generated slim_rpc namespace package into the slim-bindings-go module
+    internal: true
+    cmds:
+      - echo "Relocating slim_rpc namespace package into module..."
+      - |
+        # uniffi-bindgen-go writes each namespace to <out-dir>/<namespace>/. The core
+        # namespace happens to land in the module root (slim_bindings/), but slim_rpc lands
+        # in a sibling dir (slim_rpc/) outside the module. Move it inside the module so it is
+        # importable as github.com/agntcy/slim-bindings-go/slim_rpc.
+        SRC_DIR="{{.TASKFILE_DIR}}/slim_rpc"
+        DEST_DIR="{{.TASKFILE_DIR}}/slim_bindings/slim_rpc"
+        if [ ! -f "$SRC_DIR/slim_rpc.go" ]; then
+          echo "Generated slim_rpc package not found at $SRC_DIR"
+          exit 1
+        fi
+        mkdir -p "$DEST_DIR"
+        mv -f "$SRC_DIR/slim_rpc.go" "$SRC_DIR/slim_rpc.h" "$DEST_DIR/"
+        rmdir "$SRC_DIR" 2>/dev/null || true
+
+        GO_FILE="$DEST_DIR/slim_rpc.go"
+
+        # Rewrite the cgo preamble: add CFLAGS so <slim_rpc.h> is found, and (on darwin) allow
+        # slim_rpc's C symbols to resolve at final link against the archive linked by the
+        # slim_bindings package. slim_rpc must NOT re-link the archive itself.
+        cat > /tmp/slimrpc_preamble.txt << 'EOF'
+        package slim_rpc
+
+        /*
+        #cgo CFLAGS: -I${SRCDIR}
+        #cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
+        #include <slim_rpc.h>
+        */
+        import "C"
+        EOF
+        sed -n '/^import "C"/,$p' "$GO_FILE" | tail -n +2 > /tmp/slimrpc_rest.txt
+        cat /tmp/slimrpc_preamble.txt /tmp/slimrpc_rest.txt > "$GO_FILE"
+        rm -f /tmp/slimrpc_preamble.txt /tmp/slimrpc_rest.txt
+
+        # Fix the cross-namespace import of the core package (bare "slim_bindings" is not a
+        # valid module path) to the real module path.
+        perl -pi -e 's{^\t"slim_bindings"$}{\tslim_bindings "github.com/agntcy/slim-bindings-go"}' "$GO_FILE"
+
+        echo "Relocated slim_rpc package to $DEST_DIR"
+    silent: true
+
   patch-header:
     desc: Patch slim_bindings.h with Windows dllexport directives
     internal: true
@@ -141,6 +187,7 @@ tasks:
       - task: patch-cgo-directives
         vars:
           VERSION: "{{.VERSION}}"
+      - task: patch-slimrpc
       - echo "Bindings generated in slim_bindings/"
     silent: true
 
@@ -221,6 +268,7 @@ tasks:
       - task: patch-cgo-directives
         vars:
           VERSION: "{{.VERSION}}"
+      - task: patch-slimrpc
       - echo "Bindings generated in slim_bindings/"
     silent: true
 
@@ -333,6 +381,8 @@ tasks:
       - cd {{.BINDINGS_DIR}} && cargo clean
       - rm slim_bindings/slim_bindings.go || true
       - rm slim_bindings/slim_bindings.h || true
+      - rm slim_bindings/slim_rpc/slim_rpc.go || true
+      - rm slim_bindings/slim_rpc/slim_rpc.h || true
       - rm slim_bindings/libslim_bindings_*.a || true
       - echo "Clean complete"
     silent: true

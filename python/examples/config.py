@@ -17,7 +17,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from examples.constants import SLIM_ADDR
@@ -48,9 +48,18 @@ class BaseConfig(BaseSettings):
     )
 
     # Core identity settings
-    local: str = Field(
-        ...,
+    local: str | None = Field(
+        default=None,
         description="Local ID in the format organization/namespace/application",
+    )
+
+    use_slim_config: bool = Field(
+        default=False,
+        description=(
+            "Discover connection and identity from slim.yaml / env vars "
+            "(SLIM_NODE_ADDRESS, SLIM_APP_NAME, SLIM_IDENTITY_*) instead of "
+            "explicit local / slim / shared_secret settings."
+        ),
     )
 
     remote: str | None = Field(
@@ -138,6 +147,16 @@ class BaseConfig(BaseSettings):
         if v is not None and not Path(v).exists():
             raise ValueError(f"File not found: {v}")
         return v
+
+    @model_validator(mode="after")
+    def require_local_unless_slim_config(self) -> "BaseConfig":
+        """Ensure local is provided when not using slim.yaml config discovery."""
+        if not self.use_slim_config and not self.local:
+            raise ValueError(
+                "local is required unless use_slim_config is True "
+                "(pass --use-slim-config or set SLIM_USE_SLIM_CONFIG=true)"
+            )
+        return self
 
     def get_auth_mode(self) -> AuthMode:
         """Determine which authentication mode to use based on provided config."""
