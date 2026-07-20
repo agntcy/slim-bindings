@@ -16,8 +16,8 @@
           <p class="eyebrow"><a class="back-link" href="/">Examples</a></p>
           <h1>Group Moderator</h1>
           <p class="subtitle">
-            Creates a multicast session for a channel and invites participants.
-            Start every participant before clicking Start.
+            Creates a multicast session for a channel and invites two
+            participant agents. Start both participant tabs before clicking Start.
           </p>
         </div>
         <div id="wasm-status" class="status status-loading">Loading WASM…</div>
@@ -36,6 +36,13 @@
           <button id="start" type="button" disabled>Start</button>
           <button id="stop" type="button" class="secondary" disabled>Stop</button>
         </div>
+      </section>
+
+      <section class="panel">
+        <h2>Participants</h2>
+        <ul id="participants" class="participants-list" aria-live="polite">
+          <li class="participant-empty">Waiting for participants…</li>
+        </ul>
       </section>
 
       <section class="panel">

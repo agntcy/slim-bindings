@@ -21,7 +21,12 @@ import {
   parseQueryParams,
   toArrayBuffer,
 } from "./common";
-import { bindExampleUi, prepareWasm } from "./ui";
+import {
+  refreshParticipants,
+  startParticipantPolling,
+  logSessionSecurity,
+} from "./group-common";
+import { bindExampleUi, prepareWasm, requireMessageControls } from "./ui";
 
 import "./style.css";
 
@@ -41,13 +46,15 @@ let session: SessionLike | undefined;
 let stopRequested = false;
 let listenController: AbortController | undefined;
 let receiveController: AbortController | undefined;
+let stopParticipantPolling: (() => void) | undefined;
 
 const ui = bindExampleUi();
+const messageControls = requireMessageControls(ui);
 
 ui.startButton.addEventListener("click", () => void startExample());
 ui.stopButton.addEventListener("click", () => void stopExample());
-ui.sendButton.addEventListener("click", () => void sendMessage());
-ui.messageInput.addEventListener("keydown", (event) => {
+messageControls.sendButton.addEventListener("click", () => void sendMessage());
+messageControls.messageInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     void sendMessage();
@@ -56,6 +63,7 @@ ui.messageInput.addEventListener("keydown", (event) => {
 window.addEventListener("pagehide", () => void stopExample());
 
 void prepareWasm(ui);
+ui.clearParticipants();
 
 function loadConfig(): ExampleConfig {
   const params = parseQueryParams({
@@ -121,7 +129,15 @@ async function runParticipant(currentApp: AppLike): Promise<void> {
     const channelName = incoming.destination().toString();
     ui.setSessionStatus(`Group session · ${channelName}`);
     ui.log(`Joined group session for channel: ${channelName}`);
+    logSessionSecurity(ui, incoming);
     startReceiveLoop(incoming);
+    stopParticipantPolling?.();
+    stopParticipantPolling = startParticipantPolling(
+      ui,
+      () => session,
+      () => stopRequested,
+    );
+    await refreshParticipants(ui, incoming);
     ui.log("Participant ready — type a message and press Enter to send");
   } catch (error) {
     if (!controller.signal.aborted) {
@@ -135,7 +151,7 @@ async function runParticipant(currentApp: AppLike): Promise<void> {
 
 async function sendMessage(): Promise<void> {
   const currentSession = session;
-  const text = ui.messageInput.value.trim();
+  const text = messageControls.messageInput.value.trim();
   if (!currentSession || !text || stopRequested) return;
 
   try {
@@ -145,7 +161,7 @@ async function sendMessage(): Promise<void> {
       undefined,
     );
     ui.appendMessage("You", text, true);
-    ui.messageInput.value = "";
+    messageControls.messageInput.value = "";
     ui.log("Sent to group");
   } catch (error) {
     ui.logError("Failed to send message", error);
@@ -191,6 +207,8 @@ function startReceiveLoop(currentSession: SessionLike): void {
 
 async function stopExample(): Promise<void> {
   stopRequested = true;
+  stopParticipantPolling?.();
+  stopParticipantPolling = undefined;
   listenController?.abort();
   receiveController?.abort();
   listenController = undefined;
@@ -220,5 +238,6 @@ async function stopExample(): Promise<void> {
 
   ui.setConnectionStatus("Disconnected");
   ui.setSessionStatus("No session");
+  ui.clearParticipants();
   ui.setRunning(false);
 }

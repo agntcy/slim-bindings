@@ -9,7 +9,11 @@ Node.js examples under `slim-bindings/node/examples/`.
 | [Point-to-point Alice](./point-to-point-alice.html) | `point-to-point-alice.ts` | Receiver — listens and replies |
 | [Point-to-point Bob](./point-to-point-bob.html) | `point-to-point-bob.ts` | Sender — creates session and sends |
 | [Group moderator](./group-moderator.html) | `group.ts` (moderator path) | Creates multicast session and invites |
-| [Group participant](./group-participant.html) | `group.ts` (participant path) | Waits for group invitation |
+| [Group participant one](./group-participant.html) | `group.ts` (participant path) | Waits for group invitation |
+| [Group participant two](./group-participant-two.html) | `group.ts` (participant path) | Second participant for the same group |
+| [Group moderator (MLS)](./group-moderator-mls.html) | `group.ts` with `--enable-mls` | MLS-encrypted multicast session |
+| [Group participant one (MLS)](./group-participant-mls.html) | `group.ts` (participant path) | First MLS group participant |
+| [Group participant two (MLS)](./group-participant-two-mls.html) | `group.ts` (participant path) | Second MLS group participant |
 
 ## Prerequisites
 
@@ -89,11 +93,23 @@ http://127.0.0.1:5173/point-to-point-bob.html?remote=org/alice/app&iterations=3
 
 Use the same WebSocket SLIM node as above.
 
-1. Open one [Group participant](./group-participant.html) tab per invitee and click **Start**.
-2. Open [Group moderator](./group-moderator.html) and click **Start**.
+### Plaintext group (2 participants)
 
-The moderator creates the group session and invites each participant. Type
-messages in any tab and press Enter to send.
+1. Open [Group participant one](./group-participant.html) and click **Start**.
+2. Open [Group participant two](./group-participant-two.html) and click **Start**.
+3. Open [Group moderator](./group-moderator.html) and click **Start**.
+
+The moderator creates the group session and invites both participants. Each tab
+shows the live participant list and group messages.
+
+### MLS group (2 participants)
+
+1. Open [Group participant one (MLS)](./group-participant-mls.html) and click **Start**.
+2. Open [Group participant two (MLS)](./group-participant-two-mls.html) and click **Start**.
+3. Open [Group moderator (MLS)](./group-moderator-mls.html) and click **Start**.
+
+The MLS moderator creates an encrypted session on `org/default/channel-mls`.
+Participants inherit the MLS setting from the session handshake.
 
 ### Query parameters
 
@@ -133,4 +149,5 @@ src/
   point-to-point-bob.ts     # sender reference
   group-moderator.ts        # group moderator reference
   group-participant.ts      # group participant reference
+  group-common.ts           # shared participant list helpers
 ```

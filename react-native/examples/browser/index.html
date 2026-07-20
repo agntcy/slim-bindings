@@ -5,60 +5,238 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="SLIM browser WASM reference examples"
+      content="AGNTCY SLIM browser agent reference examples — WebAssembly agents over WebSocket"
     />
-    <title>SLIM WASM Browser Examples</title>
+    <title>AGNTCY · SLIM Browser Agents</title>
+    <link rel="stylesheet" href="/src/index.css" />
   </head>
-  <body>
-    <main class="shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">SLIM · WebAssembly · WebSocket</p>
-          <h1>Browser reference examples</h1>
-          <p class="subtitle">
-            Focused implementations that mirror the Node.js examples in
-            <code>slim-bindings/node/examples/</code>. Each page runs one role
-            with defaults you can override through query parameters.
-          </p>
+  <body class="index-page">
+    <main class="index-shell">
+      <header class="index-topbar">
+        <div class="brand-lockup">
+          <img src="/agntcy-logo.svg" alt="AGNTCY" width="140" height="32" />
+          <span class="brand-divider" aria-hidden="true"></span>
+          <span class="slim-badge">
+            <img src="/slim-mark.svg" alt="" width="18" height="17" />
+            SLIM
+          </span>
         </div>
+        <p class="index-tag">Browser · WASM · WebSocket</p>
       </header>
 
-      <section class="panel">
-        <h2>Point-to-point</h2>
-        <ul class="example-list">
-          <li>
-            <a href="/point-to-point-alice.html">Point-to-point Alice (receiver)</a>
-            <p>Listens for incoming sessions and replies to each message.</p>
-          </li>
-          <li>
-            <a href="/point-to-point-bob.html">Point-to-point Bob (sender)</a>
-            <p>Creates a session with a remote peer and sends messages.</p>
-          </li>
-        </ul>
+      <section class="index-hero">
+        <div>
+          <p class="index-eyebrow">
+            <span class="index-eyebrow-dot" aria-hidden="true"></span>
+            Browser-based agents
+          </p>
+          <h1>
+            Run <span>SLIM agents</span> directly in the browser
+          </h1>
+          <p class="index-lead">
+            Reference implementations for secure, low-latency agent messaging.
+            Each example runs as a focused browser agent role — connect over
+            WebSocket, establish sessions, and exchange messages through WASM
+            bindings.
+          </p>
+          <div class="index-tags">
+            <span class="index-tag">Point-to-point agents</span>
+            <span class="index-tag">Group / multicast agents</span>
+            <span class="index-tag">Shared secret auth</span>
+            <span class="index-tag">Optional MLS</span>
+          </div>
+        </div>
+
+        <aside class="agent-scene group-scene" aria-label="Group browser agents connected over SLIM">
+          <div class="agent-link agent-link-a" aria-hidden="true"></div>
+          <div class="agent-link agent-link-b" aria-hidden="true"></div>
+          <div class="browser-window browser-window-mod">
+            <div class="browser-chrome">
+              <span class="browser-dot red"></span>
+              <span class="browser-dot yellow"></span>
+              <span class="browser-dot green"></span>
+              <span class="browser-url">group moderator agent</span>
+            </div>
+            <div class="agent-row">
+              <div class="agent-avatar mod">MOD</div>
+              <div class="agent-meta">
+                <strong>Moderator</strong>
+                <span>Creates session · invites participants</span>
+              </div>
+            </div>
+          </div>
+          <div class="browser-window browser-window-participant">
+            <div class="browser-chrome">
+              <span class="browser-dot red"></span>
+              <span class="browser-dot yellow"></span>
+              <span class="browser-dot green"></span>
+              <span class="browser-url">participant-one agent</span>
+            </div>
+            <div class="agent-row">
+              <div class="agent-avatar">P1</div>
+              <div class="agent-meta">
+                <strong>Participant one</strong>
+                <span>Waits for group invitation</span>
+              </div>
+            </div>
+          </div>
+          <div class="browser-window browser-window-participant">
+            <div class="browser-chrome">
+              <span class="browser-dot red"></span>
+              <span class="browser-dot yellow"></span>
+              <span class="browser-dot green"></span>
+              <span class="browser-url">participant-two agent</span>
+            </div>
+            <div class="agent-row">
+              <div class="agent-avatar">P2</div>
+              <div class="agent-meta">
+                <strong>Participant two</strong>
+                <span>Joins the same multicast channel</span>
+              </div>
+            </div>
+          </div>
+        </aside>
       </section>
 
-      <section class="panel">
-        <h2>Group messaging</h2>
-        <ul class="example-list">
-          <li>
-            <a href="/group-moderator.html">Group moderator</a>
-            <p>Creates a multicast session and invites participants.</p>
-          </li>
-          <li>
-            <a href="/group-participant.html">Group participant</a>
-            <p>Waits for a group invitation and exchanges messages.</p>
-          </li>
-        </ul>
+      <section class="example-grid" aria-label="Reference examples">
+        <h2 class="example-section-title">Point-to-point agents</h2>
+
+        <a class="example-card" href="/point-to-point-alice.html">
+          <div class="example-card-top">
+            <span class="example-icon teal" aria-hidden="true">RX</span>
+            <span class="example-role">Receiver</span>
+          </div>
+          <h2>Point-to-point Alice</h2>
+          <p>
+            Browser agent that listens for incoming sessions and replies to each
+            message. Start this agent before Bob in another tab.
+          </p>
+          <span class="example-card-footer">Open Alice agent →</span>
+        </a>
+
+        <a class="example-card" href="/point-to-point-bob.html">
+          <div class="example-card-top">
+            <span class="example-icon blue" aria-hidden="true">TX</span>
+            <span class="example-role">Sender</span>
+          </div>
+          <h2>Point-to-point Bob</h2>
+          <p>
+            Browser agent that creates a session with a remote peer and sends
+            messages, waiting for a reply after each publish.
+          </p>
+          <span class="example-card-footer">Open Bob agent →</span>
+        </a>
+
+        <h2 class="example-section-title">Group agents (2 participants)</h2>
+
+        <a class="example-card" href="/group-moderator.html">
+          <div class="example-card-top">
+            <span class="example-icon" aria-hidden="true">MOD</span>
+            <span class="example-role">Moderator</span>
+          </div>
+          <h2>Group moderator</h2>
+          <p>
+            Creates a multicast session and invites two participant agents.
+            Start participant one and two before launching the moderator.
+          </p>
+          <span class="example-card-footer">Open moderator agent →</span>
+        </a>
+
+        <a class="example-card" href="/group-participant.html">
+          <div class="example-card-top">
+            <span class="example-icon teal" aria-hidden="true">P1</span>
+            <span class="example-role">Participant</span>
+          </div>
+          <h2>Group participant one</h2>
+          <p>
+            First participant agent for the plaintext group example. Shows the
+            live participant list once the session starts.
+          </p>
+          <span class="example-card-footer">Open participant one →</span>
+        </a>
+
+        <a class="example-card" href="/group-participant-two.html">
+          <div class="example-card-top">
+            <span class="example-icon teal" aria-hidden="true">P2</span>
+            <span class="example-role">Participant</span>
+          </div>
+          <h2>Group participant two</h2>
+          <p>
+            Second participant agent for the same group channel. Open in a
+            separate tab alongside participant one.
+          </p>
+          <span class="example-card-footer">Open participant two →</span>
+        </a>
+
+        <h2 class="example-section-title">Group agents with MLS</h2>
+
+        <a class="example-card example-card-mls" href="/group-moderator-mls.html">
+          <div class="example-card-top">
+            <span class="example-icon" aria-hidden="true">MLS</span>
+            <span class="example-role">Moderator</span>
+          </div>
+          <h2>Group moderator (MLS)</h2>
+          <p>
+            Creates an MLS-encrypted multicast session on
+            <code>org/default/channel-mls</code> and invites two participants.
+          </p>
+          <span class="example-card-footer">Open MLS moderator →</span>
+        </a>
+
+        <a class="example-card example-card-mls" href="/group-participant-mls.html">
+          <div class="example-card-top">
+            <span class="example-icon teal" aria-hidden="true">P1</span>
+            <span class="example-role">Participant</span>
+          </div>
+          <h2>Group participant one (MLS)</h2>
+          <p>
+            First participant for the MLS group example. Security mode is
+            negotiated from the moderator&apos;s session handshake.
+          </p>
+          <span class="example-card-footer">Open MLS participant one →</span>
+        </a>
+
+        <a class="example-card example-card-mls" href="/group-participant-two-mls.html">
+          <div class="example-card-top">
+            <span class="example-icon teal" aria-hidden="true">P2</span>
+            <span class="example-role">Participant</span>
+          </div>
+          <h2>Group participant two (MLS)</h2>
+          <p>
+            Second participant for the MLS group example. Start both MLS
+            participants before the MLS moderator.
+          </p>
+          <span class="example-card-footer">Open MLS participant two →</span>
+        </a>
       </section>
 
-      <section class="panel">
-        <h2>Configuration</h2>
-        <p class="instructions">
-          Append query parameters to override defaults, for example
-          <code>?local=org/alice/app&amp;server=ws://127.0.0.1:46357</code>.
-          See each example’s README section for the full parameter list.
+      <section class="index-note">
+        <h2>Group workflow</h2>
+        <p>
+          Open participant one and participant two, click <strong>Start</strong>
+          in both tabs, then start the moderator. Messages and the participant
+          list update in every tab. For MLS, use the MLS example pages — the
+          moderator enables encryption and participants inherit it automatically.
         </p>
       </section>
+
+      <section class="index-note">
+        <h2>Configuration</h2>
+        <p>
+          Override defaults with query parameters, for example
+          <code>?local=org/alice/app&amp;server=ws://127.0.0.1:46357</code>.
+          See the README for the full parameter list for each agent role.
+        </p>
+      </section>
+
+      <footer class="index-footer">
+        <span>AGNTCY · Secure Low-Latency Interactive Messaging</span>
+        <span>
+          <a href="https://docs.agntcy.org/slim/overview" target="_blank" rel="noopener noreferrer">SLIM docs</a>
+          ·
+          <a href="https://github.com/agntcy/slim-bindings" target="_blank" rel="noopener noreferrer">slim-bindings</a>
+        </span>
+      </footer>
     </main>
   </body>
 </html>

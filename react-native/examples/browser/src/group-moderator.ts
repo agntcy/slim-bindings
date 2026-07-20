@@ -25,7 +25,12 @@ import {
   splitId,
   toArrayBuffer,
 } from "./common";
-import { bindExampleUi, prepareWasm } from "./ui";
+import {
+  refreshParticipants,
+  startParticipantPolling,
+  logSessionSecurity,
+} from "./group-common";
+import { bindExampleUi, prepareWasm, requireMessageControls } from "./ui";
 
 import "./style.css";
 
@@ -49,13 +54,15 @@ let app: AppLike | undefined;
 let session: SessionLike | undefined;
 let stopRequested = false;
 let receiveController: AbortController | undefined;
+let stopParticipantPolling: (() => void) | undefined;
 
 const ui = bindExampleUi();
+const messageControls = requireMessageControls(ui);
 
 ui.startButton.addEventListener("click", () => void startExample());
 ui.stopButton.addEventListener("click", () => void stopExample());
-ui.sendButton.addEventListener("click", () => void sendMessage());
-ui.messageInput.addEventListener("keydown", (event) => {
+messageControls.sendButton.addEventListener("click", () => void sendMessage());
+messageControls.messageInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     void sendMessage();
@@ -64,6 +71,7 @@ ui.messageInput.addEventListener("keydown", (event) => {
 window.addEventListener("pagehide", () => void stopExample());
 
 void prepareWasm(ui);
+ui.clearParticipants();
 
 function loadConfig(): ExampleConfig {
   const params = parseQueryParams({
@@ -100,15 +108,16 @@ async function startExample(): Promise<void> {
   if (app) return;
 
   const config = loadConfig();
-  if (config.invites.length === 0) {
+  if (config.invites.length < 2) {
     ui.logError(
       "Invalid configuration",
-      new Error("At least one invitee is required for moderator mode"),
+      new Error("At least two invitees are required for the group example"),
     );
     return;
   }
 
   renderConfig(config);
+  ui.renderParticipants(config.invites);
   stopRequested = false;
   ui.setRunning(true);
   ui.setConnectionStatus("Connecting…");
@@ -154,7 +163,8 @@ async function runModerator(
   await sleep(100);
   ui.setSessionStatus(`Group session · ${channelName.toString()}`);
   ui.log("Group session created");
-  startReceiveLoop(created, channelName.toString());
+  logSessionSecurity(ui, created);
+  startReceiveLoop(created);
 
   for (const inviteId of config.invites) {
     if (stopRequested) return;
@@ -163,17 +173,26 @@ async function runModerator(
       await currentApp.setRouteViaUpstreamAsync(inviteName);
       await created.inviteAndWaitAsync(inviteName);
       ui.log(`Invited ${inviteId}`);
+      await refreshParticipants(ui, created);
     } catch (error) {
       ui.logError(`Failed to invite ${inviteId}`, error);
     }
   }
+
+  stopParticipantPolling?.();
+  stopParticipantPolling = startParticipantPolling(
+    ui,
+    () => session,
+    () => stopRequested,
+  );
+  await refreshParticipants(ui, created);
 
   ui.log("Moderator ready — type a message and press Enter to send");
 }
 
 async function sendMessage(): Promise<void> {
   const currentSession = session;
-  const text = ui.messageInput.value.trim();
+  const text = messageControls.messageInput.value.trim();
   if (!currentSession || !text || stopRequested) return;
 
   try {
@@ -183,14 +202,14 @@ async function sendMessage(): Promise<void> {
       undefined,
     );
     ui.appendMessage("You", text, true);
-    ui.messageInput.value = "";
+    messageControls.messageInput.value = "";
     ui.log("Sent to group");
   } catch (error) {
     ui.logError("Failed to send message", error);
   }
 }
 
-function startReceiveLoop(currentSession: SessionLike, channel: string): void {
+function startReceiveLoop(currentSession: SessionLike): void {
   receiveController?.abort();
   const controller = new AbortController();
   receiveController = controller;
@@ -225,26 +244,12 @@ function startReceiveLoop(currentSession: SessionLike, channel: string): void {
       }
     }
   })();
-
-  void listParticipants(currentSession, channel);
-}
-
-async function listParticipants(
-  currentSession: SessionLike,
-  channel: string,
-): Promise<void> {
-  try {
-    const participants = await currentSession.participantsListAsync();
-    ui.log(
-      `Participants in ${channel} (${participants.length}): ${participants.join(", ")}`,
-    );
-  } catch (error) {
-    ui.logError("Failed to list participants", error);
-  }
 }
 
 async function stopExample(): Promise<void> {
   stopRequested = true;
+  stopParticipantPolling?.();
+  stopParticipantPolling = undefined;
   receiveController?.abort();
   receiveController = undefined;
 
@@ -272,5 +277,6 @@ async function stopExample(): Promise<void> {
 
   ui.setConnectionStatus("Disconnected");
   ui.setSessionStatus("No session");
+  ui.clearParticipants();
   ui.setRunning(false);
 }

@@ -13,11 +13,12 @@ export type ExampleUi = {
   sessionStatus: HTMLDivElement;
   startButton: HTMLButtonElement;
   stopButton: HTMLButtonElement;
-  messageInput: HTMLInputElement;
-  sendButton: HTMLButtonElement;
+  messageInput?: HTMLInputElement;
+  sendButton?: HTMLButtonElement;
   messages: HTMLDivElement;
   logOutput: HTMLPreElement;
   configList: HTMLDListElement;
+  participantsList?: HTMLUListElement;
   log: (message: string) => void;
   logError: (message: string, error: unknown) => void;
   setConnectionStatus: (text: string) => void;
@@ -25,6 +26,8 @@ export type ExampleUi = {
   appendMessage: (author: string, text: string, own?: boolean) => void;
   setRunning: (running: boolean) => void;
   renderConfig: (entries: Record<string, string>) => void;
+  renderParticipants: (names: string[]) => void;
+  clearParticipants: () => void;
 };
 
 export function bindExampleUi(): ExampleUi {
@@ -33,11 +36,12 @@ export function bindExampleUi(): ExampleUi {
   const sessionStatus = element<HTMLDivElement>("session-status");
   const startButton = element<HTMLButtonElement>("start");
   const stopButton = element<HTMLButtonElement>("stop");
-  const messageInput = element<HTMLInputElement>("message");
-  const sendButton = element<HTMLButtonElement>("send");
+  const messageInput = optionalElement<HTMLInputElement>("message");
+  const sendButton = optionalElement<HTMLButtonElement>("send");
   const messages = element<HTMLDivElement>("messages");
   const logOutput = element<HTMLPreElement>("log");
   const configList = element<HTMLDListElement>("config");
+  const participantsList = optionalElement<HTMLUListElement>("participants");
   const clearLogButton = element<HTMLButtonElement>("clear-log");
 
   clearLogButton.addEventListener("click", () => {
@@ -55,6 +59,7 @@ export function bindExampleUi(): ExampleUi {
     messages,
     logOutput,
     configList,
+    participantsList,
     log: (message) => appendLog(logOutput, message),
     logError: (message, error) => {
       appendLog(logOutput, `${message}: ${describeError(error)}`);
@@ -71,13 +76,33 @@ export function bindExampleUi(): ExampleUi {
     setRunning: (running) => {
       startButton.disabled = running;
       stopButton.disabled = !running;
-      messageInput.disabled = !running;
-      sendButton.disabled = !running;
+      if (messageInput) messageInput.disabled = !running;
+      if (sendButton) sendButton.disabled = !running;
     },
     renderConfig: (entries) => renderConfigList(configList, entries),
+    renderParticipants: (names) => renderParticipantList(participantsList, names),
+    clearParticipants: () => {
+      participantsList?.replaceChildren();
+      if (participantsList) {
+        const empty = document.createElement("li");
+        empty.className = "participant-empty";
+        empty.textContent = "Waiting for participants…";
+        participantsList.append(empty);
+      }
+    },
   };
 
   return ui;
+}
+
+export function requireMessageControls(ui: ExampleUi): {
+  messageInput: HTMLInputElement;
+  sendButton: HTMLButtonElement;
+} {
+  if (!ui.messageInput || !ui.sendButton) {
+    throw new Error("Missing message controls");
+  }
+  return { messageInput: ui.messageInput, sendButton: ui.sendButton };
 }
 
 export async function prepareWasm(ui: ExampleUi): Promise<void> {
@@ -105,6 +130,29 @@ function renderConfigList(
     const dd = document.createElement("dd");
     dd.textContent = value;
     list.append(dt, dd);
+  }
+}
+
+function renderParticipantList(
+  list: HTMLUListElement | undefined,
+  names: string[],
+): void {
+  if (!list) return;
+
+  list.replaceChildren();
+  if (names.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "participant-empty";
+    empty.textContent = "Waiting for participants…";
+    list.append(empty);
+    return;
+  }
+
+  for (const name of names) {
+    const item = document.createElement("li");
+    item.className = "participant-chip";
+    item.textContent = name;
+    list.append(item);
   }
 }
 
@@ -139,4 +187,8 @@ function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
   if (!value) throw new Error(`Missing element #${id}`);
   return value as T;
+}
+
+function optionalElement<T extends HTMLElement>(id: string): T | undefined {
+  return document.getElementById(id) as T | undefined;
 }

@@ -100,13 +100,24 @@ export type QueryDefaults = Record<string, string>;
  */
 export function parseQueryParams(defaults: QueryDefaults): QueryDefaults {
   const params = new URLSearchParams(window.location.search);
-  const resolved = { ...defaults };
+  const resolved = { ...defaults, ...readPageDefaults() };
 
-  for (const key of Object.keys(defaults)) {
+  for (const key of Object.keys(resolved)) {
     const value = params.get(key);
     if (value !== null && value.length > 0) {
       resolved[key] = value;
     }
+  }
+
+  return resolved;
+}
+
+function readPageDefaults(): QueryDefaults {
+  const resolved: QueryDefaults = {};
+
+  for (const attr of document.body.attributes) {
+    if (!attr.name.startsWith("data-default-")) continue;
+    resolved[attr.name.slice("data-default-".length)] = attr.value;
   }
 
   return resolved;

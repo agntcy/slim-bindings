@@ -5,19 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="SLIM group participant browser example"
+      content="SLIM MLS group moderator browser example"
     />
-    <title>SLIM · Group Participant</title>
+    <title>SLIM · Group Moderator (MLS)</title>
   </head>
-  <body>
+  <body
+    data-default-enableMls="true"
+    data-default-remote="org/default/channel-mls"
+    data-default-invites="org/default/participant-one,org/default/participant-two"
+  >
     <main class="shell">
       <header class="hero compact">
         <div>
           <p class="eyebrow"><a class="back-link" href="/">Examples</a></p>
-          <h1>Group Participant One</h1>
+          <h1>Group Moderator (MLS)</h1>
           <p class="subtitle">
-            First participant agent for the group example. Start this tab and
-            participant two before launching the moderator.
+            Creates an MLS-encrypted multicast session and invites two
+            participant agents. Start both participant tabs first.
           </p>
         </div>
         <div id="wasm-status" class="status status-loading">Loading WASM…</div>
@@ -65,6 +69,6 @@
       </section>
     </main>
 
-    <script type="module" src="/src/group-participant.ts"></script>
+    <script type="module" src="/src/group-moderator.ts"></script>
   </body>
 </html>

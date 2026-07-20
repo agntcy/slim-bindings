@@ -294,3 +294,27 @@ code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
 }
+
+.participants-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.participant-chip {
+  padding: 8px 12px;
+  border: 1px solid rgba(76, 219, 176, 0.22);
+  border-radius: 999px;
+  background: rgba(76, 219, 176, 0.1);
+  color: #d7f5ea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+.participant-empty {
+  color: #7f8ea1;
+  font-size: 0.9rem;
+}
