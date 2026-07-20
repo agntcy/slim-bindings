@@ -165,6 +165,6 @@ public final class SlimrpcServerMain {
         });
 
         System.out.println("SLIM_RPC_SERVER_READY");
-        rpcServer.serve();
+        rpcServer.serveBlocking();
     }
 }

@@ -105,5 +105,5 @@ fun main(args: Array<String>) = runBlocking {
     })
 
     println("SLIM_RPC_SERVER_READY")
-    rpcServer.serve()
+    rpcServer.serveBlocking()
 }
