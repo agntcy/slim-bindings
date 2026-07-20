@@ -75,14 +75,6 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-bindings"
-version = "2.0.0-alpha.3"
-dependencies = [
- "agntcy-slim-bindings 2.0.0-alpha.7",
- "agntcy-slim-rpc",
-]
-
-[[package]]
-name = "agntcy-slim-bindings"
 version = "2.0.0-alpha.7"
 source = "git+https://github.com/agntcy/slim?branch=main#693e9cce09c3f1c0e66037aa032cc2c26e13484b"
 dependencies = [
@@ -106,6 +98,14 @@ dependencies = [
  "tokio",
  "tracing",
  "uniffi",
+]
+
+[[package]]
+name = "agntcy-slim-bindings"
+version = "2.0.0-alpha.8"
+dependencies = [
+ "agntcy-slim-bindings 2.0.0-alpha.7",
+ "agntcy-slim-rpc",
 ]
 
 [[package]]
