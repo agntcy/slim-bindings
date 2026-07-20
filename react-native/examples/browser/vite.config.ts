@@ -7,6 +7,15 @@ const bindingsRoot = fileURLToPath(new URL("../..", import.meta.url));
 export default defineConfig({
   build: {
     target: "es2022",
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        "point-to-point-alice": "point-to-point-alice.html",
+        "point-to-point-bob": "point-to-point-bob.html",
+        "group-moderator": "group-moderator.html",
+        "group-participant": "group-participant.html",
+      },
+    },
   },
   server: {
     fs: {

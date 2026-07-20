@@ -1,19 +1,15 @@
-# SLIM WASM browser example
+# SLIM WASM browser examples
 
-This playground uses the generated `@agntcy/slim-bindings-react-native/web`
-API to exercise all supported browser session combinations:
+Reference implementations for the generated
+`@agntcy/slim-bindings-react-native/web` API. Each page mirrors one of the
+Node.js examples under `slim-bindings/node/examples/`.
 
-| Delivery | Security | Participants |
+| Example | Node equivalent | Role |
 | --- | --- | --- |
-| Unicast (point-to-point) | No MLS or MLS | Exactly two |
-| Multicast (group) | No MLS or MLS | Browser moderator plus one or more invitees |
-
-It demonstrates WASM initialization, a browser WebSocket connection, upstream
-routing, outgoing and incoming sessions, multicast invitations, asynchronous
-publish/receive operations, explicit session cleanup, and WebSocket cleanup.
-
-For commands and click-by-click instructions for every supported scenario, see
-[demo.md](./demo.md).
+| [Point-to-point Alice](./point-to-point-alice.html) | `point-to-point-alice.ts` | Receiver — listens and replies |
+| [Point-to-point Bob](./point-to-point-bob.html) | `point-to-point-bob.ts` | Sender — creates session and sends |
+| [Group moderator](./group-moderator.html) | `group.ts` (moderator path) | Creates multicast session and invites |
+| [Group participant](./group-participant.html) | `group.ts` (participant path) | Waits for group invitation |
 
 ## Prerequisites
 
@@ -23,7 +19,7 @@ For commands and click-by-click instructions for every supported scenario, see
 - `wasm-bindgen-cli` 0.2.106
 - sibling `slim` and `slim-bindings` repositories
 
-## Build and start the web app
+## Build and start
 
 Build the browser bindings:
 
@@ -33,7 +29,7 @@ npm install
 npm run build:web
 ```
 
-Start the example:
+Start the examples:
 
 ```bash
 cd slim-bindings/react-native/examples/browser
@@ -41,11 +37,13 @@ npm install
 npm run dev
 ```
 
+Open <http://127.0.0.1:5173> and choose an example.
+
 The local `ws://127.0.0.1:46357` endpoint is suitable for development. A
 deployed HTTPS application must use a `wss://` SLIM endpoint because browsers
 block insecure WebSockets from secure pages.
 
-## Two-browser unicast
+## Point-to-point
 
 Start a WebSocket SLIM node:
 
@@ -54,67 +52,85 @@ cd slim
 cargo run --bin slim -- --config config/websocket/server-config.yaml
 ```
 
-Open <http://127.0.0.1:5173> in two tabs:
+1. Open [Point-to-point Alice](./point-to-point-alice.html) and click **Start**.
+2. Open [Point-to-point Bob](./point-to-point-bob.html) in another tab and click **Start**.
 
-1. Apply **Unicast · Alice creator** in the first tab.
-2. Apply **Unicast · Bob receiver** in the second tab.
-3. Connect both tabs with the same shared secret.
-4. Select unicast and choose whether to enable MLS. The creator's setting is
-   carried by the session handshake.
-5. Click **Wait for incoming** in Bob's tab, then **Create session** in Alice's
-   tab.
+Bob creates the session, sends messages, and waits for Alice's replies.
 
-## Browser + native WebSocket + native gRPC multicast
+### Query parameters
 
-One point-to-point session cannot contain three participants, so this showcase
-uses one multicast session. A single SLIM node listens on WebSocket port 46357
-and gRPC port 46358, routing every participant into the same channel.
+**Alice**
 
-Start the multi-transport node:
+| Parameter | Default |
+| --- | --- |
+| `local` | `org/alice/app` |
+| `server` | `ws://127.0.0.1:46357` |
+| `secret` | `demo-shared-secret-min-32-chars!!` |
+| `reply` | `Hello from Alice` |
 
-```bash
-cd slim
-cargo run --bin slim -- --config config/multi-transport/server-config.yaml
+**Bob**
+
+| Parameter | Default |
+| --- | --- |
+| `local` | `org/bob/app` |
+| `remote` | `org/alice/app` |
+| `server` | `ws://127.0.0.1:46357` |
+| `secret` | `demo-shared-secret-min-32-chars!!` |
+| `message` | `Hello from Bob` |
+| `iterations` | `5` |
+
+Example:
+
+```
+http://127.0.0.1:5173/point-to-point-bob.html?remote=org/alice/app&iterations=3
 ```
 
-Start the native WebSocket participant in another terminal:
+## Group messaging
 
-```bash
-cd slim
-cargo run -p slim-examples --bin chat -- \
-  --config config/multi-transport/websocket-client-config.yaml \
-  --name org/default/native-ws/1 \
-  --channel org/default/mixed-demo
-```
+Use the same WebSocket SLIM node as above.
 
-Start the native gRPC participant in a third terminal:
+1. Open one [Group participant](./group-participant.html) tab per invitee and click **Start**.
+2. Open [Group moderator](./group-moderator.html) and click **Start**.
 
-```bash
-cd slim
-cargo run -p slim-examples --bin chat -- \
-  --config config/multi-transport/grpc-client-config.yaml \
-  --name org/default/native-grpc/2 \
-  --channel org/default/mixed-demo
-```
+The moderator creates the group session and invites each participant. Type
+messages in any tab and press Enter to send.
 
-In the browser apply **Mixed transports · Browser moderator**. The preset uses:
+### Query parameters
 
-- endpoint: `ws://127.0.0.1:46357`
-- local name: `org/default/browser`
-- shared secret: `test-shared-secret-value-0123456789abcdef`
-- delivery mode: **Multicast (group)**
-- multicast channel: `org/default/mixed-demo`
-- invitees: `org/default/native-ws` and `org/default/native-grpc`
+**Moderator**
 
-Connect the browser after both native participants say they are waiting for an
-invite. Toggle MLS as desired, then click **Create session**. Messages entered
-in any of the three applications are broadcast to the other two. The browser
-is the moderator, so `--no-mls` is not needed on native participants; they learn
-the MLS setting from the incoming session.
+| Parameter | Default |
+| --- | --- |
+| `local` | `org/default/me` |
+| `remote` | `org/default/channel` |
+| `server` | `ws://127.0.0.1:46357` |
+| `secret` | `demo-shared-secret-min-32-chars!!` |
+| `invites` | `org/default/participant-one,org/default/participant-two` |
+| `enableMls` | `false` |
+
+**Participant**
+
+| Parameter | Default |
+| --- | --- |
+| `local` | `org/default/participant-one` |
+| `server` | `ws://127.0.0.1:46357` |
+| `secret` | `demo-shared-secret-min-32-chars!!` |
 
 ## Production build
 
 ```bash
 npm run build
 npm run preview
+```
+
+## Source layout
+
+```
+src/
+  common.ts                 # shared connect/helpers (mirrors node/examples/common.ts)
+  ui.ts                     # minimal browser UI helpers
+  point-to-point-alice.ts   # receiver reference
+  point-to-point-bob.ts     # sender reference
+  group-moderator.ts        # group moderator reference
+  group-participant.ts      # group participant reference
 ```

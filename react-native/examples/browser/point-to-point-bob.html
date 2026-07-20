@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="SLIM point-to-point Bob sender browser example"
+    />
+    <title>SLIM · Point-to-Point Bob</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero compact">
+        <div>
+          <p class="eyebrow"><a class="back-link" href="/">Examples</a></p>
+          <h1>Point-to-Point Bob (Sender)</h1>
+          <p class="subtitle">
+            Creates a session with a remote peer and sends messages. Start Alice
+            in another tab first.
+          </p>
+        </div>
+        <div id="wasm-status" class="status status-loading">Loading WASM…</div>
+      </header>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Configuration</h2>
+          <div class="status-group">
+            <div id="connection-status" class="connection-state">Disconnected</div>
+            <div id="session-status" class="connection-state">No session</div>
+          </div>
+        </div>
+        <dl id="config" class="config-list"></dl>
+        <div class="button-row">
+          <button id="start" type="button" disabled>Start</button>
+          <button id="stop" type="button" class="secondary" disabled>Stop</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Messages</h2>
+        <div id="messages" class="messages" aria-live="polite">
+          <p class="empty-state">Messages appear once a session is active.</p>
+        </div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-heading compact">
+          <h2>Event log</h2>
+          <button id="clear-log" type="button" class="text-button">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/src/point-to-point-bob.ts"></script>
+  </body>
+</html>
