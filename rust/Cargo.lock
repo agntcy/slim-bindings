@@ -77,14 +77,6 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-bindings"
-version = "2.0.0-alpha.4"
-dependencies = [
- "agntcy-slim-bindings 2.0.0-alpha.8",
- "agntcy-slim-rpc",
-]
-
-[[package]]
-name = "agntcy-slim-bindings"
 version = "2.0.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b889f100db35a0f8169e3c2e5e78f03a7b7c95e686a06cb12075a52b5734e75d"
@@ -109,6 +101,14 @@ dependencies = [
  "tokio",
  "tracing",
  "uniffi",
+]
+
+[[package]]
+name = "agntcy-slim-bindings-ffi"
+version = "2.0.0-alpha.4"
+dependencies = [
+ "agntcy-slim-bindings",
+ "agntcy-slim-rpc",
 ]
 
 [[package]]
@@ -295,7 +295,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13c12118a335053211debc73edb4b6052c13b42eb9c2488b43b0cf2cccc8fcd"
 dependencies = [
  "agntcy-slim-auth",
- "agntcy-slim-bindings 2.0.0-alpha.8",
+ "agntcy-slim-bindings",
  "agntcy-slim-datapath",
  "agntcy-slim-service",
  "agntcy-slim-session",

@@ -8,7 +8,7 @@ low-latency messaging with support for point-to-point and group
 
 ## Overview
 
-These Python bindings are generated from the `agntcy-slim-bindings` crate
+These Python bindings are generated from the `agntcy-slim-bindings-ffi` crate
 using [UniFFI](https://mozilla.github.io/uniffi-rs/), providing a native
 Python interface that wraps the high-performance Rust implementation.
 
