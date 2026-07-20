@@ -13,7 +13,7 @@ plugins:
   # Generates <base>_slimrpc.ts (slimrpc client stub, group stub, servicer
   # interface, handler adapters, and registration function).
   # Requires `protoc-gen-slimrpc-node` on PATH:
-  #   cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-node
+  #   cargo install --locked --path <repo>/slimrpc-compiler --bin protoc-gen-slimrpc-node  (or run `task generate-proto`)
   - local: protoc-gen-slimrpc-node
     out: types
     opt:

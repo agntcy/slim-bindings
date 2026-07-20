@@ -158,32 +158,49 @@ tasks:
           echo "ERROR: Failed to generate slim_bindings.cs"
           exit 1
         fi
+        # slimrpc was split into its own crate/namespace (agntcy-slim-rpc), so uniffi-bindgen-cs
+        # now also emits slim_rpc.cs alongside slim_bindings.cs.
+        if [[ ! -f "{{.GENERATED_DIR}}/slim_rpc.cs" ]]; then
+          echo "ERROR: Failed to generate slim_rpc.cs"
+          exit 1
+        fi
+
+        # slim_rpc's symbols are re-exported into the single slim_bindings cdylib (via
+        # uniffi_reexport_scaffolding!), so there is no separate uniffi_slim_rpc library. Point
+        # slim_rpc.cs's P/Invoke at the core library. (Do this before the visibility pass.)
+        sed -i.bak0 -e 's/"uniffi_slim_rpc"/"uniffi_slim_bindings"/g' "{{.GENERATED_DIR}}/slim_rpc.cs"
+        # slim_rpc.cs has `using uniffi.slim_bindings;` and calls external-type converters from that
+        # namespace, which take uniffi.slim_bindings.BigEndianStream. Drop slim_rpc's identical local
+        # BigEndianStream so the name binds to the core one and the types match (CS1503).
+        perl -0777 -i -pe 's/^class BigEndianStream \{.*?^\}\n//ms' "{{.GENERATED_DIR}}/slim_rpc.cs"
 
         # Make all bindings types public so protoc-gen-slimrpc-csharp output and Agntcy.Slim.SlimRpc can use FFI from any assembly.
         # uniffi-bindgen-cs emits internal by default (including abstract handler bases). Order: most specific patterns first.
         # uniffi-bindgen-cs also emits namespace-scope types with default (internal) visibility
         # (no leading keyword). Promote those too so public members are consistent (CS0050/CS0051).
-        sed -i.bak -e 's/^internal static partial class /public static partial class /' \
-            -e 's/^internal sealed class /public sealed class /' \
-            -e 's/^internal abstract class /public abstract class /' \
-            -e 's/^internal static class /public static class /' \
-            -e 's/^internal partial class /public partial class /' \
-            -e 's/^internal readonly struct /public readonly struct /' \
-            -e 's/^internal struct /public struct /' \
-            -e 's/^internal class /public class /' \
-            -e 's/^internal interface /public interface /' \
-            -e 's/^internal record /public record /' \
-            -e 's/^internal enum /public enum /' \
-            -e 's/^static partial class _UniFFILib/public static partial class _UniFFILib/' \
-            -e 's/^static class /public static class /' \
-            -e 's/^struct /public struct /' \
-            -e 's/^interface /public interface /' \
-            -e 's/^delegate /public delegate /' \
-            -e 's/^class /public class /' \
-            "{{.GENERATED_DIR}}/slim_bindings.cs"
-        # uniffi-bindgen-cs 0.31: Dispose() for sealed union variant named "Error" wrongly uses .Error (type) instead of .ErrorValue (positional field).
-        sed -i.bak2 -e 's/variant_value\.Error);/variant_value.ErrorValue);/' "{{.GENERATED_DIR}}/slim_bindings.cs"
-        rm -f "{{.GENERATED_DIR}}/slim_bindings.cs.bak" "{{.GENERATED_DIR}}/slim_bindings.cs.bak2"
+        for cs_file in slim_bindings slim_rpc; do
+          sed -i.bak -e 's/^internal static partial class /public static partial class /' \
+              -e 's/^internal sealed class /public sealed class /' \
+              -e 's/^internal abstract class /public abstract class /' \
+              -e 's/^internal static class /public static class /' \
+              -e 's/^internal partial class /public partial class /' \
+              -e 's/^internal readonly struct /public readonly struct /' \
+              -e 's/^internal struct /public struct /' \
+              -e 's/^internal class /public class /' \
+              -e 's/^internal interface /public interface /' \
+              -e 's/^internal record /public record /' \
+              -e 's/^internal enum /public enum /' \
+              -e 's/^static partial class _UniFFILib/public static partial class _UniFFILib/' \
+              -e 's/^static class /public static class /' \
+              -e 's/^struct /public struct /' \
+              -e 's/^interface /public interface /' \
+              -e 's/^delegate /public delegate /' \
+              -e 's/^class /public class /' \
+              "{{.GENERATED_DIR}}/${cs_file}.cs"
+          # uniffi-bindgen-cs 0.31: Dispose() for sealed union variant named "Error" wrongly uses .Error (type) instead of .ErrorValue (positional field).
+          sed -i.bak2 -e 's/variant_value\.Error);/variant_value.ErrorValue);/' "{{.GENERATED_DIR}}/${cs_file}.cs"
+        done
+        rm -f "{{.GENERATED_DIR}}"/slim_bindings.cs.bak* "{{.GENERATED_DIR}}"/slim_rpc.cs.bak*
 
         echo "C# bindings generated successfully"
       - task: copy:runtimes
@@ -376,7 +393,7 @@ tasks:
     cmds:
       - |
         echo "Installing protoc-gen-slimrpc-csharp from crates.io..."
-        cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-csharp
+        cargo install --locked --path "{{.TASKFILE_DIR}}/../slimrpc-compiler" --bin protoc-gen-slimrpc-csharp
         echo "Plugin installed"
       - task: buf
       - |

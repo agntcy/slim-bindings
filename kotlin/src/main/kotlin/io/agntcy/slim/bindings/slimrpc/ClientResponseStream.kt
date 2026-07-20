@@ -3,8 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc
 
-import io.agntcy.slim.bindings.ResponseStreamReader
-import io.agntcy.slim.bindings.StreamMessage
 
 class ClientResponseStream<RespT>(
     private val inner: ResponseStreamReader,

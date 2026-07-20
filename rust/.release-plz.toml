@@ -12,6 +12,6 @@ git_release_name = "{{ package | replace(from='agntcy-', to='') }} v{{ version }
 
 [[package]]
 name = "agntcy-slim-bindings"
-publish = true
-release = true
-changelog_update = true
+publish = false
+release = false
+changelog_update = false

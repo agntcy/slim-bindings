@@ -125,6 +125,12 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
             "uniffi.slim_bindings".to_string(),
             "using uniffi.slim_bindings;".to_string(),
         );
+        // slimrpc types (Channel, Server, Context, handlers, streams, ...) live in their own
+        // UniFFI namespace since slimrpc was split into the agntcy-slim-rpc crate.
+        usings.insert(
+            "uniffi.slim_rpc".to_string(),
+            "using uniffi.slim_rpc;".to_string(),
+        );
         usings.insert(
             "Google.Protobuf".to_string(),
             "using Google.Protobuf;".to_string(),

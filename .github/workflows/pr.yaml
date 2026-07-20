@@ -21,7 +21,6 @@ on:
       - 'kotlin/**'
       - 'node/**'
       - 'react-native/**'
-      - 'slimrpc-compiler/**'
       - 'tasks/**'
       - 'Taskfile.yaml'
     branches:
@@ -42,7 +41,6 @@ on:
       - 'kotlin/**'
       - 'node/**'
       - 'react-native/**'
-      - 'slimrpc-compiler/**'
       - 'tasks/**'
       - 'Taskfile.yaml'
 
@@ -58,34 +56,3 @@ jobs:
     name: Bindings - build & test
     uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
 
-  slimrpc-compiler-build-and-test:
-    name: slimrpc-compiler - build & test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          workspace: ./slimrpc-compiler
-
-      - name: Build
-        working-directory: ./slimrpc-compiler
-        run: cargo build --locked --all-targets
-
-      - name: Test
-        working-directory: ./slimrpc-compiler
-        run: cargo test --locked --all-targets
-
-      - name: Clippy
-        working-directory: ./slimrpc-compiler
-        run: cargo clippy --locked --all-targets -- -D warnings
-
-      - name: Format
-        working-directory: ./slimrpc-compiler
-        run: cargo fmt --all -- --check

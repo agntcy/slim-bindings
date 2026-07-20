@@ -22,21 +22,31 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const nodeDir = path.resolve(scriptDir, '..');
-const srcPath = path.join(nodeDir, 'generated', 'slim_bindings.ts');
+// slimrpc is a second UniFFI namespace (agntcy-slim-rpc); its types (Channel,
+// RpcError, handlers, ...) are generated into slim_rpc.ts. index.ts re-exports
+// both namespaces, so the runtime barrel must surface value exports from both.
+const srcPaths = [
+  path.join(nodeDir, 'generated', 'slim_bindings.ts'),
+  path.join(nodeDir, 'generated', 'slim_rpc.ts'),
+];
 const outPath = path.join(nodeDir, 'named-exports.js');
 
-if (!fs.existsSync(srcPath)) {
-  console.error(`❌ ${srcPath} not found. Run \`task generate\` first.`);
+if (!fs.existsSync(srcPaths[0])) {
+  console.error(`❌ ${srcPaths[0]} not found. Run \`task generate\` first.`);
   process.exit(1);
 }
-
-const src = fs.readFileSync(srcPath, 'utf8');
 
 // Match VALUE exports only (classes, consts, enums, functions). Type-only
 // exports (interface/type) are intentionally excluded — they are surfaced via
 // index.d.ts and have no runtime representation.
 const re = /^export (?:abstract class|class|const|enum|function) ([A-Za-z0-9_$]+)/gm;
-const names = [...new Set([...src.matchAll(re)].map((m) => m[1]))].sort();
+const names = [
+  ...new Set(
+    srcPaths
+      .filter((p) => fs.existsSync(p))
+      .flatMap((p) => [...fs.readFileSync(p, 'utf8').matchAll(re)].map((m) => m[1])),
+  ),
+].sort();
 
 if (names.length === 0) {
   console.error('❌ No value exports found in slim_bindings.ts — refusing to write an empty barrel.');

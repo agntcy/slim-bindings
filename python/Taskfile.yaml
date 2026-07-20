@@ -409,7 +409,7 @@ tasks:
       - task: rust:run-command
         vars:
           COMMAND: |
-            cargo install --locked agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-python
+            cargo install --locked --path "{{.TASKFILE_DIR}}/../slimrpc-compiler" --bin protoc-gen-slimrpc-python
       - task: tools:buf
     cmds:
       - |

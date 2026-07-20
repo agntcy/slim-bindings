@@ -12,6 +12,6 @@ plugins:
     out: types
   - remote: buf.build/protocolbuffers/kotlin
     out: types
-  # Requires `protoc-gen-slimrpc-kotlin` on PATH (installed via `cargo install agntcy-protoc-slimrpc-plugin`).
+  # Requires `protoc-gen-slimrpc-kotlin` on PATH (built from the in-repo slimrpc-compiler by `task generate-proto`).
   - local: protoc-gen-slimrpc-kotlin
     out: slimrpc

@@ -9,12 +9,12 @@ import com.example_service.ExampleResponse;
 import com.example_service.TestSlimrpc;
 import io.agntcy.slim.bindings.App;
 import io.agntcy.slim.bindings.ClientConfig;
-import io.agntcy.slim.bindings.Context;
+import io.agntcy.slim.bindings.slimrpc.Context;
 import io.agntcy.slim.bindings.Name;
-import io.agntcy.slim.bindings.RequestStream;
-import io.agntcy.slim.bindings.ResponseSink;
+import io.agntcy.slim.bindings.slimrpc.RequestStream;
+import io.agntcy.slim.bindings.slimrpc.ResponseSink;
 import io.agntcy.slim.bindings.RuntimeConfig;
-import io.agntcy.slim.bindings.Server;
+import io.agntcy.slim.bindings.slimrpc.Server;
 import io.agntcy.slim.bindings.ServerConfig;
 import io.agntcy.slim.bindings.ServiceConfig;
 import io.agntcy.slim.bindings.Service;
@@ -165,6 +165,6 @@ public final class SlimrpcServerMain {
         });
 
         System.out.println("SLIM_RPC_SERVER_READY");
-        rpcServer.serve();
+        rpcServer.serveBlocking();
     }
 }

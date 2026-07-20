@@ -3,7 +3,6 @@
 
 package io.agntcy.slim.bindings.slimrpc
 
-import io.agntcy.slim.bindings.ResponseSink
 
 interface ServerRequestStream<RespT> {
     suspend fun send(response: RespT)

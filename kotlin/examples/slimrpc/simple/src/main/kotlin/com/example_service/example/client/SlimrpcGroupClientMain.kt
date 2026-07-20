@@ -7,6 +7,7 @@ import com.example_service.ExampleResponse
 import com.example_service.TestSlimrpc
 import com.example_service.exampleRequest
 import io.agntcy.slim.bindings.*
+import io.agntcy.slim.bindings.slimrpc.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking

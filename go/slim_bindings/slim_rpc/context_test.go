@@ -1,4 +1,4 @@
-package slimrpc
+package slim_rpc
 
 import (
 	"context"
