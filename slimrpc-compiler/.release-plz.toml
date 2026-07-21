@@ -4,6 +4,11 @@
 [workspace]
 release_always = false
 release = false
+# Distinct PR branch/name so this crate's release PR does not collide with
+# the bindings crate release-plz instance (they'd otherwise share the
+# default `release-plz-` branch and clobber each other's PR).
+pr_branch_prefix = "release-plz-slimrpc-"
+pr_name = "chore: release slimrpc-compiler v{{ version }}"
 
 # Remove agntcy- from git tag and release names so they look like:
 #   protoc-slimrpc-plugin-v1.4.1
