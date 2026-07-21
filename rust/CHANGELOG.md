@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-alpha.4](https://github.com/agntcy/slim-bindings/releases/tag/slim-bindings-v2.0.0-alpha.4) - 2026-07-21
+
+### Added
+
+- Update release process ([#32](https://github.com/agntcy/slim-bindings/pull/32))
+- bump crate version ([#31](https://github.com/agntcy/slim-bindings/pull/31))
+- Node version update for CI ([#5](https://github.com/agntcy/slim-bindings/pull/5))
+
+### Other
+
+- move slim-bindings and slimrpc back to slim core ([#28](https://github.com/agntcy/slim-bindings/pull/28))
+- release alpha 3 rerun ([#27](https://github.com/agntcy/slim-bindings/pull/27))
+- release v2.0.0-alpha.3 ([#26](https://github.com/agntcy/slim-bindings/pull/26))
+- release v2.0.0-alpha.2 ([#13](https://github.com/agntcy/slim-bindings/pull/13))
+- release 2.0.0-alpha.2 ([#11](https://github.com/agntcy/slim-bindings/pull/11))
+- add missing features ([#2](https://github.com/agntcy/slim-bindings/pull/2))
+- move code from slim ([#1](https://github.com/agntcy/slim-bindings/pull/1))
+
 ## [2.0.0-alpha.3](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.0.0-alpha.2...slim-bindings-v2.0.0-alpha.3) - 2026-07-14
 
 ### Added
