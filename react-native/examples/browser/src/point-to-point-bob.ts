@@ -49,7 +49,6 @@ type ExampleConfig = {
 let app: AppLike | undefined;
 let session: SessionLike | undefined;
 let stopRequested = false;
-let receiveController: AbortController | undefined;
 
 const ui = bindExampleUi();
 
@@ -154,7 +153,6 @@ async function runSender(
   session = created;
   ui.setSessionStatus(`Session · ${created.sessionId()}`);
   ui.log(`Session established (${created.sessionId()})`);
-  startReceiveLoop(created);
 
   for (let i = 0; i < config.iterations && !stopRequested; i++) {
     const text = `${config.message} (${i + 1}/${config.iterations})`;
@@ -187,31 +185,8 @@ async function runSender(
   await stopExample();
 }
 
-function startReceiveLoop(currentSession: SessionLike): void {
-  receiveController?.abort();
-  const controller = new AbortController();
-  receiveController = controller;
-
-  void (async () => {
-    while (session === currentSession && !controller.signal.aborted) {
-      try {
-        const received = await currentSession.getMessageAsync(undefined, {
-          signal: controller.signal,
-        });
-        const source = received.context.sourceName.toString();
-        const text = textDecoder.decode(received.payload);
-        ui.appendMessage(source, text);
-      } catch {
-        return;
-      }
-    }
-  })();
-}
-
 async function stopExample(): Promise<void> {
   stopRequested = true;
-  receiveController?.abort();
-  receiveController = undefined;
 
   const currentApp = app;
   const currentSession = session;

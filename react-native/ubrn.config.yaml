@@ -1,3 +1,7 @@
+rust:
+  directory: ../rust
+  manifestPath: Cargo.toml
+
 crates:
   - name: agntcy-slim-bindings-ffi
     path: ../rust
