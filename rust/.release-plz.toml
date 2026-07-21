@@ -12,6 +12,21 @@ git_release_name = "{{ package | replace(from='agntcy-', to='') }} v{{ version }
 
 [[package]]
 name = "agntcy-slim-bindings-ffi"
-publish = false
-release = false
-changelog_update = false
+# Publish to crates.io under the renamed name so it does NOT collide with
+# `agntcy-slim-bindings`, which is published from the slim repo.
+publish = true
+# release-plz owns the version bump, changelog, git tag, and crates.io
+# publish. The tag also triggers release-bindings.yaml to build & publish
+# the per-language artifacts at the same version (unified release).
+release = true
+changelog_update = true
+# release-bindings.yaml (softprops) owns the GitHub release + artifacts, so
+# don't let release-plz create a competing GitHub release for the same tag.
+git_release_enable = false
+# Keep the release tag as `slim-bindings-v*` (NOT `slim-bindings-ffi-v*`)
+# despite the crate rename: one tag drives both the crate publish and the
+# language publish pipelines, which derive each package's version by
+# stripping the `slim-bindings-` prefix from the tag (release-bindings.yaml,
+# reusable-*-release.yaml). A `slim-bindings-ffi-v*` tag would yield broken
+# versions like `ffi-v2.0.0` for npm/PyPI/NuGet/Go/Maven.
+git_tag_name = "slim-bindings-v{{ version }}"
