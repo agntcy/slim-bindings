@@ -20,11 +20,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Create GitHub Release
+      - name: Ensure GitHub Release exists
         env:
           GH_TOKEN: ${{ github.token }}
+          # release-plz creates the GitHub release for this tag (git_release_enable
+          # is not disabled in slimrpc-compiler/.release-plz.toml), so it normally
+          # already exists by the time this runs. Only create it if missing, and
+          # make it idempotent so re-runs don't fail with "release already exists".
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" --title "$RELEASE_TAG"
+        # GH_REPO gives `gh` the repo context without needing a checkout
+        # (this job intentionally has none).
+        run: |
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG"
 
   build-binaries:
     name: "${{ matrix.platform.target }}"
