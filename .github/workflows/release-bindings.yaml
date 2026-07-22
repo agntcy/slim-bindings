@@ -490,6 +490,14 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
+      - name: Install cargo-binstall (prebuilt binary)
+        # Install the prebuilt cargo-binstall so the build task's
+        # `install-cargo-binstall` step (status-guarded on `cargo binstall`)
+        # skips compiling it from source. The source build pulls in aws-lc-sys,
+        # whose build script panics in CcBuilder::memcmp_check on the macOS CI
+        # runner, which broke the iOS static-lib build.
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
       - name: Build iOS static libs (device + simulator)
         id: build-ios
         working-directory: ./react-native
