@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-alpha.4](https://github.com/agntcy/slim-bindings/compare/protoc-slimrpc-plugin-v1.5.0...protoc-slimrpc-plugin-v2.0.0-alpha.4) - 2026-07-21
+
+### Added
+
+- bump crate version ([#31](https://github.com/agntcy/slim-bindings/pull/31))
+
+### Fixed
+
+- relese please to separete pr ([#33](https://github.com/agntcy/slim-bindings/pull/33))
+
+### Other
+
+- move slim-bindings and slimrpc back to slim core ([#28](https://github.com/agntcy/slim-bindings/pull/28))
+
 ## [1.5.0](https://github.com/agntcy/slim-bindings/compare/protoc-slimrpc-plugin-v1.4.1...protoc-slimrpc-plugin-v1.5.0) - 2026-07-13
 
 ### Added
