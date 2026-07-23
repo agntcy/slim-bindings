@@ -35,7 +35,6 @@ on:
 env:
   LIBRARY_NAME: ${{ inputs.library-name }}
   GO_BINDINGS_REPO: ${{ inputs.go-bindings-repo }}
-  FILES_TO_RELEASE: cmd slim_rpc go.mod go.sum LICENSE README.md SLIMRPC.md slim_bindings.go slim_bindings.h
 
 jobs:
   # ==========================================================================
@@ -83,15 +82,23 @@ jobs:
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${GO_BINDINGS_REPO}.git" ./target-repo
 
-      - name: Update target repository
+      - name: Sync target repository (one-way source -> target)
         run: |
           pushd ./target-repo
 
-          # Copy Go bindings
+          # One-way sync, not a merge: the target must mirror exactly what the
+          # source produces. Clearing the tracked files first means paths that
+          # were removed or renamed in source (e.g. the old slimrpc/ folder,
+          # now slim_rpc/) disappear from the target instead of lingering.
+          # .git is left untouched by git rm; --ignore-unmatch tolerates the
+          # very first release when nothing is tracked yet.
+          git rm -rq --ignore-unmatch . >/dev/null
+
+          # Repopulate from the freshly generated artifacts.
           cp -r ../downloaded_slim_bindings/* ./
 
-          # Show what will be committed
-          echo "📋 Files to be committed:"
+          # Staging happens after the module-path rewrite in the next step.
+          echo "📋 Working tree after sync:"
           git status
 
           popd
@@ -132,8 +139,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          read -ra files <<< "$FILES_TO_RELEASE"
-          git add "${files[@]}"
+          # Stage the whole synced tree so deletions (paths removed or renamed
+          # in source) are committed alongside additions and modifications.
+          git add -A
 
           # Check if there are changes to commit
           if git diff --cached --quiet; then
