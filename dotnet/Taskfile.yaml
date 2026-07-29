@@ -97,12 +97,16 @@ tasks:
 
   install-uniffi-bindgen-cs:
     desc: "Install uniffi-bindgen-cs for C# bindings generation"
+    vars:
+      VERSION: v0.11.0+v0.31.0
     # Do not skip when an unrelated uniffi-bindgen-cs is on PATH (e.g. old NordSecurity 0.29 build).
     status:
-      - 'command -v uniffi-bindgen-cs >/dev/null && uniffi-bindgen-cs --version 2>/dev/null | grep -Fq "0.31"'
+      # --version prints the semver without the tag's leading "v" (e.g. "uniffi-bindgen 0.11.0+v0.31.0").
+      - 'command -v uniffi-bindgen-cs >/dev/null && uniffi-bindgen-cs --version 2>/dev/null | grep -Fq "{{trimPrefix "v" .VERSION}}"'
     cmds:
-      # UniFFI 0.31: fork aligned with uniffi_bindgen 0.31.x (pin full SHA for reproducibility).
-      - cargo install uniffi-bindgen-cs --git https://github.com/janosSarusiKis/uniffi-bindgen-cs.git --rev d788b3ab74f079608515bf24b0bc7fe735f2ea6b --config net.git-fetch-with-cli=true --force
+      # UniFFI 0.31: upstream NordSecurity release (targets uniffi_bindgen 0.31.x).
+      # Formerly a fork carrying the 0.31 upgrade (PR #163); now merged and released, so use upstream directly.
+      - cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs.git --tag {{.VERSION}} --config net.git-fetch-with-cli=true --force
     silent: true
 
 
