@@ -123,7 +123,7 @@ export type QueryDefaults = Record<string, string>;
  */
 export function parseQueryParams(defaults: QueryDefaults): QueryDefaults {
   const params = new URLSearchParams(window.location.search);
-  const resolved = { ...defaults, ...readPageDefaults() };
+  const resolved = { ...defaults, ...readPageDefaults(defaults) };
 
   for (const key of Object.keys(resolved)) {
     const value = params.get(key);
@@ -135,12 +135,19 @@ export function parseQueryParams(defaults: QueryDefaults): QueryDefaults {
   return resolved;
 }
 
-function readPageDefaults(): QueryDefaults {
+function readPageDefaults(defaults: QueryDefaults): QueryDefaults {
   const resolved: QueryDefaults = {};
 
   for (const attr of document.body.attributes) {
     if (!attr.name.startsWith("data-default-")) continue;
-    resolved[attr.name.slice("data-default-".length)] = attr.value;
+    const rawKey = attr.name.slice("data-default-".length);
+    // HTML attribute names are case-insensitive; map back to the canonical
+    // camelCase key from defaults when possible (e.g. enablemls → enableMls).
+    const key =
+      Object.keys(defaults).find(
+        (candidate) => candidate.toLowerCase() === rawKey.toLowerCase(),
+      ) ?? rawKey;
+    resolved[key] = attr.value;
   }
 
   return resolved;

@@ -46,11 +46,6 @@ npm install
 npm run build:web
 ```
 
-Until the browser-capable SLIM core crates are released, source builds expect
-the `slim` and `slim-bindings` repositories to be sibling directories. The
-Cargo dependencies already carry registry versions so the local paths can be
-removed after those releases are published.
-
 The stable `web.ts` entrypoint is selected automatically by bundlers through
 the package's `browser` field and loads the generated WASM binary as a bundled
 asset. TypeScript browser code should import the explicit `/web` entrypoint so
@@ -104,8 +99,8 @@ routes for participants, and use `inviteAndWaitAsync` before publishing.
 
 A runnable browser playground for unicast, multicast, optional MLS, and mixed
 browser/native transports is available in
-[`examples/browser`](./examples/browser/README.md). See its
-[`demo.md`](./examples/browser/demo.md) for the complete end-to-end scenarios.
+[`examples/browser`](./examples/browser/README.md), including point-to-point,
+group, and MLS walkthroughs.
 
 ## API overview
 
@@ -120,7 +115,6 @@ browser/native transports is available in
 **Prerequisites**: Node.js 18+, Rust 1.70+, Task
 
 ```bash
-git clone https://github.com/agntcy/slim.git
 git clone https://github.com/agntcy/slim-bindings.git
 cd slim-bindings/react-native
 npm install

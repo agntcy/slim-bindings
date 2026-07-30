@@ -6,14 +6,12 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1",
-    "test:smoke": "node scripts/smoke-p2p.mjs"
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "@agntcy/slim-bindings-react-native": "file:../.."
   },
   "devDependencies": {
-    "playwright": "^1.49.1",
     "typescript": "5.9.3",
     "vite": "5.4.21"
   }

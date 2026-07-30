@@ -21,7 +21,7 @@ Node.js examples under `slim-bindings/node/examples/`.
 - Rust with the `wasm32-unknown-unknown` target
 - `task`
 - `wasm-bindgen-cli` 0.2.106
-- sibling `slim` and `slim-bindings` repositories
+- a running WebSocket SLIM node for live messaging (see below)
 
 ## Build and start
 
