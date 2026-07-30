@@ -11,15 +11,5 @@ getrandom = { version = "0.4", features = ["wasm_js"] }
 [profile.release]
 opt-level = "z"
 
-[patch.crates-io]
-# Browser transport support currently lives in the adjacent SLIM checkout.
-# This patch is merged into react-native/wasm/Cargo.toml, so these paths are
-# relative to that generated manifest rather than this source patch file.
-agntcy-slim-bindings = { path = "../../../slim/crates/slim-bindings" }
-agntcy-slim-auth = { path = "../../../slim/crates/auth" }
-agntcy-slim-config = { path = "../../../slim/crates/config" }
-agntcy-slim-datapath = { path = "../../../slim/crates/datapath" }
-agntcy-slim-session = { path = "../../../slim/crates/session" }
-
 [workspace]
 resolver = "2"
