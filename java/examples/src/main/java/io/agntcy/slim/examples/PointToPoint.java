@@ -89,7 +89,7 @@ public class PointToPoint {
                 null, // maxRetries
                 null, // interval
                 Map.of(), // metadata
-                config.enableMls ? new MlsSettings(100) : null);
+                config.enableMls ? new MlsSettings(100, null) : null);
 
         System.out.println(Colors.instancePrefix(instanceId) +
                 "🔍 Creating session to " + config.remote + "...");

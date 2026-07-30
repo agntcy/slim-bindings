@@ -98,7 +98,7 @@ public class Group {
                     5, // maxRetries
                     Duration.ofSeconds(5), // interval
                     Map.of(), // metadata
-                    config.enableMls ? new MlsSettings(100) : null);
+                    config.enableMls ? new MlsSettings(100, null) : null);
 
             // Create session and wait for establishment
             Session createdSession = app.createSessionAndWait(sessionConfig, chatChannel);

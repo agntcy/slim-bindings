@@ -15,7 +15,7 @@ public final class TestHelpers {
 
     /** Default MLS settings (100% header integrity validation). */
     public static MlsSettings defaultMlsSettings() {
-        return new MlsSettings(100);
+        return new MlsSettings(100, null);
     }
 
     private TestHelpers() {}

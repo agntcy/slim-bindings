@@ -71,7 +71,10 @@ async def _create_group_session(
         max_retries=5,
         interval=datetime.timedelta(seconds=1),
         metadata={},
-        mls_settings=slim_bindings.MlsSettings(header_integrity_validation_percent=100)
+        mls_settings=slim_bindings.MlsSettings(
+            header_integrity_validation_percent=100,
+            max_seen_control_message_ids_size=None,
+        )
         if mls_enabled
         else None,
     )

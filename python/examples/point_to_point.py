@@ -78,7 +78,8 @@ async def run_client(config: PointToPointConfig):
             interval=datetime.timedelta(seconds=5),
             metadata={},
             mls_settings=slim_bindings.MlsSettings(
-                header_integrity_validation_percent=100
+                header_integrity_validation_percent=100,
+                max_seen_control_message_ids_size=None,
             )
             if config.enable_mls
             else None,
