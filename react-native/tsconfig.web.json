@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowArbitraryExtensions": true,
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": [
+    "web.ts",
+    "src/index.web.ts",
+    "generated/web/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

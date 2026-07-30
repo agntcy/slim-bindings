@@ -1,6 +1,19 @@
+rust:
+  directory: ../rust
+  manifestPath: Cargo.toml
+
 crates:
   - name: agntcy-slim-bindings-ffi
-    path: ../adapter
+    path: ../rust
 
 web:
-  ts: wasm/generated
+  manifestPath: wasm/Cargo.toml
+  manifestPatchFile: wasm.Cargo.patch.toml
+  wasmCrateName: slim-bindings-react-native
+  features:
+    - web
+  defaultFeatures: false
+  workspace: false
+  target: web
+  entrypoint: src/index.web.ts
+  tsBindings: generated/web

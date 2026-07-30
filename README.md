@@ -15,7 +15,7 @@ This repository hosts the Rust FFI adapter crate and the per-language wrappers t
 | [`java/`](./java) | Java | Maven Central |
 | [`kotlin/`](./kotlin) | Kotlin | Maven Central |
 | [`node/`](./node) | Node.js | `@agntcy/slim-bindings` on npm |
-| [`react-native/`](./react-native) | React Native | `@agntcy/slim-bindings-react-native` on npm |
+| [`react-native/`](./react-native) | React Native + browser/WebAssembly | `@agntcy/slim-bindings-react-native` on npm |
 
 ## Architecture
 

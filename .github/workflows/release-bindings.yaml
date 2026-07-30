@@ -525,7 +525,7 @@ jobs:
           task vendor:ios
           task xcframework:ios
 
-      - name: Generate bindings
+      - name: Generate React Native bindings
         working-directory: ./react-native
         env:
           CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER: "${{ github.workspace }}/rust/.cargo/clang-ios-linker-wrapper.sh"
@@ -535,6 +535,21 @@ jobs:
           BINDGEN_EXTRA_CLANG_ARGS="-isysroot ${_sim_sdk} -target arm64-apple-ios15.0-simulator"
           export BINDGEN_EXTRA_CLANG_ARGS
           task generate TARGET=aarch64-apple-ios-sim
+
+      - name: Generate browser/WASM bindings
+        working-directory: ./react-native
+        run: |
+          rustup target add wasm32-unknown-unknown
+          task generate:web
+
+      - name: Verify WASM artifacts for npm publish
+        working-directory: ./react-native
+        run: |
+          test -f web.ts
+          test -f generated/web/wasm-bindgen/index_bg.wasm
+          test -s generated/web/wasm-bindgen/index_bg.wasm
+          test -f generated/web/wasm-bindgen/index.js
+          npm pack --dry-run 2>&1 | grep -q index_bg.wasm
 
       - name: Set version in package.json
         working-directory: ./react-native

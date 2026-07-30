@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="SLIM MLS group participant two browser example"
+    />
+    <title>SLIM · Group Participant Two (MLS)</title>
+  </head>
+  <body data-default-local="org/default/participant-two">
+    <main class="shell">
+      <header class="hero compact">
+        <div>
+          <p class="eyebrow"><a class="back-link" href="/">Examples</a></p>
+          <h1>Group Participant Two (MLS)</h1>
+          <p class="subtitle">
+            Second participant for the MLS group example. Start alongside
+            participant one before launching the MLS moderator.
+          </p>
+        </div>
+        <div id="wasm-status" class="status status-loading">Loading WASM…</div>
+      </header>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Configuration</h2>
+          <div class="status-group">
+            <div id="connection-status" class="connection-state">Disconnected</div>
+            <div id="session-status" class="connection-state">No session</div>
+          </div>
+        </div>
+        <dl id="config" class="config-list"></dl>
+        <div class="button-row">
+          <button id="start" type="button" disabled>Start</button>
+          <button id="stop" type="button" class="secondary" disabled>Stop</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Participants</h2>
+        <ul id="participants" class="participants-list" aria-live="polite">
+          <li class="participant-empty">Waiting for participants…</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Messages</h2>
+        <div id="messages" class="messages" aria-live="polite">
+          <p class="empty-state">Messages appear once a session is active.</p>
+        </div>
+        <div class="message-form">
+          <input id="message" placeholder="Write a message…" autocomplete="off" disabled />
+          <button id="send" type="button" disabled>Send</button>
+        </div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-heading compact">
+          <h2>Event log</h2>
+          <button id="clear-log" type="button" class="text-button">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/src/group-participant.ts"></script>
+  </body>
+</html>

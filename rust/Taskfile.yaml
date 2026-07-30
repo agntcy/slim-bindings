@@ -73,9 +73,9 @@ tasks:
         cd "{{.TASKFILE_DIR}}"
         PROFILE="{{.PROFILE}}"
         if [[ "$PROFILE" == "release" ]]; then
-          cargo build --release --locked --all-features
+          cargo build --release --locked
         else
-          cargo build --locked --all-features
+          cargo build --locked
         fi
       - echo "🦀 Rust bindings library built successfully."
 
@@ -84,7 +84,7 @@ tasks:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
       - cargo fmt -- --check
-      - cargo clippy --all-targets --locked --all-features -- -D warnings
+      - cargo clippy --all-targets --locked -- -D warnings
 
   test:
     desc: Run the Rust tests for the bindings crate
@@ -94,7 +94,7 @@ tasks:
         sh: '[[ {{.PROFILE}} == "release" ]] && echo "--release" || echo ""'
       ARGS: '{{.ARGS | default ""}}'
     cmds:
-      - cargo test {{.RELEASE}} --locked --all-features --all-targets {{.ARGS}}
+      - cargo test {{.RELEASE}} --locked --all-targets {{.ARGS}}
 
   clean:
     desc: Remove Cargo build artifacts for the bindings crate

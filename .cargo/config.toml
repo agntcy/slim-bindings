@@ -1,0 +1,8 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Generated web crates live under react-native/wasm, outside rust/.cargo's
+# discovery path.  Keep the target configuration at the repository root too so
+# both direct Cargo checks and `ubrn build web` select MLS's async WebCrypto API.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "mls_build_async"]
