@@ -68,7 +68,7 @@ suspend fun runClient(config: PointToPointConfig) = coroutineScope {
             maxRetries = 5u,
             interval = Duration.ofSeconds(5),
             metadata = emptyMap(),
-            mlsSettings = if (config.enableMls) MlsSettings(100u) else null
+            mlsSettings = if (config.enableMls) MlsSettings(100u, null) else null
         )
         
         // Create session - returns a context with completion and session

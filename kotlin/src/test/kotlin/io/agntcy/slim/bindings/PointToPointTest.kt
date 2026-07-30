@@ -248,7 +248,7 @@ class PointToPointTest {
                             maxRetries = 80u,
                             interval = Duration.ofMillis(400),
                             metadata = emptyMap(),
-                            mlsSettings = if (mlsEnabled) MlsSettings(100u) else null,
+                            mlsSettings = if (mlsEnabled) MlsSettings(100u, null) else null,
                         )
                     val senderSessionContext = sender.createSession(sessionConfig, receiverName)
                     senderSessionContext.completion.waitAsync()

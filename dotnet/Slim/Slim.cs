@@ -220,8 +220,11 @@ public sealed class SlimMlsSettings
     /// <summary>0 = disable header-integrity checks; 1–100 = percent of messages to verify after decrypt.</summary>
     public uint HeaderIntegrityValidationPercent { get; init; } = 100;
 
+    /// <summary>Maximum remembered control-message IDs used for replay protection. Null uses the SLIM core default.</summary>
+    public ulong? MaxSeenControlMessageIdsSize { get; init; }
+
     internal Internal.MlsSettings ToInternal() =>
-        new(HeaderIntegrityValidationPercent);
+        new(HeaderIntegrityValidationPercent, MaxSeenControlMessageIdsSize);
 }
 
 /// <summary>
@@ -710,7 +713,7 @@ public sealed class SlimSession : IDisposable
     /// </summary>
     public IReadOnlyList<SlimName> GetParticipants()
     {
-        return _inner.ParticipantsList().Select(n => new SlimName(n)).ToList();
+        return _inner.ParticipantsList().Select(p => new SlimName(p.Name)).ToList();
     }
 
     /// <summary>

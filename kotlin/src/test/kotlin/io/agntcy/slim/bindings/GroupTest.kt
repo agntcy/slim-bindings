@@ -82,7 +82,7 @@ class GroupTest {
             maxRetries = 5u,
             interval = Duration.ofSeconds(1),
             metadata = emptyMap(),
-            mlsSettings = if (mlsEnabled) MlsSettings(100u) else null
+            mlsSettings = if (mlsEnabled) MlsSettings(100u, null) else null
         )
         val sessionContext = participant.createSession(sessionConfig, chatName)
         sessionContext.completion.waitAsync()

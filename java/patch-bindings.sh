@@ -111,6 +111,17 @@ while IFS= read -r -d '' file; do
   fi
 done < <(find "$BINDINGS_DIR" -name "*.java" -type f -print0)
 
+# Fix 10: Session.close() conflict with AutoCloseable
+# Session.close() now returns CompletionHandle (agntcy-slim-bindings
+# 2.0.0-alpha.10+), so it can no longer share a name with
+# AutoCloseable.close(): void used for FFI object lifetime management (unlike
+# ResponseSink's close(), which stays void and is handled by Fix 9 below).
+# Rename Session's abstract member and implementation to closeSession().
+echo "  → Fixing Session close() conflict with AutoCloseable..."
+find "$BINDINGS_DIR" -name "*.java" -type f -exec sed -i.bak \
+  -e 's/CompletionHandle close() throws SlimException/CompletionHandle closeSession() throws SlimException/g' \
+  {} \;
+
 # Fix 9: ResponseSink close() conflict with AutoCloseable
 # ResponseSink implements both AutoCloseable.close() and ResponseSinkInterface.close()
 # Rename the stream close to closeStream() to avoid duplicate method
@@ -146,3 +157,4 @@ echo "   - Fixed duplicate pattern variable names in sealed type switches"
 echo "   - Fixed enum unsigned literals (0u → 0), delimiters (,} → ,; ;} → ;), and Short cast for RpcCode"
 echo "   - Added missing java.util.List/ArrayList imports where needed"
 echo "   - Renamed ResponseSink.close() → closeStream() to avoid AutoCloseable conflict"
+echo "   - Renamed Session.close() → closeSession() to avoid AutoCloseable conflict"

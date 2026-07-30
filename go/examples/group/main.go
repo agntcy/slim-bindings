@@ -236,7 +236,7 @@ func keyboardLoop(session *slim.Session, sourceName, channelName *slim.Name, ins
 	// Display participants
 	fmt.Printf("%s[%s]%s 👥 Participants in the group:\n", colorCyan, instance, colorReset)
 	for _, participant := range listenerNames {
-		fmt.Printf("%s[%s]%s 👤 Participant: %v\n", colorCyan, instance, colorReset, participant.Components())
+		fmt.Printf("%s[%s]%s 👤 Participant: %v\n", colorCyan, instance, colorReset, participant.Name.Components())
 	}
 
 	fmt.Printf(
