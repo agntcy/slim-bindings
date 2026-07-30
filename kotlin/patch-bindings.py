@@ -31,6 +31,24 @@ def apply_common_fixes(content: str) -> str:
     # Fix 3: wait() method conflict with Object.wait()
     content = re.sub(r'fun `wait`\(\)', 'fun waitForCompletion()', content)
     content = re.sub(r'\.`wait`\(\)', '.waitForCompletion()', content)
+    # Fix 3b: Session.close() now returns CompletionHandle (agntcy-slim-bindings
+    # 2.0.0-alpha.10+), unlike other close()-returning-Unit collisions below, so
+    # AutoCloseable.close(): Unit can no longer double as its implementation.
+    # Rename Session's abstract member and implementation to closeSession()
+    # before the generic Fix 4 below (which renames close()->closeStream() for
+    # the Unit-returning collisions, e.g. ResponseSink, and would otherwise also
+    # match Session's implementation, leaving its interface member un-renamed
+    # and mismatched).
+    content = content.replace(
+        'fun `close`(): CompletionHandle',
+        'fun `closeSession`(): CompletionHandle',
+        1,
+    )
+    content = content.replace(
+        'override fun `close`(): CompletionHandle {',
+        'override fun `closeSession`(): CompletionHandle {',
+        1,
+    )
     # Fix 4: close() method conflict with AutoCloseable.close()
     content = re.sub(r'override fun `close`\(\)', 'fun closeStream()', content)
     content = re.sub(

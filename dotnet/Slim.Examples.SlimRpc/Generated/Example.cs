@@ -40,7 +40,7 @@ namespace ExampleService {
             "RXhhbXBsZVJlc3BvbnNlKAESXAoTRXhhbXBsZVN0cmVhbVN0cmVhbRIfLmV4",
             "YW1wbGVfc2VydmljZS5FeGFtcGxlUmVxdWVzdBogLmV4YW1wbGVfc2Vydmlj",
             "ZS5FeGFtcGxlUmVzcG9uc2UoATABQr0BChNjb20uZXhhbXBsZV9zZXJ2aWNl",
-            "QgxFeGFtcGxlUHJvdG9QAVpAZ2l0aHViLmNvbS9hZ250Y3kvc2xpbS9iaW5k",
+            "QgxFeGFtcGxlUHJvdG9QAVpAZ2l0aHViLmNvbS9hZ250Y3kvc2xpbS1iaW5k",
             "aW5ncy9nby9leGFtcGxlcy9zbGltcnBjL3NpbXBsZS90eXBlc6ICA0VYWKoC",
             "DkV4YW1wbGVTZXJ2aWNlygIORXhhbXBsZVNlcnZpY2XiAhpFeGFtcGxlU2Vy",
             "dmljZVxHUEJNZXRhZGF0YeoCDkV4YW1wbGVTZXJ2aWNlYgZwcm90bzM="));
