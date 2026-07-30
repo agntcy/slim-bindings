@@ -11,6 +11,7 @@
 import {
   SessionType,
   type AppLike,
+  type ServiceLike,
   type SessionLike,
 } from "@agntcy/slim-bindings-react-native/web";
 
@@ -51,6 +52,8 @@ type ExampleConfig = {
 };
 
 let app: AppLike | undefined;
+let service: ServiceLike | undefined;
+let connId: bigint | undefined;
 let session: SessionLike | undefined;
 let stopRequested = false;
 let receiveController: AbortController | undefined;
@@ -124,15 +127,18 @@ async function startExample(): Promise<void> {
   ui.setSessionStatus("No session");
 
   try {
-    app = await createAndConnectApp({
+    const connected = await createAndConnectApp({
       endpoint: config.server,
       localId: config.local,
       sharedSecret: config.sharedSecret,
     });
+    app = connected.app;
+    service = connected.service;
+    connId = connected.connId;
 
-    ui.setConnectionStatus(`Connected · ${app.remoteConnectionId()}`);
+    ui.setConnectionStatus(`Connected · conn ${connId}`);
     ui.log(`Connected as ${app.name().toString()}`);
-    await runModerator(app, config);
+    await runModerator(app, connId, config);
   } catch (error) {
     ui.logError("Example failed", error);
     await stopExample();
@@ -141,6 +147,7 @@ async function startExample(): Promise<void> {
 
 async function runModerator(
   currentApp: AppLike,
+  currentConnId: bigint,
   config: ExampleConfig,
 ): Promise<void> {
   const channelName = splitId(config.remote);
@@ -170,7 +177,7 @@ async function runModerator(
     if (stopRequested) return;
     try {
       const inviteName = splitId(inviteId);
-      await currentApp.setRouteViaUpstreamAsync(inviteName);
+      await currentApp.setRouteAsync(inviteName, currentConnId);
       await created.inviteAndWaitAsync(inviteName);
       ui.log(`Invited ${inviteId}`);
       await refreshParticipants(ui, created);
@@ -254,8 +261,12 @@ async function stopExample(): Promise<void> {
   receiveController = undefined;
 
   const currentApp = app;
+  const currentService = service;
+  const currentConnId = connId;
   const currentSession = session;
   app = undefined;
+  service = undefined;
+  connId = undefined;
   session = undefined;
 
   if (currentApp) {
@@ -267,11 +278,13 @@ async function stopExample(): Promise<void> {
         ui.logError("Session cleanup failed", error);
       }
     }
-    try {
-      currentApp.disconnect();
-      ui.log("Disconnected from SLIM");
-    } catch (error) {
-      ui.logError("Disconnect failed", error);
+    if (currentService && currentConnId !== undefined) {
+      try {
+        currentService.disconnect(currentConnId);
+        ui.log("Disconnected from SLIM");
+      } catch (error) {
+        ui.logError("Disconnect failed", error);
+      }
     }
   }
 

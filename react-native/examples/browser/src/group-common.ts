@@ -1,7 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import type { SessionLike } from "@agntcy/slim-bindings-react-native/web";
+import {
+  ParticipantStatus,
+  type SessionLike,
+} from "@agntcy/slim-bindings-react-native/web";
 
 import type { ExampleUi } from "./ui";
 
@@ -10,9 +13,17 @@ export async function refreshParticipants(
   currentSession: SessionLike,
 ): Promise<void> {
   try {
+    // participantsListAsync() returns ParticipantInfo records
+    // ({ name, status }) as of agntcy-slim-bindings 2.0.0-alpha.10 — render
+    // the name and annotate offline participants.
     const participants = await currentSession.participantsListAsync();
     ui.renderParticipants(
-      participants.map((participant) => participant.toString()),
+      participants.map((participant) => {
+        const name = participant.name.toString();
+        return participant.status === ParticipantStatus.Offline
+          ? `${name} (offline)`
+          : name;
+      }),
     );
   } catch (error) {
     ui.logError("Failed to list participants", error);

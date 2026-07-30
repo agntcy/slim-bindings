@@ -9,12 +9,13 @@
  */
 
 import {
-  App,
   Direction,
   Name,
+  Service,
   uniffiInitAsync,
   type AppLike,
   type NameLike,
+  type ServiceLike,
 } from "@agntcy/slim-bindings-react-native/web";
 
 export const DEFAULT_ENDPOINT = "ws://127.0.0.1:46357";
@@ -50,23 +51,45 @@ export type ConnectOptions = {
 };
 
 /**
+ * A connected SLIM app together with the owning service and the upstream
+ * connection id. The connection id is required to set routes and to disconnect.
+ */
+export type ConnectedApp = {
+  app: AppLike;
+  service: ServiceLike;
+  connId: bigint;
+};
+
+/**
  * Initialize WASM, connect to SLIM over WebSocket, and subscribe locally.
+ *
+ * Uses the Service-based flow introduced in agntcy-slim-bindings 2.0.0-alpha.10:
+ * connect the service to obtain a connection id, create the app with
+ * SharedSecret auth, then subscribe the app's own name on that connection so
+ * the node can route messages back to it.
  */
 export async function createAndConnectApp(
   options: ConnectOptions,
-): Promise<AppLike> {
+): Promise<ConnectedApp> {
   await initializeWasm();
 
   const local = splitId(options.localId);
-  const app = await App.connectWithSecret(
+  // The service id must be a plain identifier token (no "/"): the Service
+  // constructor parses it via ID::new_with_name and rejects path-like values.
+  const serviceId = options.localId.replace(/[^A-Za-z0-9_-]/g, "-");
+  const service = new Service(serviceId);
+  const connId = await service.connectAsync(
     options.endpoint.trim(),
     options.token?.trim() || undefined,
+  );
+  const app = await service.createAppWithDirectionAsync(
     local,
     options.sharedSecret,
     Direction.Bidirectional,
   );
+  await app.subscribeAsync(local, connId);
 
-  return app;
+  return { app, service, connId };
 }
 
 export function describeError(error: unknown): string {

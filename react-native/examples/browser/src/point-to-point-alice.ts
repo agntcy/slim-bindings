@@ -11,6 +11,7 @@
 import {
   type AppLike,
   type ReceivedMessage,
+  type ServiceLike,
   type SessionLike,
 } from "@agntcy/slim-bindings-react-native/web";
 
@@ -41,6 +42,8 @@ type ExampleConfig = {
 };
 
 let app: AppLike | undefined;
+let service: ServiceLike | undefined;
+let connId: bigint | undefined;
 let activeSession: SessionLike | undefined;
 let stopRequested = false;
 let listenController: AbortController | undefined;
@@ -89,13 +92,16 @@ async function startExample(): Promise<void> {
   ui.setSessionStatus("No session");
 
   try {
-    app = await createAndConnectApp({
+    const connected = await createAndConnectApp({
       endpoint: config.server,
       localId: config.local,
       sharedSecret: config.sharedSecret,
     });
+    app = connected.app;
+    service = connected.service;
+    connId = connected.connId;
 
-    ui.setConnectionStatus(`Connected · ${app.remoteConnectionId()}`);
+    ui.setConnectionStatus(`Connected · conn ${connId}`);
     ui.log(`Connected as ${app.name().toString()}`);
     ui.log("Waiting for incoming sessions…");
 
@@ -195,8 +201,12 @@ async function stopExample(): Promise<void> {
   listenController = undefined;
 
   const currentApp = app;
+  const currentService = service;
+  const currentConnId = connId;
   const currentSession = activeSession;
   app = undefined;
+  service = undefined;
+  connId = undefined;
   activeSession = undefined;
 
   if (currentApp) {
@@ -207,11 +217,13 @@ async function stopExample(): Promise<void> {
         ui.logError("Session cleanup failed", error);
       }
     }
-    try {
-      currentApp.disconnect();
-      ui.log("Disconnected from SLIM");
-    } catch (error) {
-      ui.logError("Disconnect failed", error);
+    if (currentService && currentConnId !== undefined) {
+      try {
+        currentService.disconnect(currentConnId);
+        ui.log("Disconnected from SLIM");
+      } catch (error) {
+        ui.logError("Disconnect failed", error);
+      }
     }
   }
 
