@@ -1,6 +1,6 @@
 [package]
 name = "agntcy-slim-bindings-ffi"
-version = "2.0.0-alpha.4"
+version = "2.0.0-alpha.5"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/agntcy/slim-bindings"

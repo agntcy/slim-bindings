@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0-alpha.5](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.0.0-alpha.4...slim-bindings-v2.0.0-alpha.5) - 2026-07-30
+
+### Added
+
+- feat(wasm) : add react-native wasm bindings for the slim ([#16](https://github.com/agntcy/slim-bindings/pull/16))
+- Update slim references to latest version and relevant update ([#49](https://github.com/agntcy/slim-bindings/pull/49))
+
 ## [2.0.0-alpha.4](https://github.com/agntcy/slim-bindings/releases/tag/slim-bindings-v2.0.0-alpha.4) - 2026-07-21
 
 ### Added
