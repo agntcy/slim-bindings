@@ -454,17 +454,17 @@ jobs:
           npm publish --access public --tag "$NPM_TAG"
 
   # ==========================================================================
-  # Job 10: Build and publish React Native bindings to npm
-  # Runs on mac to build iOS static lib; publishes via npm trusted publishing (OIDC).
+  # Job 10a: Build React Native package (iOS static libs + WASM bindings).
+  # Builds everything from source and does not consume artifacts from
+  # build-and-test-bindings, so it has no `needs` and starts immediately,
+  # running in parallel with the rest of the release pipeline instead of
+  # sitting idle until every other language's tests finish.
   # ==========================================================================
-  publish-react-native:
-    name: Publish React Native to npm
+  build-react-native:
+    name: Build React Native package
     runs-on: macos-15
-    needs:
-      - build-and-test-bindings
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -483,11 +483,10 @@ jobs:
       - name: Setup Task
         uses: ./.github/actions/setup-task
 
-      - name: Setup Node (npm OIDC)
+      - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
 
       - name: Install cargo-binstall (prebuilt binary)
@@ -557,11 +556,46 @@ jobs:
           BINDINGS_VERSION: ${{ steps.version.outputs.version }}
         run: npm pkg set version="${BINDINGS_VERSION}"
 
+      - name: Upload React Native package
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: react-native-package
+          path: ./react-native
+          if-no-files-found: error
+
+  # ==========================================================================
+  # Job 10b: Publish React Native to npm (trusted publishing / OIDC).
+  # The heavy build already happened in build-react-native, in parallel with
+  # the test matrix; this job just waits for the tests-passed gate and the
+  # already-built artifact, then publishes.
+  # ==========================================================================
+  publish-react-native:
+    name: Publish React Native to npm
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-test-bindings
+      - build-react-native
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download React Native package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: react-native-package
+          path: ./react-native
+
+      - name: Setup Node (npm OIDC)
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
       - name: Publish to npm
         working-directory: ./react-native
-        env:
-          BINDINGS_VERSION: ${{ steps.version.outputs.version }}
         run: |
+          BINDINGS_VERSION=$(node -p "require('./package.json').version")
           if [[ "$BINDINGS_VERSION" == *-* ]]; then NPM_TAG="${BINDINGS_VERSION#*-}"; NPM_TAG="${NPM_TAG%%.*}"; NPM_TAG="${NPM_TAG:-next}"; else NPM_TAG="latest"; fi
           echo "Publishing with dist-tag: $NPM_TAG"
           npm publish --access public --tag "$NPM_TAG"
