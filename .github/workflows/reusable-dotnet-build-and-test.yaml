@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: ''
+      matrix:
+        description: JSON platform matrix (from generate-matrix), used to restore per-target library artifacts
+        required: false
+        type: string
+        default: ''
 
 env:
   LIBRARY_NAME: slim_bindings
@@ -78,13 +83,19 @@ jobs:
           pattern: bindings-*
 
       - name: Restore libraries to target folder
+        env:
+          MATRIX_JSON: ${{ inputs.matrix }}
         run: |
           echo "📦 Restoring artifacts to target folder..."
-          for artifact_dir in "$GITHUB_WORKSPACE/target-artifacts/bindings-"*; do
-            [ -d "$artifact_dir" ] || continue
-            target=$(basename "$artifact_dir" | sed 's/^bindings-//')
+          for target in $(echo "$MATRIX_JSON" | jq -r '.platform[] | select(.exclude != true) | .target'); do
             mkdir -p "$GITHUB_WORKSPACE/rust/target/$target/release/"
-            find "$artifact_dir" -maxdepth 1 -type f -exec cp {} "$GITHUB_WORKSPACE/rust/target/$target/release/" \;
+            # download-artifact only nests under path/<artifact-name>/ when the
+            # pattern matches more than one artifact; with exactly one match
+            # (e.g. the reduced PR matrix) it extracts flat into the download
+            # path instead (actions/download-artifact v5+ behavior).
+            src_dir="$GITHUB_WORKSPACE/target-artifacts/bindings-$target"
+            [ -d "$src_dir" ] || src_dir="$GITHUB_WORKSPACE/target-artifacts"
+            find "$src_dir" -maxdepth 1 -type f -exec cp {} "$GITHUB_WORKSPACE/rust/target/$target/release/" \;
             echo "  Restored $target"
           done
           echo "📁 Restored libraries:"

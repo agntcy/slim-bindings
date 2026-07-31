@@ -236,13 +236,19 @@ jobs:
           pattern: bindings-*
 
       - name: Restore libraries to target folder
+        env:
+          MATRIX_JSON: ${{ needs.generate-matrix.outputs.matrix }}
         run: |
           echo "📦 Restoring artifacts to target folder..."
-          for artifact_dir in "$GITHUB_WORKSPACE/target-artifacts/bindings-"*; do
-            [ -d "$artifact_dir" ] || continue
-            target=$(basename "$artifact_dir" | sed 's/^bindings-//')
+          for target in $(echo "$MATRIX_JSON" | jq -r '.platform[] | select(.exclude != true) | .target'); do
             mkdir -p "$GITHUB_WORKSPACE/rust/target/$target/release/"
-            find "$artifact_dir" -maxdepth 1 -type f -exec cp {} "$GITHUB_WORKSPACE/rust/target/$target/release/" \;
+            # download-artifact only nests under path/<artifact-name>/ when the
+            # pattern matches more than one artifact; with exactly one match
+            # (e.g. the reduced PR matrix) it extracts flat into the download
+            # path instead (actions/download-artifact v5+ behavior).
+            src_dir="$GITHUB_WORKSPACE/target-artifacts/bindings-$target"
+            [ -d "$src_dir" ] || src_dir="$GITHUB_WORKSPACE/target-artifacts"
+            find "$src_dir" -maxdepth 1 -type f -exec cp {} "$GITHUB_WORKSPACE/rust/target/$target/release/" \;
             echo "  Restored $target"
           done
           echo "📁 Restored libraries:"
@@ -556,6 +562,7 @@ jobs:
       rust-workspace: ${{ inputs.rust-workspace }}
       rust-target: x86_64-unknown-linux-gnu
       tag-name: ${{ inputs.tag-name }}
+      matrix: ${{ needs.generate-matrix.outputs.matrix }}
 
   kotlin-bindings-build-and-test:
     name: "Kotlin Bindings Build and Test"
@@ -568,6 +575,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
+      matrix: ${{ needs.generate-matrix.outputs.matrix }}
 
   java-bindings-build-and-test:
     name: "Java Bindings Build and Test"
@@ -580,3 +588,4 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
+      matrix: ${{ needs.generate-matrix.outputs.matrix }}
