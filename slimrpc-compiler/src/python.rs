@@ -275,7 +275,7 @@ def add_{{SERVICE_NAME}}Servicer_to_server(servicer, server: slim_bindings.Serve
 
 const UNARY_UNARY_HANDLER_CLASS_TEMPLATE: &str = r#"
 
-class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler(slim_bindings.UnaryUnaryHandler):
     def __init__(self, servicer):
         self.servicer = servicer
 
@@ -295,7 +295,7 @@ class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
 
 const UNARY_STREAM_HANDLER_CLASS_TEMPLATE: &str = r#"
 
-class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler(slim_bindings.UnaryStreamHandler):
     def __init__(self, servicer):
         self.servicer = servicer
 
@@ -318,7 +318,7 @@ class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
 
 const STREAM_UNARY_HANDLER_CLASS_TEMPLATE: &str = r#"
 
-class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler(slim_bindings.StreamUnaryHandler):
     def __init__(self, servicer):
         self.servicer = servicer
 
@@ -347,7 +347,7 @@ class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
 
 const STREAM_STREAM_HANDLER_CLASS_TEMPLATE: &str = r#"
 
-class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler:
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_Handler(slim_bindings.StreamStreamHandler):
     def __init__(self, servicer):
         self.servicer = servicer
 
