@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"time"
 
-	slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
+	slim_rpc "github.com/agntcy/slim-bindings-go/v2/slim_rpc"
 	"google.golang.org/protobuf/proto"
 {{PROTO_IMPORTS}})
 
@@ -674,9 +674,15 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
         // Extract Go package from options
         let go_package = if let Some(options) = &file_descriptor.options {
             if let Some(go_pkg) = &options.go_package {
-                // go_package format: "github.com/org/repo/path"
-                // Extract last component as package name
-                go_pkg.split('/').next_back().unwrap_or("pb").to_string()
+                // go_package format: "github.com/org/repo/path" or "path;name"
+                // Extract explicit name after semicolon, or last path component.
+                // Replace dashes with underscores to produce a valid Go identifier.
+                let raw = if let Some((_, name)) = go_pkg.split_once(';') {
+                    name.to_string()
+                } else {
+                    go_pkg.split('/').next_back().unwrap_or("pb").to_string()
+                };
+                raw.replace('-', "_")
             } else {
                 package_name
                     .split('.')
