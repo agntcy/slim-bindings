@@ -2,7 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [workspace]
-release_always = false
+# Release any unpublished version found in Cargo.toml, not just versions
+# prepared by a release-plz PR. With `false`, release-plz only releases when a
+# branch named `release-plz-bindings-*` is merged, so a version bumped by hand
+# in a regular PR is silently skipped: the release job still reports success
+# but returns `{"releases":[]}`, publishing nothing and creating no tag. Since
+# main's version normally matches the published one, a release only fires here
+# when someone deliberately bumps it -- which is exactly when we want it.
+release_always = true
 release = false
 # Distinct PR branch/name so this crate's release PR does not collide with
 # the slimrpc-compiler release-plz instance (they'd otherwise share the
