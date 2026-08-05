@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.0.0-alpha.7...slim-bindings-v2.0.0) - 2026-08-05
+
+### Changed
+
+- move to v2.0.0 stable
+- upgrade to agntcy-slim-bindings 2.0.0 and agntcy-slim-rpc 2.0.0
+
 ## [2.0.0-alpha.7](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.0.0-alpha.6...slim-bindings-v2.0.0-alpha.7) - 2026-08-03
 
 ### Fixed

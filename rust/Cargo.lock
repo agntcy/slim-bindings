@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "agntcy-slim"
-version = "2.0.0-alpha.10"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c98164c204ca9b1756b04abcdcb66511c8e5541460f35c817643bc98707a55d"
+checksum = "c8599a8d000f47b7b263c9e2ddeb0de3feb8bd2293a7a9d1b3b687caf276b8dd"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-service",
@@ -29,9 +29,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-auth"
-version = "0.14.3"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5be3d508a63af2c39ae9d8c90467dd35e9e382388b031b7475630878d49f40b6"
+checksum = "15858803a36af4ca6183658ff8156a0fb41d91f4fa93bf24fd63174ef5292f16"
 dependencies = [
  "agntcy-slim-version",
  "aws-lc-rs",
@@ -77,9 +77,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-bindings"
-version = "2.0.0-alpha.13"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5effbe34b511196076b937ae67de27f04155f2492b17b002b460a619e2ba9e2"
+checksum = "322083481e8cd535bcb781c8b5c327af0ba14fd936aa8eb702dd007a160e0785"
 dependencies = [
  "agntcy-slim",
  "agntcy-slim-auth",
@@ -95,6 +95,7 @@ dependencies = [
  "display-error-chain",
  "futures",
  "futures-timer",
+ "getrandom 0.4.3",
  "parking_lot",
  "serde",
  "serde_json",
@@ -108,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-bindings-ffi"
-version = "2.0.0-alpha.7"
+version = "2.0.0"
 dependencies = [
  "agntcy-slim-bindings",
  "agntcy-slim-rpc",
@@ -116,9 +117,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-config"
-version = "0.14.2"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84d3b22be6a256f6448534123c878158898fd817fc86bbe23e0176c1a9ad2b77"
+checksum = "1b440bb6588d7fcbcffe407d6da4f380618da1f6168d5b831fb4bb0f50c8f9d9"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-version",
@@ -131,6 +132,7 @@ dependencies = [
  "duration-string",
  "fastwebsockets",
  "futures",
+ "getrandom 0.4.3",
  "gloo-net",
  "http",
  "http-body-util",
@@ -172,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-controller"
-version = "0.12.3"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc2e1803976f99393899acbea7978c8a7ba01199445c4e98aac437ddae05f4ac"
+checksum = "4f6e45bcbb2f0a859711cf9e335bc4a3221a5c2b6f85ba63ff5ca7d210ca4157"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-config",
@@ -205,9 +207,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-datapath"
-version = "0.17.3"
+version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c474f336ee1089084bbea9300f9b720e870738513bc2b49e3f8ebbb2ebd955b5"
+checksum = "9d62bdb1677aac37928b57db95a5c80f548271362590e4082b89b9cc9d409cab"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-proto",
@@ -221,6 +223,7 @@ dependencies = [
  "fastwebsockets",
  "futures",
  "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "gloo-net",
  "h2",
  "hkdf",
@@ -253,9 +256,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-mls"
-version = "0.3.2"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "532410ed411b74288eeaec24c2b367736489083fc48827d745ff9a9efe35429d"
+checksum = "cb8c62a9f62e305a9e894bb401ff7221204ae23776bd773914ac7d4b3a5f033c"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-persistence",
@@ -295,9 +298,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-proto"
-version = "0.5.3"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63b86344072f7326f54844727d6f71d1911f5235a99660937e66bd6e82667f30"
+checksum = "2809af23155852c1041d309e45655219d142b06a6895517eaaf52d44d7f35f47"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-version",
@@ -315,9 +318,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-rpc"
-version = "2.0.0-alpha.10"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe4bcd26e0f71d739aa84762fb6eb16c166d3a9c6169ee0c656c42dc64e14201"
+checksum = "ac2678b3f34e63d31e3a61dd17412908aaf0492d7c74c9575d4a9fe8e5052c68"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-bindings",
@@ -341,9 +344,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-service"
-version = "0.12.3"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e69dd5e15656db7535ea4b49ea8b98bf2bab4d7a60a8672c441ad89d88a51a4d"
+checksum = "92915b575d00a92dc71d97e6d98a529b874c02c233891e61e56494e096545dc1"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-config",
@@ -369,9 +372,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-session"
-version = "0.7.3"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9d20919c36436e3e0bae34224e937da0ca0eeb86c6b81ff39718c6555072cb2"
+checksum = "e2278480994ceae7a68b1179cb768c7d4043d6f83f900788c456d6822aca63b0"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-datapath",
@@ -403,9 +406,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-signal"
-version = "0.1.18"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69dfd6fa0b92b9c31df702f9f008d29229907e64952d20239d8d25a1bd217cf6"
+checksum = "eae34d906a6df4536d1c8b43570a5988ca18505fe7149c5af99074ddcba5559b"
 dependencies = [
  "agntcy-slim-version",
  "tokio",
@@ -414,9 +417,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-tracing"
-version = "0.4.12"
+version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "447b7025510a15a1a4ee57b74fa4a702880115f655a132b8b63e3c16d7bd0ce5"
+checksum = "6ca5f17b67aca07978b76eedae7a3fb6d3be4fb4cf47e6266255d47f766ae761"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-version",
@@ -439,9 +442,9 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-version"
-version = "2.0.0-alpha.10"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab45fe4500cec0a7db0864a750e6b04826ed7483e1181e3f1ce23945e0a8a5a1"
+checksum = "fe4facf61016d463bede4c68d9df1710f57dfe21d2142e82309038716df66a39"
 
 [[package]]
 name = "ahash"
@@ -1839,9 +1842,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "r-efi 6.0.0",
  "rand_core 0.10.1",
+ "wasm-bindgen",
 ]
 
 [[package]]
