@@ -52,10 +52,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ${{ inputs.rust-workspace }}
-          # This job only ever builds for the runner's host target; it doesn't
-          # need the aarch64 cross-compiler or the pinned LLVM 19 toolchain
-          # that cross-compiling (zigbuild) targets require.
-          install-cross-toolchain: 'false'
 
       - name: Setup Java
         uses: ./.github/actions/setup-java
