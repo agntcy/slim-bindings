@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1](https://github.com/agntcy/slim-bindings/compare/protoc-slimrpc-plugin-v2.0.0...protoc-slimrpc-plugin-v2.0.1) - 2026-08-07
+
+### Fixed
+
+- fix nondeterministic import in python compiler ([#62](https://github.com/agntcy/slim-bindings/pull/62))
+
 ## [2.0.0](https://github.com/agntcy/slim-bindings/compare/protoc-slimrpc-plugin-v2.0.0-alpha.4...protoc-slimrpc-plugin-v2.0.0) - 2026-08-05
 
 ### Changed
