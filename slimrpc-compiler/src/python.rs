@@ -6,7 +6,7 @@ use heck::ToSnakeCase;
 use prost_types::compiler::{
     CodeGeneratorRequest, CodeGeneratorResponse, code_generator_response::File,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Supported parameters for the Python code generator plugin.
 const TYPES_IMPORT: &str = "types_import";
@@ -413,8 +413,10 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
 
     let mut response = CodeGeneratorResponse::default();
 
-    // Map proto file names to their package names for easy lookup
-    let file_to_package: HashMap<String, String> = request
+    // Map proto file names to their package names for easy lookup.
+    // A BTreeMap keeps iteration ordered by file name, so the dependency lookup
+    // below always resolves a package to the same proto file across runs.
+    let file_to_package: BTreeMap<String, String> = request
         .proto_file
         .iter()
         .filter_map(|f| {
@@ -446,7 +448,9 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
         // with a '_pb2_slimrpc' suffix
         let output_file_name = format!("{}_pb2_slimrpc.py", file_name_base);
 
-        let mut pb2_imports: HashSet<String> = HashSet::new();
+        // A BTreeSet keeps the emitted import block in a stable, sorted order so
+        // repeated `buf generate` runs on unchanged protos produce identical output.
+        let mut pb2_imports: BTreeSet<String> = BTreeSet::new();
         let mut service_definitions_content = String::new();
         let mut handler_classes_content = String::new();
         let mut add_servicer_functions_content = String::new();
@@ -1218,5 +1222,129 @@ mod tests {
         assert!(content.contains("call_multicast_unary_stream_async"));
         assert!(content.contains("call_multicast_stream_unary"));
         assert!(content.contains("call_multicast_stream_stream"));
+    }
+
+    /// Builds a request whose generated file needs several distinct pb2 imports:
+    /// the local module, a well-known google.protobuf type, and a cross-package
+    /// dependency.
+    fn create_multi_import_request() -> CodeGeneratorRequest {
+        let methods = vec![
+            create_test_method(
+                "Local",
+                ".a2a.v1.LocalRequest",
+                ".a2a.v1.LocalResponse",
+                false,
+                false,
+            ),
+            create_test_method(
+                "Wellknown",
+                ".google.protobuf.Empty",
+                ".google.protobuf.Empty",
+                false,
+                false,
+            ),
+            create_test_method(
+                "CrossPackage",
+                ".other.pkg.Bar",
+                ".other.pkg.Bar",
+                false,
+                false,
+            ),
+        ];
+        let service = create_test_service("A2AService", methods);
+
+        CodeGeneratorRequest {
+            file_to_generate: vec!["a2a.proto".to_string()],
+            parameter: None,
+            proto_file: vec![
+                create_test_file_descriptor("a2a.proto", "a2a.v1", vec![service]),
+                create_test_file_descriptor("other.proto", "other.pkg", vec![]),
+            ],
+            compiler_version: None,
+        }
+    }
+
+    /// Extracts the contiguous block of pb2 import lines from generated content.
+    fn extract_import_block(content: &str) -> Vec<&str> {
+        content
+            .lines()
+            .filter(|line| {
+                (line.starts_with("import ") || line.starts_with("from . import "))
+                    && line.contains("pb2")
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_pb2_import_block_is_sorted() {
+        let response = generate(create_multi_import_request()).unwrap();
+
+        assert_eq!(response.file.len(), 1);
+        let content = response.file[0].content.as_ref().unwrap();
+
+        // The import block must be emitted in a stable, sorted order rather than
+        // in the randomized order of a HashSet.
+        assert_eq!(
+            extract_import_block(content),
+            vec![
+                "from . import a2a_pb2 as pb2",
+                "from . import other_pb2 as other_pb2",
+                "import google.protobuf.empty_pb2 as google__protobuf__empty_pb2",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_generate_is_deterministic_across_runs() {
+        // Each run builds fresh collections, so a randomized iteration order would
+        // show up as differing output between iterations.
+        let baseline = generate(create_multi_import_request()).unwrap();
+        let baseline_content = baseline.file[0].content.as_ref().unwrap();
+
+        for i in 1..20 {
+            let response = generate(create_multi_import_request()).unwrap();
+            assert_eq!(
+                response.file[0].content.as_ref().unwrap(),
+                baseline_content,
+                "generated output differed on run {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ambiguous_package_lookup_is_stable() {
+        // Two proto files declare the same package. The dependency lookup picks one
+        // of them; which one it picks must not vary between runs.
+        let method = create_test_method(
+            "Get",
+            ".shared.pkg.Thing",
+            ".shared.pkg.Thing",
+            false,
+            false,
+        );
+        let service = create_test_service("MainService", vec![method]);
+
+        let build_request = || CodeGeneratorRequest {
+            file_to_generate: vec!["main.proto".to_string()],
+            parameter: None,
+            proto_file: vec![
+                create_test_file_descriptor("main.proto", "main.pkg", vec![service.clone()]),
+                create_test_file_descriptor("beta.proto", "shared.pkg", vec![]),
+                create_test_file_descriptor("alpha.proto", "shared.pkg", vec![]),
+            ],
+            compiler_version: None,
+        };
+
+        for i in 0..20 {
+            let response = generate(build_request()).unwrap();
+            let content = response.file[0].content.as_ref().unwrap();
+
+            // Ordered iteration resolves the package to the first file name.
+            assert!(
+                content.contains("from . import alpha_pb2 as alpha_pb2"),
+                "package lookup was not stable on run {i}"
+            );
+            assert!(content.contains("alpha_pb2.Thing"));
+        }
     }
 }
