@@ -70,6 +70,82 @@ You should see:
 ✅ Crypto initialized
 ```
 
+## Transport Authentication (gRPC connection)
+
+Separate from the app identity passed to `CreateAppWithSecret` and friends, the gRPC
+connection to a SLIM node can carry its own credentials via `ClientConfig.Auth` (and
+`ServerConfig.Auth` when hosting). Supported modes are `Basic`, `StaticJwt`, `Jwt`,
+`Spire`, and `Oidc`.
+
+**OIDC**, client side (client-credentials flow):
+
+```go
+timeout := 30 * time.Second
+var auth slim.ClientAuthenticationConfig = slim.ClientAuthenticationConfigOidc{
+	Config: slim.OidcConfig{
+		IssuerUrl:    "https://auth.example.com",
+		ClientId:     ptr("my-client"),
+		ClientSecret: ptr("s3cr3t"),
+		Scope:        ptr("openid profile"),
+		Timeout:      &timeout,
+	},
+}
+
+config := slim.NewInsecureClientConfig("http://127.0.0.1:46357")
+config.Auth = &auth
+connID, err := slim.GetGlobalService().ConnectAsync(config)
+```
+
+(`ptr` is any `func[T any](v T) *T` helper; the optional fields are pointers.) For the
+refresh-token flow set `RefreshToken` — or `RefreshTokenFile`, which is rewritten in place
+as tokens rotate — instead of `ClientSecret`.
+
+**Server side**, verifying incoming JWTs against the issuer's JWKS endpoint, optionally
+restricting access by claim:
+
+```go
+jwksTTL := time.Hour
+var policy slim.OidcPolicyConfig = slim.OidcPolicyConfigCel{Expression: `"admin" in claims.groups`}
+var auth slim.ServerAuthenticationConfig = slim.ServerAuthenticationConfigOidc{
+	Config: slim.OidcConfig{
+		IssuerUrl: "https://auth.example.com",
+		Audience:  ptr("slim"), // required for verification
+		JwksTtl:   &jwksTTL,
+		Policy:    &policy,
+	},
+}
+
+config := slim.NewInsecureServerConfig("127.0.0.1:46357")
+config.Auth = &auth
+```
+
+`Policy` accepts `OidcPolicyConfigCel`, `OidcPolicyConfigRego` (which must define
+`package slim.auth` with `default allow = false`), or `OidcPolicyConfigRegoFile`.
+Client-only fields (`Scope`, `Timeout`) and server-only fields (`JwksTtl`,
+`ClaimCacheTtl`, `Policy`) are ignored by the other side.
+
+**From a config file** — `slim.NewConfigFromJson` accepts a full gRPC client config,
+covering TLS material, backoff, and every authentication mode. The examples read the same
+document from `SLIM_CLIENT_CONFIG`:
+
+```json
+{
+  "endpoint": "http://127.0.0.1:46357",
+  "tls": { "insecure": true },
+  "auth": {
+    "type": "oidc",
+    "issuer_url": "https://auth.example.com",
+    "client_id": "my-client",
+    "client_secret": "s3cr3t",
+    "audience": "slim",
+    "policy": { "cel": "\"admin\" in claims.groups" }
+  }
+}
+```
+
+The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo.
+
 ## Important Notes
 
 - **Setup is one-time**: You only need to run `slim-bindings-setup` once

@@ -7,6 +7,7 @@
  * This module provides shared helper functions used across examples,
  * ported from the Go bindings common package.
  */
+import { readFileSync } from 'node:fs';
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime
 import * as slimBindings from '../generated/index.js';
 
@@ -30,16 +31,54 @@ export function splitId(id: string): any {
 }
 
 /**
+ * Build the gRPC client configuration used to reach the SLIM server.
+ *
+ * When SLIM_CLIENT_CONFIG points at a JSON file, that file supplies the whole
+ * configuration and serverAddr is ignored. This is how the examples reach settings
+ * with no dedicated flag — TLS material, backoff, rate limiting, and every
+ * authentication mode, including OIDC:
+ *
+ * ```json
+ * {
+ *   "endpoint": "http://localhost:46357",
+ *   "tls": {"insecure": true},
+ *   "auth": {"type": "oidc", "issuer_url": "https://auth.example.com",
+ *            "client_id": "my-client", "client_secret": "s3cr3t"}
+ * }
+ * ```
+ *
+ * The schema matches data-plane/core/config/src/grpc/schema/client-config.schema.json
+ * in the slim repo. Without the variable an insecure (no TLS) config for serverAddr
+ * is returned.
+ *
+ * @param serverAddr - SLIM server endpoint URL, used when SLIM_CLIENT_CONFIG is unset
+ * @returns Client configuration ready to hand to `service.connectAsync`
+ */
+export function clientConfig(serverAddr: string): any {
+  const path = process.env.SLIM_CLIENT_CONFIG;
+  if (!path) {
+    return slimBindings.newInsecureClientConfig(serverAddr);
+  }
+
+  const jsonText = readFileSync(path, 'utf-8');
+  try {
+    return slimBindings.newConfigFromJson(jsonText);
+  } catch (error: any) {
+    throw new Error(`Invalid slim client config JSON (${path}): ${error?.message ?? error}`);
+  }
+}
+
+/**
  * Create a SLIM app with shared secret authentication and connect it to a server
- * 
+ *
  * This is a convenience function that combines:
  * - Crypto initialization
  * - App creation with shared secret
  * - Server connection with TLS settings
  * - Subscription setup
- * 
+ *
  * @param localId - Local identity string (org/namespace/app format)
- * @param serverAddr - SLIM server endpoint URL
+ * @param serverAddr - SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)
  * @param secret - Shared secret for authentication (min 32 chars)
  * @returns Object containing the app, connection ID, and service
  */
@@ -64,9 +103,10 @@ export async function createAndConnectApp(
     console.log(`[${app.id()}] ✅ Created app`);
 
     // Connect to SLIM server (returns connection ID)
-    const config = slimBindings.newInsecureClientConfig(serverAddr);
+    // Log config.endpoint rather than serverAddr: SLIM_CLIENT_CONFIG may override it.
+    const config = clientConfig(serverAddr);
     const connId = await service.connectAsync(config);
-    console.log(`[${app.id()}] 🔌 Connected to ${serverAddr} (conn ID: ${connId})`);
+    console.log(`[${app.id()}] 🔌 Connected to ${config.endpoint} (conn ID: ${connId})`);
 
     // Forward subscription to next node
     // Note: Generated bindings expect bigint, but connectAsync returns number

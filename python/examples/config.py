@@ -66,8 +66,13 @@ class BaseConfig(BaseSettings):
 
     slim_client_config: str | None = Field(
         default=None,
+        # Aliased so the env var is SLIM_CLIENT_CONFIG rather than the doubly prefixed
+        # SLIM_SLIM_CLIENT_CONFIG the env_prefix would otherwise produce. Matches the
+        # variable the Go/Node/Kotlin/Java/.NET examples read.
+        validation_alias="slim_client_config",
         description=(
-            "Path to JSON file for full gRPC ClientConfig "
+            "Path to JSON file for full gRPC ClientConfig; supplies every auth mode "
+            "including OIDC, and overrides `slim` when set "
             "(schema: data-plane/core/config/src/grpc/schema/client-config.schema.json)"
         ),
     )

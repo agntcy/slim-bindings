@@ -52,6 +52,74 @@ Full TypeScript types ship under `types/` in the published package (`index.d.ts`
    `slimBindings.getGlobalService().runServer(config)`  
    The process must stay alive while the server runs (see examples).
 
+## Transport authentication (gRPC connection)
+
+Separate from the app identity given to `createAppWithSecret`, the gRPC connection to a SLIM
+node can carry its own credentials via `config.auth` (and `ServerConfig.auth` when hosting).
+Supported modes are `Basic`, `StaticJwt`, `Jwt`, `Spire`, and `Oidc`.
+
+OIDC, client side (client-credentials flow):
+
+```ts
+const config = slimBindings.newInsecureClientConfig('http://127.0.0.1:46357');
+config.auth = new slimBindings.ClientAuthenticationConfig.Oidc({
+  config: {
+    issuerUrl: 'https://auth.example.com',
+    clientId: 'my-client',
+    clientSecret: 's3cr3t',
+    scope: 'openid profile',
+    timeout: 30_000, // durations are milliseconds
+  },
+});
+
+const connId = await service.connectAsync(config);
+```
+
+For the refresh-token flow set `refreshToken` — or `refreshTokenFile`, which is rewritten in
+place as tokens rotate — instead of `clientSecret`.
+
+Server side, verifying incoming JWTs against the issuer's JWKS endpoint, optionally
+restricting access by claim:
+
+```ts
+const config = slimBindings.newInsecureServerConfig('0.0.0.0:46357');
+config.auth = new slimBindings.ServerAuthenticationConfig.Oidc({
+  config: {
+    issuerUrl: 'https://auth.example.com',
+    audience: 'slim', // required for verification
+    jwksTtl: 3_600_000,
+    policy: new slimBindings.OidcPolicyConfig.Cel({ expression: '"admin" in claims.groups' }),
+  },
+});
+```
+
+`policy` accepts `OidcPolicyConfig.Cel`, `OidcPolicyConfig.Rego` (which must define
+`package slim.auth` with `default allow = false`), or `OidcPolicyConfig.RegoFile`. Client-only
+fields (`scope`, `timeout`) and server-only fields (`jwksTtl`, `claimCacheTtl`, `policy`) are
+ignored by the other side.
+
+From a config file — `newConfigFromJson(json)` accepts a full gRPC client config, covering TLS
+material, backoff, and every authentication mode. The examples read the same document from
+`SLIM_CLIENT_CONFIG`:
+
+```json
+{
+  "endpoint": "http://127.0.0.1:46357",
+  "tls": { "insecure": true },
+  "auth": {
+    "type": "oidc",
+    "issuer_url": "https://auth.example.com",
+    "client_id": "my-client",
+    "client_secret": "s3cr3t",
+    "audience": "slim",
+    "policy": { "cel": "\"admin\" in claims.groups" }
+  }
+}
+```
+
+The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo.
+
 ## Examples
 
 Runnable scripts live under `examples/` (from repo root, use the `Taskfile` targets `example:server`, `example:alice`, `example:bob`, `example:group`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)). `example:group` demonstrates multicast (group) sessions — a moderator creates a channel and invites participants; see [README_dev.md](./README_dev.md#3-run-the-group-multicast-example) for usage.

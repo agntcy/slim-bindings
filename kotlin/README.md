@@ -298,8 +298,14 @@ Configuration can also be provided via environment variables with the `SLIM_` pr
 - `SLIM_SHARED_SECRET` - Shared secret
 - `SLIM_ENABLE_OPENTELEMETRY` - Enable OpenTelemetry (true/false)
 - `SLIM_ENABLE_MLS` - Enable MLS encryption (true/false)
+- `SLIM_CLIENT_CONFIG` - Path to a JSON file holding the full gRPC client config (see
+  [Transport Authentication](#transport-authentication-grpc-connection)); overrides `SLIM_ENDPOINT`
 
 ### Authentication Modes
+
+These modes set the **application identity** — who this app claims to be inside SLIM.
+They are independent of [transport authentication](#transport-authentication-grpc-connection),
+which secures the gRPC connection to the SLIM node.
 
 The bindings support three authentication modes:
 
@@ -333,6 +339,86 @@ The bindings support three authentication modes:
        spireJwtAudience = listOf("slim-service")
    )
    ```
+
+### Transport Authentication (gRPC connection)
+
+Separate from application identity, the gRPC connection to a SLIM node can carry its own
+credentials via `ClientConfig.auth` (and `ServerConfig.auth` when hosting). Supported modes
+are `Basic`, `StaticJwt`, `Jwt`, `Spire`, and `Oidc`.
+
+**OIDC from Kotlin**, client side (client-credentials flow):
+
+```kotlin
+val clientConfig = newInsecureClientConfig("http://127.0.0.1:46357").apply {
+    auth = ClientAuthenticationConfig.Oidc(
+        OidcConfig(
+            issuerUrl = "https://auth.example.com",
+            clientId = "my-client",
+            clientSecret = "s3cr3t",
+            audience = null,
+            refreshToken = null,
+            refreshTokenFile = null,
+            accessTokenFile = null,
+            scope = "openid profile",
+            timeout = Duration.ofSeconds(30),
+            jwksTtl = null,
+            claimCacheTtl = null,
+            policy = null,
+        )
+    )
+}
+val connId = service.connectAsync(clientConfig)
+```
+
+For the refresh-token flow set `refreshToken` (or `refreshTokenFile`, which is rewritten
+in place as tokens rotate) instead of `clientSecret`.
+
+**Server side**, verifying incoming JWTs against the issuer's JWKS endpoint, optionally
+restricting access by claim:
+
+```kotlin
+val serverConfig = newInsecureServerConfig("127.0.0.1:46357").apply {
+    auth = ServerAuthenticationConfig.Oidc(
+        OidcConfig(
+            issuerUrl = "https://auth.example.com",
+            clientId = null, clientSecret = null,
+            audience = "slim",                       // required for verification
+            refreshToken = null, refreshTokenFile = null, accessTokenFile = null,
+            scope = null,
+            timeout = null,
+            jwksTtl = Duration.ofHours(1),
+            claimCacheTtl = Duration.ofMinutes(1),
+            policy = OidcPolicyConfig.Cel(""""admin" in claims.groups"""),
+        )
+    )
+}
+```
+
+`policy` accepts `OidcPolicyConfig.Cel(expression)`, `OidcPolicyConfig.Rego(text)` (which must
+define `package slim.auth` with `default allow = false`), or `OidcPolicyConfig.RegoFile(path)`.
+Client-only fields (`scope`, `timeout`) and server-only fields (`jwksTtl`, `claimCacheTtl`,
+`policy`) are ignored by the other side.
+
+**From a config file** — the examples read `SLIM_CLIENT_CONFIG` (or `--slim-config <path>`),
+which covers every auth mode plus TLS material and backoff without any code change:
+
+```json
+{
+  "endpoint": "http://127.0.0.1:46357",
+  "tls": { "insecure": true },
+  "auth": {
+    "type": "oidc",
+    "issuer_url": "https://auth.example.com",
+    "client_id": "my-client",
+    "client_secret": "s3cr3t",
+    "audience": "slim",
+    "policy": { "cel": "\"admin\" in claims.groups" }
+  }
+}
+```
+
+The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo. To load one yourself, call `newConfigFromJson(json)`.
 
 ## Building
 

@@ -3,6 +3,8 @@
 
 package io.agntcy.slim.examples.common;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
 import io.agntcy.slim.bindings.App;
@@ -36,6 +38,63 @@ public class Common {
         return (env != null && !env.isEmpty()) ? env : DEFAULT_SERVER_ENDPOINT;
     }
 
+    /**
+     * Builds the gRPC client configuration used to reach the SLIM server.
+     *
+     * When SLIM_CLIENT_CONFIG points at a JSON file, that file supplies the whole
+     * configuration and {@code serverAddr} is ignored. This is how the examples reach
+     * settings with no dedicated flag - TLS material, backoff, rate limiting, and every
+     * authentication mode, including OIDC:
+     *
+     * <pre>
+     * {
+     *   "endpoint": "http://localhost:46357",
+     *   "tls": {"insecure": true},
+     *   "auth": {"type": "oidc", "issuer_url": "https://auth.example.com",
+     *            "client_id": "my-client", "client_secret": "s3cr3t"}
+     * }
+     * </pre>
+     *
+     * The schema matches data-plane/core/config/src/grpc/schema/client-config.schema.json
+     * in the slim repo. Without the variable an insecure (no TLS) config for
+     * {@code serverAddr} is returned.
+     *
+     * @param serverAddr SLIM server endpoint URL, used when SLIM_CLIENT_CONFIG is unset
+     * @return Client configuration ready to hand to {@code Service.connect}
+     * @throws Exception if the file cannot be read or does not hold a valid configuration
+     */
+    public static ClientConfig clientConfig(String serverAddr) throws Exception {
+        String path = System.getenv("SLIM_CLIENT_CONFIG");
+        if (path == null || path.isEmpty()) {
+            return SlimBindings.newInsecureClientConfig(serverAddr);
+        }
+
+        String jsonText = Files.readString(Path.of(path));
+        try {
+            return SlimBindings.newConfigFromJson(jsonText);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "Invalid slim client config JSON (" + path + "): " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Reports the endpoint {@link #clientConfig(String)} will actually dial, so log lines
+     * stay truthful when SLIM_CLIENT_CONFIG overrides {@code serverAddr}. Falls back to
+     * {@code serverAddr} if the config cannot be read - the connect attempt reports the
+     * real error.
+     *
+     * @param serverAddr SLIM server endpoint URL, used when SLIM_CLIENT_CONFIG is unset
+     * @return the endpoint that will be dialed
+     */
+    public static String effectiveEndpoint(String serverAddr) {
+        try {
+            return clientConfig(serverAddr).endpoint();
+        } catch (Exception e) {
+            return serverAddr;
+        }
+    }
+
     /** Name org component used across all examples. */
     public static final String NAME_ORG = "agntcy";
 
@@ -65,7 +124,7 @@ public class Common {
      * - Server connection with TLS settings
      *
      * @param localId    Local identity string (org/namespace/app format)
-     * @param serverAddr SLIM server endpoint URL
+     * @param serverAddr SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)
      * @param secret     Shared secret for authentication (min 32 chars)
      * @return AppConnection containing the app and connection ID
      * @throws Exception if creation or connection fails
@@ -83,7 +142,7 @@ public class Common {
         App app = globalService.createAppWithSecret(appName, secret);
 
         // Connect to SLIM server (returns connection ID)
-        ClientConfig config = SlimBindings.newInsecureClientConfig(serverAddr);
+        ClientConfig config = clientConfig(serverAddr);
         Long connId = globalService.connect(config);
 
         // Forward subscription to next node

@@ -82,7 +82,7 @@ class Program
 
             var instance = app.Id;
             Console.WriteLine($"{ColorCyan}[{instance}]{ColorReset} Created app");
-            Console.WriteLine($"{ColorCyan}[{instance}]{ColorReset} Connected to {server} (conn ID: {connId})");
+            Console.WriteLine($"{ColorCyan}[{instance}]{ColorReset} Connected to {CommonHelpers.GetEffectiveEndpoint(server)} (conn ID: {connId})");
 
             // Run in appropriate mode
             if (isModerator)

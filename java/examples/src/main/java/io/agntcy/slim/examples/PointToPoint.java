@@ -49,7 +49,7 @@ public class PointToPoint {
             String instanceId = app.id();
             System.out.println(Colors.instancePrefix(instanceId) + "✅ Created app");
             System.out.println(Colors.instancePrefix(instanceId) +
-                    "🔌 Connected to " + config.server + " (conn ID: " + connId + ")");
+                    "🔌 Connected to " + Common.effectiveEndpoint(config.server) + " (conn ID: " + connId + ")");
 
             // Run sender or receiver mode
             if (config.isSender() && config.remote != null) {

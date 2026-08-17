@@ -70,7 +70,7 @@ class Program
 
             var instance = app.Id;
             Console.WriteLine($"[{instance}] Created app");
-            Console.WriteLine($"[{instance}] Connected to {server} (conn ID: {connId})");
+            Console.WriteLine($"[{instance}] Connected to {CommonHelpers.GetEffectiveEndpoint(server)} (conn ID: {connId})");
 
             // Run sender or receiver mode
             if (!string.IsNullOrEmpty(message) && !string.IsNullOrEmpty(remote))

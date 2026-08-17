@@ -61,7 +61,7 @@ func main() {
 
 	instance := app.Id()
 	fmt.Printf("%s[%s]%s ✅ Created app\n", colorCyan, instance, colorReset)
-	fmt.Printf("%s[%s]%s 🔌 Connected to %s (conn ID: %d)\n", colorCyan, instance, colorReset, *server, connID)
+	fmt.Printf("%s[%s]%s 🔌 Connected to %s (conn ID: %d)\n", colorCyan, instance, colorReset, common.EffectiveEndpoint(*server), connID)
 
 	// Run in appropriate mode
 	if isModerator {
