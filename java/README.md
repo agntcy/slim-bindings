@@ -150,6 +150,77 @@ ClientConfig config = SlimBindings.newInsecureClientConfig("http://localhost:463
 Long connectionId = service.connect(config);
 ```
 
+### Transport Authentication (gRPC connection)
+
+Separate from the app identity passed to `createAppWithSecret` and friends, the gRPC
+connection to a SLIM node can carry its own credentials via `ClientConfig.setAuth` (and
+`ServerConfig.setAuth` when hosting). Supported modes are `Basic`, `StaticJwt`, `Jwt`,
+`Spire`, and `Oidc`.
+
+OIDC, client side (client-credentials flow):
+
+```java
+ClientConfig config = SlimBindings.newInsecureClientConfig("http://localhost:46357");
+config.setAuth(new ClientAuthenticationConfig.Oidc(new OidcConfig(
+    "https://auth.example.com",  // issuerUrl
+    "my-client",                 // clientId
+    "s3cr3t",                    // clientSecret
+    null,                        // audience
+    null, null, null,            // refreshToken, refreshTokenFile, accessTokenFile
+    "openid profile",            // scope
+    Duration.ofSeconds(30),      // timeout        (client-side)
+    null,                        // jwksTtl        (server-side)
+    null,                        // claimCacheTtl  (server-side)
+    null)));                     // policy         (server-side)
+
+Long connectionId = service.connect(config);
+```
+
+For the refresh-token flow set `refreshToken` — or `refreshTokenFile`, which is rewritten
+in place as tokens rotate — instead of `clientSecret`.
+
+Server side, verifying incoming JWTs against the issuer's JWKS endpoint, optionally
+restricting access by claim:
+
+```java
+ServerConfig config = SlimBindings.newInsecureServerConfig("127.0.0.1:46357");
+config.setAuth(new ServerAuthenticationConfig.Oidc(new OidcConfig(
+    "https://auth.example.com",
+    null, null,
+    "slim",                      // audience - required for verification
+    null, null, null, null, null,
+    Duration.ofHours(1),         // jwksTtl
+    Duration.ofMinutes(1),       // claimCacheTtl
+    new OidcPolicyConfig.Cel("\"admin\" in claims.groups"))));
+```
+
+`policy` accepts `OidcPolicyConfig.Cel`, `OidcPolicyConfig.Rego` (which must define
+`package slim.auth` with `default allow = false`), or `OidcPolicyConfig.RegoFile`.
+Client-only fields (`scope`, `timeout`) and server-only fields (`jwksTtl`,
+`claimCacheTtl`, `policy`) are ignored by the other side.
+
+From a config file — `SlimBindings.newConfigFromJson` accepts a full gRPC client config,
+covering TLS material, backoff, and every authentication mode. The examples read the same
+document from `SLIM_CLIENT_CONFIG`:
+
+```json
+{
+  "endpoint": "http://127.0.0.1:46357",
+  "tls": { "insecure": true },
+  "auth": {
+    "type": "oidc",
+    "issuer_url": "https://auth.example.com",
+    "client_id": "my-client",
+    "client_secret": "s3cr3t",
+    "audience": "slim",
+    "policy": { "cel": "\"admin\" in claims.groups" }
+  }
+}
+```
+
+The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo.
+
 ### Creating Sessions
 
 ```java

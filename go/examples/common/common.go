@@ -31,6 +31,52 @@ func ServerEndpoint() string {
 	return DefaultServerEndpoint
 }
 
+// ClientConfig builds the gRPC client configuration used to reach the SLIM server.
+//
+// When SLIM_CLIENT_CONFIG points at a JSON file, that file supplies the whole
+// configuration and serverAddr is ignored. This is how the examples reach settings
+// with no dedicated flag - TLS material, backoff, rate limiting, and every
+// authentication mode, including OIDC:
+//
+//	{
+//	  "endpoint": "http://localhost:46357",
+//	  "tls": {"insecure": true},
+//	  "auth": {"type": "oidc", "issuer_url": "https://auth.example.com",
+//	           "client_id": "my-client", "client_secret": "s3cr3t"}
+//	}
+//
+// The schema matches data-plane/core/config/src/grpc/schema/client-config.schema.json
+// in the slim repo. Without the variable an insecure (no TLS) config for serverAddr
+// is returned.
+func ClientConfig(serverAddr string) (slim.ClientConfig, error) {
+	path := os.Getenv("SLIM_CLIENT_CONFIG")
+	if path == "" {
+		return slim.NewInsecureClientConfig(serverAddr), nil
+	}
+
+	jsonText, err := os.ReadFile(path)
+	if err != nil {
+		return slim.ClientConfig{}, fmt.Errorf("read slim client config %q: %w", path, err)
+	}
+
+	config, err := slim.NewConfigFromJson(string(jsonText))
+	if err != nil {
+		return slim.ClientConfig{}, fmt.Errorf("invalid slim client config JSON (%s): %w", path, err)
+	}
+	return config, nil
+}
+
+// EffectiveEndpoint reports the endpoint [ClientConfig] will actually dial, so log
+// lines stay truthful when SLIM_CLIENT_CONFIG overrides serverAddr. Falls back to
+// serverAddr if the config cannot be read - the connect attempt reports the real error.
+func EffectiveEndpoint(serverAddr string) string {
+	config, err := ClientConfig(serverAddr)
+	if err != nil {
+		return serverAddr
+	}
+	return config.Endpoint
+}
+
 // CreateAndConnectApp creates a SLIM app with shared secret authentication
 // and connects it to a SLIM server.
 //
@@ -42,7 +88,7 @@ func ServerEndpoint() string {
 // Args:
 //
 //	localID: Local identity string (org/namespace/app format)
-//	serverAddr: SLIM server endpoint URL
+//	serverAddr: SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)
 //	secret: Shared secret for authentication (min 32 chars)
 //
 // Returns:
@@ -67,7 +113,11 @@ func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64,
 	}
 
 	// Connect to SLIM server (returns connection ID)
-	config := slim.NewInsecureClientConfig(serverAddr)
+	config, err := ClientConfig(serverAddr)
+	if err != nil {
+		app.Destroy()
+		return nil, 0, err
+	}
 	connID, err := slim.GetGlobalService().ConnectAsync(config)
 	if err != nil {
 		app.Destroy()

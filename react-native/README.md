@@ -33,6 +33,19 @@ yarn add @agntcy/slim-bindings-react-native
 4. Publish with `session.publishAndWait(data, payloadType?, metadata?)`.
 5. Call `app.destroy()` when finished.
 
+## Transport authentication (gRPC connection)
+
+On the **native (iOS/Android)** target the gRPC client and server configurations expose
+transport authentication via `config.auth`, including OIDC (`ClientAuthenticationConfig.Oidc`
+with an `OidcConfig`, and `ServerAuthenticationConfig.Oidc` server-side). The API matches the
+Node bindings — see [their transport-authentication section](../node/README.md#transport-authentication-grpc-connection)
+for snippets and the JSON config form.
+
+On the **web / WebAssembly** target this surface is absent by design: the browser build enables
+the `web` feature of `agntcy-slim-bindings`, which compiles out the whole gRPC configuration
+module (`ClientConfig`, `TlsClientConfig`, `ClientAuthenticationConfig`, and therefore OIDC).
+Browser apps connect over `ws://`/`wss://` and authenticate through the identity path instead.
+
 ## Browser / WebAssembly
 
 Browser builds use the same UniFFI Rust source as the native bindings. The

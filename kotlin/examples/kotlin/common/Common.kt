@@ -157,8 +157,39 @@ fun setupService(enableOpentelemetry: Boolean = false): Service {
 }
 
 /**
+ * Build the gRPC client configuration used to reach the SLIM server.
+ *
+ * When [BaseConfig.slimClientConfig] is set (via `--slim-config` or SLIM_CLIENT_CONFIG),
+ * that JSON file supplies the whole configuration and [BaseConfig.slim] is ignored. This
+ * is how the examples reach settings with no dedicated flag - TLS material, backoff,
+ * rate limiting, and every authentication mode, including OIDC:
+ *
+ * ```json
+ * {
+ *   "endpoint": "http://localhost:46357",
+ *   "tls": {"insecure": true},
+ *   "auth": {"type": "oidc", "issuer_url": "https://auth.example.com",
+ *            "client_id": "my-client", "client_secret": "s3cr3t"}
+ * }
+ * ```
+ *
+ * @param config BaseConfig instance containing all configuration
+ * @return Client configuration ready to hand to `Service.connectAsync`
+ */
+fun buildClientConfig(config: BaseConfig): ClientConfig {
+    val path = config.slimClientConfig ?: return newInsecureClientConfig(config.slim)
+
+    val jsonText = File(path).readText()
+    return try {
+        newConfigFromJson(jsonText)
+    } catch (e: SlimException) {
+        throw IllegalArgumentException("Invalid slim client config JSON ($path): ${e.message}", e)
+    }
+}
+
+/**
  * Build a Slim application instance using the global service.
- * 
+ *
  * Resolution precedence for auth:
  *   1. If SPIRE options provided -> SPIRE dynamic identity flow.
  *   2. Else if jwt + bundle + audience provided -> JWT/JWKS flow.
@@ -174,7 +205,7 @@ suspend fun createLocalApp(config: BaseConfig): Pair<App, ULong> = coroutineScop
     // Convert local identifier to a strongly typed Name
     val localName = Name.fromString(config.local)
     
-    val clientConfig = newInsecureClientConfig(config.slim)
+    val clientConfig = buildClientConfig(config)
     val connId = service.connectAsync(clientConfig)
     
     // Determine authentication mode

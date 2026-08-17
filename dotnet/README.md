@@ -60,6 +60,80 @@ task test
 | `SlimName`          | Identity in `org/namespace/app` format                             |
 | `SlimMessage`       | Received message with `Payload` (bytes) and `Text` (string)        |
 | `SlimSessionConfig` | Session configuration (type, MLS, retries)                         |
+| `SlimClientConfig`  | Client connection configuration (endpoint, TLS, transport auth)     |
+| `SlimServerConfig`  | Server listen configuration (endpoint, TLS, transport auth)         |
+| `SlimOidcConfig`    | OIDC transport authentication settings                             |
+| `SlimOidcPolicy`    | Claim-based access policy (`Rego`, `RegoFile`, `Cel`)               |
+
+## Transport Authentication (gRPC connection)
+
+Separate from the app identity passed to `CreateApp`, the gRPC connection to a SLIM node can
+carry its own credentials.
+
+**OIDC**, client side (client-credentials flow):
+
+```csharp
+var clientConfig = Slim.NewInsecureClientConfig("http://127.0.0.1:46357")
+    .WithOidc(new SlimOidcConfig
+    {
+        IssuerUrl = "https://auth.example.com",
+        ClientId = "my-client",
+        ClientSecret = "s3cr3t",
+        Scope = "openid profile",
+        Timeout = TimeSpan.FromSeconds(30)
+    });
+
+using var service = Slim.GetGlobalService();
+var connId = service.Connect(clientConfig);
+```
+
+For the refresh-token flow set `RefreshToken` (or `RefreshTokenFile`, which is rewritten in
+place as tokens rotate) instead of `ClientSecret`.
+
+**Server side**, verifying incoming JWTs against the issuer's JWKS endpoint, optionally
+restricting access by claim:
+
+```csharp
+var serverConfig = Slim.NewInsecureServerConfig("127.0.0.1:46357")
+    .WithOidc(new SlimOidcConfig
+    {
+        IssuerUrl = "https://auth.example.com",
+        Audience = "slim",                       // required for verification
+        JwksTtl = TimeSpan.FromHours(1),
+        ClaimCacheTtl = TimeSpan.FromMinutes(1),
+        Policy = new SlimOidcPolicy.Cel("\"admin\" in claims.groups")
+    });
+
+await service.RunServerAsync(serverConfig);
+```
+
+`Policy` accepts `SlimOidcPolicy.Cel`, `SlimOidcPolicy.Rego` (which must define
+`package slim.auth` with `default allow = false`), or `SlimOidcPolicy.RegoFile`. Client-only
+properties (`Scope`, `Timeout`) and server-only properties (`JwksTtl`, `ClaimCacheTtl`,
+`Policy`) are ignored by the other side. Read back what a config carries via
+`SlimClientConfig.Oidc` / `SlimServerConfig.Oidc`, which return `null` for other auth modes.
+
+**From a config file** — `Slim.NewClientConfigFromJson` accepts a full gRPC client config,
+covering TLS material, backoff, and every authentication mode (`basic`, `static_jwt`, `jwt`,
+`spire`, `oidc`). The examples read the same document from `SLIM_CLIENT_CONFIG`:
+
+```json
+{
+  "endpoint": "http://127.0.0.1:46357",
+  "tls": { "insecure": true },
+  "auth": {
+    "type": "oidc",
+    "issuer_url": "https://auth.example.com",
+    "client_id": "my-client",
+    "client_secret": "s3cr3t",
+    "audience": "slim",
+    "policy": { "cel": "\"admin\" in claims.groups" }
+  }
+}
+```
+
+The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo.
 
 ## Examples
 

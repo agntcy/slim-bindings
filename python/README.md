@@ -19,7 +19,8 @@ Python interface that wraps the high-performance Rust implementation.
 - **Secure by Default**: Support for TLS, mTLS, and various authentication methods
 - **MLS Encryption**: End-to-end encryption for sessions
 - **Delivery Confirmation**: Optional completion handles for reliable messaging
-- **Flexible Authentication**: Shared secrets, JWT, SPIRE integration
+- **Flexible Authentication**: Shared secrets, JWT, SPIRE for app identity; Basic, JWT, SPIRE,
+  and [OIDC](#transport-authentication-grpc-connection) for the gRPC transport
 - **slimrpc Support**: Protocol Buffers RPC over SLIM - see [SLIMRPC.md](SLIMRPC.md) for details
 
 ## Architecture
@@ -227,6 +228,95 @@ task group:moderator
 ```
 
 For more details, see [examples/README.md](examples/README.md).
+
+## Transport Authentication (gRPC connection)
+
+Separate from the app identity set at `create_app_*` time, the gRPC connection to a SLIM node
+can carry its own credentials via `ClientConfig.auth` (and `ServerConfig.auth` when hosting).
+Supported modes are `BASIC`, `STATIC_JWT`, `JWT`, `SPIRE`, and `OIDC`.
+
+**OIDC**, client side (client-credentials flow):
+
+```python
+import datetime
+import slim_bindings
+
+oidc = slim_bindings.OidcConfig(
+    issuer_url="https://auth.example.com",
+    client_id="my-client",
+    client_secret="s3cr3t",
+    audience=None,
+    refresh_token=None,
+    refresh_token_file=None,
+    access_token_file=None,
+    scope="openid profile",
+    timeout=datetime.timedelta(seconds=30),
+    jwks_ttl=None,
+    claim_cache_ttl=None,
+    policy=None,
+)
+
+base = slim_bindings.new_insecure_client_config("http://127.0.0.1:46357")
+client_config = slim_bindings.ClientConfig(
+    **{**vars(base), "auth": slim_bindings.ClientAuthenticationConfig.OIDC(config=oidc)}
+)
+conn_id = await service.connect_async(client_config)
+```
+
+For the refresh-token flow set `refresh_token` (or `refresh_token_file`, which is rewritten in
+place as tokens rotate) instead of `client_secret`.
+
+**Server side**, verifying incoming JWTs against the issuer's JWKS endpoint, optionally
+restricting access by claim:
+
+```python
+oidc = slim_bindings.OidcConfig(
+    issuer_url="https://auth.example.com",
+    client_id=None,
+    client_secret=None,
+    audience="slim",                                   # required for verification
+    refresh_token=None,
+    refresh_token_file=None,
+    access_token_file=None,
+    scope=None,
+    timeout=None,
+    jwks_ttl=datetime.timedelta(hours=1),
+    claim_cache_ttl=datetime.timedelta(minutes=1),
+    policy=slim_bindings.OidcPolicyConfig.CEL(expression='"admin" in claims.groups'),
+)
+
+base = slim_bindings.new_insecure_server_config("127.0.0.1:46357")
+server_config = slim_bindings.ServerConfig(
+    **{**vars(base), "auth": slim_bindings.ServerAuthenticationConfig.OIDC(config=oidc)}
+)
+```
+
+`policy` accepts `OidcPolicyConfig.CEL(expression=...)`, `OidcPolicyConfig.REGO(text=...)` (which
+must define `package slim.auth` with `default allow = false`), or
+`OidcPolicyConfig.REGO_FILE(path=...)`. Client-only fields (`scope`, `timeout`) and server-only
+fields (`jwks_ttl`, `claim_cache_ttl`, `policy`) are ignored by the other side.
+
+**From a config file** — the examples read `SLIM_CLIENT_CONFIG` (or `--slim-config <path>`),
+which covers every auth mode plus TLS material and backoff without any code change:
+
+```json
+{
+  "endpoint": "http://127.0.0.1:46357",
+  "tls": { "insecure": true },
+  "auth": {
+    "type": "oidc",
+    "issuer_url": "https://auth.example.com",
+    "client_id": "my-client",
+    "client_secret": "s3cr3t",
+    "audience": "slim",
+    "policy": { "cel": "\"admin\" in claims.groups" }
+  }
+}
+```
+
+The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo. To load one yourself, call
+`slim_bindings.new_config_from_json(json_text)`.
 
 ## API Overview
 

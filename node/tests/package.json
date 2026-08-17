@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Integration tests for SLIM Node.js bindings",
   "scripts": {
-    "test": "tsx --test integration.test.ts"
+    "test": "tsx --test oidc-config.test.ts integration.test.ts"
   },
   "dependencies": {
     "@agntcy/slim-bindings": "file:.."

@@ -29,7 +29,16 @@ open class BaseConfig(
     
     // Service connection
     val slim: String = System.getenv("SLIM_ENDPOINT") ?: "http://127.0.0.1:46357",
-    
+
+    /**
+     * Path to a JSON file holding the full gRPC ClientConfig. When set it supplies the
+     * whole client configuration and [slim] is ignored, which is how the examples reach
+     * settings with no dedicated flag - TLS material, backoff, and every authentication
+     * mode, including OIDC. Schema:
+     * data-plane/core/config/src/grpc/schema/client-config.schema.json in the slim repo.
+     */
+    val slimClientConfig: String? = System.getenv("SLIM_CLIENT_CONFIG"),
+
     // Feature flags
     val enableOpentelemetry: Boolean = System.getenv("SLIM_ENABLE_OPENTELEMETRY")?.toBoolean() ?: false,
     val enableMls: Boolean = false,
@@ -57,6 +66,9 @@ open class BaseConfig(
         spireTrustBundle?.let { path ->
             require(File(path).exists()) { "SPIRE trust bundle file not found: $path" }
         }
+        slimClientConfig?.let { path ->
+            require(File(path).exists()) { "SLIM client config file not found: $path" }
+        }
     }
     
     /**
@@ -78,6 +90,7 @@ class PointToPointConfig(
     local: String,
     remote: String? = null,
     slim: String = "http://127.0.0.1:46357",
+    slimClientConfig: String? = null,
     enableOpentelemetry: Boolean = false,
     enableMls: Boolean = false,
     sharedSecret: String = "abcde-12345-fedcb-67890-deadc",
@@ -95,6 +108,7 @@ class PointToPointConfig(
     local = local,
     remote = remote,
     slim = slim,
+    slimClientConfig = slimClientConfig,
     enableOpentelemetry = enableOpentelemetry,
     enableMls = enableMls,
     sharedSecret = sharedSecret,
@@ -117,6 +131,7 @@ class GroupConfig(
     local: String,
     remote: String? = null,
     slim: String = "http://127.0.0.1:46357",
+    slimClientConfig: String? = null,
     enableOpentelemetry: Boolean = false,
     enableMls: Boolean = false,
     sharedSecret: String = "abcde-12345-fedcb-67890-deadc",
@@ -133,6 +148,7 @@ class GroupConfig(
     local = local,
     remote = remote,
     slim = slim,
+    slimClientConfig = slimClientConfig,
     enableOpentelemetry = enableOpentelemetry,
     enableMls = enableMls,
     sharedSecret = sharedSecret,
@@ -173,6 +189,9 @@ object ConfigParser {
                 }
                 "--slim" -> {
                     config["slim"] = args.getOrNull(++i)
+                }
+                "--slim-config" -> {
+                    config["slimClientConfig"] = args.getOrNull(++i)
                 }
                 "--shared-secret" -> {
                     config["sharedSecret"] = args.getOrNull(++i)
@@ -233,6 +252,7 @@ object ConfigParser {
             local = baseConfig["local"] as? String ?: throw IllegalArgumentException("--local is required"),
             remote = baseConfig["remote"] as? String,
             slim = baseConfig["slim"] as? String ?: "http://127.0.0.1:46357",
+            slimClientConfig = baseConfig["slimClientConfig"] as? String ?: System.getenv("SLIM_CLIENT_CONFIG"),
             enableOpentelemetry = baseConfig["enableOpentelemetry"] as? Boolean ?: false,
             enableMls = baseConfig["enableMls"] as? Boolean ?: false,
             sharedSecret = baseConfig["sharedSecret"] as? String ?: "abcde-12345-fedcb-67890-deadc",
@@ -268,6 +288,7 @@ object ConfigParser {
             local = baseConfig["local"] as? String ?: throw IllegalArgumentException("--local is required"),
             remote = baseConfig["remote"] as? String,
             slim = baseConfig["slim"] as? String ?: "http://127.0.0.1:46357",
+            slimClientConfig = baseConfig["slimClientConfig"] as? String ?: System.getenv("SLIM_CLIENT_CONFIG"),
             enableOpentelemetry = baseConfig["enableOpentelemetry"] as? Boolean ?: false,
             enableMls = baseConfig["enableMls"] as? Boolean ?: false,
             sharedSecret = baseConfig["sharedSecret"] as? String ?: "abcde-12345-fedcb-67890-deadc",

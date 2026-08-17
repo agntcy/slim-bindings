@@ -202,6 +202,152 @@ public class UnitTests
 }
 
 /// <summary>
+/// Unit tests for OIDC transport authentication (no server or identity provider required).
+/// </summary>
+[Collection("Slim")]
+public class OidcConfigUnitTests
+{
+    private const string IssuerUrl = "https://auth.example.com";
+    private const string CelPolicy = "\"admin\" in claims.groups";
+
+    private static SlimOidcConfig FullConfig() => new()
+    {
+        IssuerUrl = IssuerUrl,
+        ClientId = "my-client",
+        ClientSecret = "s3cr3t",
+        Audience = "slim",
+        RefreshToken = "refresh-token",
+        RefreshTokenFile = "/tmp/refresh-token",
+        AccessTokenFile = "/tmp/access-token",
+        Scope = "openid profile",
+        Timeout = TimeSpan.FromSeconds(30),
+        JwksTtl = TimeSpan.FromHours(1),
+        ClaimCacheTtl = TimeSpan.FromMinutes(1),
+        Policy = new SlimOidcPolicy.Cel(CelPolicy)
+    };
+
+    [Fact]
+    public void ClientConfig_WithOidc_RoundTripsThroughFfi()
+    {
+        // Arrange
+        var config = Slim.NewInsecureClientConfig("http://localhost:46357");
+
+        // Act
+        var withOidc = config.WithOidc(FullConfig());
+
+        // Assert - crossing the FFI boundary preserves every field
+        var oidc = Assert.IsType<SlimOidcConfig>(withOidc.Oidc);
+        Assert.Equal(IssuerUrl, oidc.IssuerUrl);
+        Assert.Equal("my-client", oidc.ClientId);
+        Assert.Equal("s3cr3t", oidc.ClientSecret);
+        Assert.Equal("slim", oidc.Audience);
+        Assert.Equal("refresh-token", oidc.RefreshToken);
+        Assert.Equal("/tmp/refresh-token", oidc.RefreshTokenFile);
+        Assert.Equal("/tmp/access-token", oidc.AccessTokenFile);
+        Assert.Equal("openid profile", oidc.Scope);
+        Assert.Equal(TimeSpan.FromSeconds(30), oidc.Timeout);
+        Assert.Equal(TimeSpan.FromHours(1), oidc.JwksTtl);
+        Assert.Equal(TimeSpan.FromMinutes(1), oidc.ClaimCacheTtl);
+        Assert.Equal(new SlimOidcPolicy.Cel(CelPolicy), oidc.Policy);
+
+        // The original config is untouched
+        Assert.Null(config.Oidc);
+    }
+
+    [Fact]
+    public void ServerConfig_WithOidc_RoundTripsThroughFfi()
+    {
+        // Arrange
+        var config = Slim.NewInsecureServerConfig("127.0.0.1:46357");
+
+        // Act
+        var withOidc = config.WithOidc(new SlimOidcConfig
+        {
+            IssuerUrl = IssuerUrl,
+            Audience = "slim",
+            JwksTtl = TimeSpan.FromHours(1),
+            Policy = new SlimOidcPolicy.RegoFile("/etc/slim/policy.rego")
+        });
+
+        // Assert
+        var oidc = Assert.IsType<SlimOidcConfig>(withOidc.Oidc);
+        Assert.Equal(IssuerUrl, oidc.IssuerUrl);
+        Assert.Equal("slim", oidc.Audience);
+        Assert.Equal(TimeSpan.FromHours(1), oidc.JwksTtl);
+        Assert.Equal(new SlimOidcPolicy.RegoFile("/etc/slim/policy.rego"), oidc.Policy);
+        Assert.Null(config.Oidc);
+    }
+
+    [Theory]
+    [InlineData("rego")]
+    [InlineData("rego_file")]
+    [InlineData("cel")]
+    public void OidcPolicy_EveryVariant_RoundTripsThroughFfi(string variant)
+    {
+        // Arrange
+        SlimOidcPolicy policy = variant switch
+        {
+            "rego" => new SlimOidcPolicy.Rego("package slim.auth\ndefault allow = false"),
+            "rego_file" => new SlimOidcPolicy.RegoFile("/etc/slim/policy.rego"),
+            _ => new SlimOidcPolicy.Cel(CelPolicy)
+        };
+
+        // Act
+        var config = Slim.NewInsecureServerConfig("127.0.0.1:46357")
+            .WithOidc(new SlimOidcConfig { IssuerUrl = IssuerUrl, Audience = "slim", Policy = policy });
+
+        // Assert - the exact variant survives, not just "some policy"
+        Assert.Equal(policy, config.Oidc?.Policy);
+    }
+
+    [Fact]
+    public void NewClientConfigFromJson_LiftsOidcAuth()
+    {
+        // Arrange - the core config schema tags the auth variant with "type"
+        const string json = """
+        {
+          "endpoint": "http://localhost:46357",
+          "tls": { "insecure": true },
+          "auth": {
+            "type": "oidc",
+            "issuer_url": "https://auth.example.com",
+            "client_id": "my-client",
+            "client_secret": "s3cr3t",
+            "audience": "slim",
+            "policy": { "cel": "\"admin\" in claims.groups" }
+          }
+        }
+        """;
+
+        // Act
+        var config = Slim.NewClientConfigFromJson(json);
+
+        // Assert - this is the direction that previously degraded to None
+        var oidc = Assert.IsType<SlimOidcConfig>(config.Oidc);
+        Assert.Equal(IssuerUrl, oidc.IssuerUrl);
+        Assert.Equal("my-client", oidc.ClientId);
+        Assert.Equal(new SlimOidcPolicy.Cel(CelPolicy), oidc.Policy);
+    }
+
+    [Fact]
+    public void NewClientConfigFromJson_RejectsInvalidJson()
+    {
+        Assert.Throws<SlimException>(() => Slim.NewClientConfigFromJson("{\"nope\": true}"));
+        Assert.Throws<ArgumentException>(() => Slim.NewClientConfigFromJson("  "));
+    }
+
+    [Fact]
+    public void WithOidc_RejectsNull()
+    {
+        var client = Slim.NewInsecureClientConfig("http://localhost:46357");
+        var server = Slim.NewInsecureServerConfig("127.0.0.1:46357");
+
+        Assert.Throws<ArgumentNullException>(() => client.WithOidc(null!));
+        Assert.Throws<ArgumentNullException>(() => server.WithOidc(null!));
+    }
+}
+
+/// <summary>
 /// Integration tests that require a running SLIM server.
 /// Run server first from the slim repo (https://github.com/agntcy/slim): cd data-plane && task data-plane:run:server
 /// </summary>

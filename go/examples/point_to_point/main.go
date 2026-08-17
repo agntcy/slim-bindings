@@ -41,7 +41,7 @@ func main() {
 
 	instance := app.Id()
 	fmt.Printf("[%s] ✅ Created app\n", instance)
-	fmt.Printf("[%s] 🔌 Connected to %s (conn ID: %d)\n", instance, *server, connID)
+	fmt.Printf("[%s] 🔌 Connected to %s (conn ID: %d)\n", instance, common.EffectiveEndpoint(*server), connID)
 
 	// Run sender or receiver mode
 	switch {
