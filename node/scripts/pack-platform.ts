@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'node:url';
-import { rustTargetToPlatformId } from './platform-id';
+import { platformIdToNpmFields, rustTargetToPlatformId } from './platform-id';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TASKFILE_DIR = path.resolve(__dirname, '..');
@@ -150,6 +150,11 @@ function main() {
   const generatedPkg = JSON.parse(
     fs.readFileSync(path.join(GENERATED_DIR, 'package.json'), 'utf-8')
   );
+  // os/cpu/libc gate installation: the umbrella package lists every platform
+  // package in optionalDependencies, and npm skips the ones whose fields do not
+  // match the host. Omitting them makes every consumer download all of them
+  // (~50MB each) instead of just theirs.
+  const npmPlatformFields = platformIdToNpmFields(platformId);
   const platformPkg = {
     name: packageName,
     version,
@@ -157,6 +162,7 @@ function main() {
     main: 'index.js',
     types: 'index.d.ts',
     type: 'module',
+    ...npmPlatformFields,
     engines: { node: '>=18.0.0' },
     repository: {
       type: 'git',
@@ -175,19 +181,33 @@ function main() {
   execSync('npm install --omit=dev', { cwd: OUT_DIR, stdio: 'inherit' });
 
   const tgzName = `node-${platformId}.tgz`;
-  execSync(`npm pack --pack-destination "${DIST_DIR}"`, {
+  // Take the filename from npm itself rather than scanning DIST_DIR for any
+  // *.tgz: a leftover tarball from an earlier run (dist/ is not cleaned, and the
+  // release job globs dist/node-*.tgz to publish) could otherwise be picked up
+  // and renamed over the fresh one, publishing stale bits.
+  const packOutput = execSync(`npm pack --json --pack-destination "${DIST_DIR}"`, {
     cwd: OUT_DIR,
-    stdio: 'inherit',
+    encoding: 'utf-8',
+    stdio: ['inherit', 'pipe', 'inherit'],
   });
-
-  const packed = fs.readdirSync(DIST_DIR).find((f) => f.endsWith('.tgz'));
-  if (packed) {
-    const dest = path.join(DIST_DIR, tgzName);
-    if (path.resolve(path.join(DIST_DIR, packed)) !== path.resolve(dest)) {
-      fs.renameSync(path.join(DIST_DIR, packed), dest);
-    }
-    console.log('Created:', dest);
+  const packed = (JSON.parse(packOutput) as Array<{ filename: string }>)[0]?.filename;
+  if (!packed) {
+    console.error('npm pack did not report a tarball filename.');
+    process.exit(1);
   }
+  // npm reports the publish name (@scope/name-version.tgz); on disk the scope
+  // becomes a filename prefix (scope-name-version.tgz).
+  const packedOnDisk = packed.replace(/^@/, '').replace('/', '-');
+  const src = path.join(DIST_DIR, packedOnDisk);
+  if (!fs.existsSync(src)) {
+    console.error(`npm pack reported ${packed} but ${src} does not exist.`);
+    process.exit(1);
+  }
+  const dest = path.join(DIST_DIR, tgzName);
+  if (path.resolve(src) !== path.resolve(dest)) {
+    fs.renameSync(src, dest);
+  }
+  console.log('Created:', dest);
 
   fs.rmSync(path.join(TASKFILE_DIR, 'tsconfig.pack-platform.json'), { force: true });
 }

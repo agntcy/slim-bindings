@@ -248,7 +248,8 @@ jobs:
   # Job 7: Build Node platform packages (matrix: one per target with .so/.dylib/.dll).
   # Uses pre-generated bindings + each target's library (no re-running the napi
   # generator against non-native libs it can't dlopen on this host).
-  # musl excluded: Rust build produces only static .a for musl, no .so.
+  # win32-x64-gnu excluded: same os/cpu as win32-x64-msvc, so npm cannot tell them
+  # apart and both would install on Windows x64 (see node/scripts/platform-id.ts).
   # ==========================================================================
   build-node-packages:
     name: Node ${{ matrix.target }}
@@ -266,6 +267,8 @@ jobs:
           - x86_64-pc-windows-msvc
           - aarch64-unknown-linux-gnu
           - aarch64-pc-windows-msvc
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -443,6 +446,38 @@ jobs:
             pkg.optionalDependencies = opt;
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
+
+      # Every optionalDependency must have been published by the preceding job.
+      # A name listed here but never built leaves consumers on that platform with
+      # no binary at all (the linux-*-musl entries were in this state for several
+      # releases), so fail the release instead of shipping a broken matrix.
+      - name: Verify platform packages are published
+        working-directory: ./node
+        env:
+          BINDINGS_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          missing=()
+          for pkg in $(node -p "Object.keys(require('./package.json').optionalDependencies).join(' ')"); do
+            found=""
+            for attempt in 1 2 3; do
+              if npm view "${pkg}@${BINDINGS_VERSION}" version >/dev/null 2>&1; then
+                found="yes"
+                break
+              fi
+              sleep 10
+            done
+            if [ -n "$found" ]; then
+              echo "  ✅ ${pkg}@${BINDINGS_VERSION}"
+            else
+              echo "  ❌ ${pkg}@${BINDINGS_VERSION} is not on the registry"
+              missing+=("$pkg")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Refusing to publish: optionalDependencies missing from the registry: ${missing[*]}"
+            echo "Either add the target to build-node-packages or drop it from node/package.json."
+            exit 1
+          fi
 
       - name: Publish main package to npm
         working-directory: ./node

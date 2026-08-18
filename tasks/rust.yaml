@@ -245,6 +245,16 @@ tasks:
         TARGET_ABI="{{.TARGET_ABI}}"
         TARGET_OS="{{.TARGET_OS}}"
 
+        # musl targets default to +crt-static, and rustc then silently drops the
+        # cdylib crate type ("warning: dropping unsupported crate type `cdylib`"),
+        # leaving only the static archive. The shared library is what .NET
+        # (runtimes/linux-musl-*) and the Node platform packages ship, so disable
+        # the static CRT for musl. Appends to any RUSTFLAGS from the environment.
+        if [[ "$TARGET_ABI" == "musl" ]]; then
+          export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-feature=-crt-static"
+          echo "🦀 musl: RUSTFLAGS=$RUSTFLAGS (needed to emit cdylib)"
+        fi
+
         ARGS=()
 
         # Use zigbuild for Linux or gnu targets, cargo build for others
