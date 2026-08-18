@@ -179,6 +179,34 @@ jobs:
           echo "📁 Library files:"
           ls -lah target/${{ matrix.platform.target }}/release/*slim_bindings*
         working-directory: ./rust
+      # The cdylib - not the static archive - is what every downstream package
+      # ships (Node platform packages, .NET runtimes/, Python wheels). musl
+      # produced only libslim_bindings.a for several releases without failing
+      # anything here, because the listing above is satisfied by the archive.
+      # windows-gnu is not asserted: it ships no cdylib-based package today.
+      - name: Verify shared library was produced
+        working-directory: ./rust
+        env:
+          PLATFORM_TARGET: ${{ matrix.platform.target }}
+        run: |
+          case "$PLATFORM_TARGET" in
+            *-apple-darwin) expected="libslim_bindings.dylib" ;;
+            *-linux-gnu|*-linux-musl) expected="libslim_bindings.so" ;;
+            *-windows-msvc) expected="slim_bindings.dll" ;;
+            *)
+              echo "No cdylib expectation for $PLATFORM_TARGET; skipping."
+              exit 0
+              ;;
+          esac
+          release_dir="target/$PLATFORM_TARGET/release"
+          if [ ! -f "$release_dir/$expected" ]; then
+            echo "::error::$expected was not produced for $PLATFORM_TARGET."
+            echo "Downstream packages ship the shared library, not the static archive."
+            echo "Files present in $release_dir:"
+            ls -lah "$release_dir" | grep slim_bindings || true
+            exit 1
+          fi
+          echo "✅ $release_dir/$expected ($(du -h "$release_dir/$expected" | cut -f1))"
       - name: Upload libs
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
