@@ -159,7 +159,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
-          cache-enabled: false
       - name: Build library
         working-directory: ./rust
         env:
@@ -251,7 +250,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ${{ inputs.rust-workspace }}
-          cache-enabled: false
 
       - name: Setup Go
         uses: ./.github/actions/setup-go
@@ -261,15 +259,22 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: ${{ github.workspace }}/target-artifacts/
+          pattern: bindings-*
 
       - name: Restore libraries to target folder
+        env:
+          MATRIX_JSON: ${{ needs.generate-matrix.outputs.matrix }}
         run: |
           echo "📦 Restoring artifacts to target folder..."
-          for artifact_dir in "$GITHUB_WORKSPACE/target-artifacts/bindings-"*; do
-            [ -d "$artifact_dir" ] || continue
-            target=$(basename "$artifact_dir" | sed 's/^bindings-//')
+          for target in $(echo "$MATRIX_JSON" | jq -r '.platform[] | select(.exclude != true) | .target'); do
             mkdir -p "$GITHUB_WORKSPACE/rust/target/$target/release/"
-            find "$artifact_dir" -maxdepth 1 -type f -exec cp {} "$GITHUB_WORKSPACE/rust/target/$target/release/" \;
+            # download-artifact only nests under path/<artifact-name>/ when the
+            # pattern matches more than one artifact; with exactly one match
+            # (e.g. the reduced PR matrix) it extracts flat into the download
+            # path instead (actions/download-artifact v5+ behavior).
+            src_dir="$GITHUB_WORKSPACE/target-artifacts/bindings-$target"
+            [ -d "$src_dir" ] || src_dir="$GITHUB_WORKSPACE/target-artifacts"
+            find "$src_dir" -maxdepth 1 -type f -exec cp {} "$GITHUB_WORKSPACE/rust/target/$target/release/" \;
             echo "  Restored $target"
           done
           echo "📁 Restored libraries:"
@@ -479,6 +484,9 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
+          # wasm32-unknown-unknown doesn't need the Linux aarch64 cross-compiler
+          # or the pinned LLVM 19 toolchain that zigbuild targets require.
+          install-cross-toolchain: 'false'
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -518,6 +526,10 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
+          # This job only ever builds for the runner's host target; it doesn't
+          # need the aarch64 cross-compiler or the pinned LLVM 19 toolchain
+          # that cross-compiling (zigbuild) targets require.
+          install-cross-toolchain: 'false'
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -583,6 +595,7 @@ jobs:
       rust-workspace: ${{ inputs.rust-workspace }}
       rust-target: x86_64-unknown-linux-gnu
       tag-name: ${{ inputs.tag-name }}
+      matrix: ${{ needs.generate-matrix.outputs.matrix }}
 
   kotlin-bindings-build-and-test:
     name: "Kotlin Bindings Build and Test"
@@ -595,6 +608,7 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
+      matrix: ${{ needs.generate-matrix.outputs.matrix }}
 
   java-bindings-build-and-test:
     name: "Java Bindings Build and Test"
@@ -607,3 +621,4 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
+      matrix: ${{ needs.generate-matrix.outputs.matrix }}
