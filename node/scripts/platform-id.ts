@@ -31,7 +31,14 @@ export const RUST_TARGET_TO_PLATFORM_ID: Record<string, string> = {
   'x86_64-pc-windows-gnu': 'win32-x64-gnu',
 };
 
-/** All platform ids we publish (for optionalDependencies list) */
+/**
+ * All platform ids we publish (for optionalDependencies list).
+ *
+ * win32-x64-gnu is deliberately absent: it carries the same os/cpu as
+ * win32-x64-msvc and npm has no field that separates them, so publishing both
+ * would install both on Windows x64. getCurrentPlatformId() only ever resolves
+ * win32-x64-msvc, so nothing would load it anyway.
+ */
 export const ALL_PLATFORM_IDS = [
   'darwin-arm64',
   'darwin-x64',
@@ -41,10 +48,49 @@ export const ALL_PLATFORM_IDS = [
   'linux-arm64-musl',
   'win32-x64-msvc',
   'win32-arm64-msvc',
-  'win32-x64-gnu',
 ] as const;
 
 export type PlatformId = (typeof ALL_PLATFORM_IDS)[number];
+
+/** npm platform-gating fields written into each platform package's package.json. */
+export interface NpmPlatformFields {
+  os: string[];
+  cpu: string[];
+  libc?: string[];
+}
+
+/**
+ * `os`/`cpu`/`libc` per platform id. These are what npm (and pnpm/yarn) check to
+ * skip an optionalDependency that cannot run on the host; `optionalDependencies`
+ * alone does not filter by platform, so without these fields every consumer
+ * downloads all published platform binaries instead of the one they need.
+ * `libc` (npm >= 10.4) is the only discriminator between linux-*-gnu and
+ * linux-*-musl, which share os/cpu; values are npm's 'glibc' / 'musl'.
+ */
+export const PLATFORM_ID_TO_NPM_FIELDS: Record<PlatformId, NpmPlatformFields> = {
+  'darwin-arm64': { os: ['darwin'], cpu: ['arm64'] },
+  'darwin-x64': { os: ['darwin'], cpu: ['x64'] },
+  'linux-x64-gnu': { os: ['linux'], cpu: ['x64'], libc: ['glibc'] },
+  'linux-arm64-gnu': { os: ['linux'], cpu: ['arm64'], libc: ['glibc'] },
+  'linux-x64-musl': { os: ['linux'], cpu: ['x64'], libc: ['musl'] },
+  'linux-arm64-musl': { os: ['linux'], cpu: ['arm64'], libc: ['musl'] },
+  'win32-x64-msvc': { os: ['win32'], cpu: ['x64'] },
+  'win32-arm64-msvc': { os: ['win32'], cpu: ['arm64'] },
+};
+
+/**
+ * npm platform-gating fields for a platform id. Used when packing a platform
+ * package so npm installs only the one matching the host.
+ */
+export function platformIdToNpmFields(platformId: string): NpmPlatformFields {
+  const fields = PLATFORM_ID_TO_NPM_FIELDS[platformId as PlatformId];
+  if (!fields) {
+    throw new Error(
+      `${platformId} is not a published platform package (see ALL_PLATFORM_IDS); refusing to pack it.`
+    );
+  }
+  return fields;
+}
 
 /**
  * Map Rust TARGET to npm platform id. Used in CI when building platform packages.
