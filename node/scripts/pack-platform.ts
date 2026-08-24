@@ -162,7 +162,6 @@ function main() {
     main: 'index.js',
     types: 'index.d.ts',
     type: 'module',
-    ...npmPlatformFields,
     engines: { node: '>=18.0.0' },
     repository: {
       type: 'git',
@@ -178,7 +177,26 @@ function main() {
     JSON.stringify(platformPkg, null, 2)
   );
 
+  // Install dependencies BEFORE adding os/cpu/libc: npm enforces those fields on
+  // the package it is installing into, so a cross-target pack (every target but
+  // the runner's own) would fail with EBADPLATFORM. The fields only need to be
+  // present in the published tarball, so add them once install is done.
   execSync('npm install --omit=dev', { cwd: OUT_DIR, stdio: 'inherit' });
+
+  const pkgPath = path.join(OUT_DIR, 'package.json');
+  const packedPkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+  // Key order: place os/cpu/libc right before `engines`, as authored above.
+  const gated: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(packedPkg)) {
+    if (key === 'engines') {
+      Object.assign(gated, npmPlatformFields);
+    }
+    gated[key] = value;
+  }
+  if (!('os' in gated)) {
+    Object.assign(gated, npmPlatformFields);
+  }
+  fs.writeFileSync(pkgPath, JSON.stringify(gated, null, 2));
 
   const tgzName = `node-${platformId}.tgz`;
   // Take the filename from npm itself rather than scanning DIST_DIR for any
