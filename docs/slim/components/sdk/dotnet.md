@@ -26,7 +26,7 @@ The NuGet package ships native libraries for Linux (glibc and musl), macOS, and 
 
     ```xml
     <ItemGroup>
-      <PackageReference Include="Agntcy.Slim" Version="2.0.0" />
+      <PackageReference Include="Agntcy.Slim" Version="2.1.0" />
     </ItemGroup>
     ```
 

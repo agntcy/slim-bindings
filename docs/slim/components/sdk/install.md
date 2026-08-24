@@ -7,7 +7,7 @@ All bindings are maintained in [agntcy/slim-bindings](https://github.com/agntcy/
 | | |
 |---|---|
 | **Package** | `slim-bindings` on PyPI |
-| **Requirements** | Python 3.9+ |
+| **Requirements** | Python 3.10+ |
 | **Examples** | [python/examples](https://github.com/agntcy/slim-bindings/tree/main/python/examples) |
 
 ```bash
@@ -18,7 +18,7 @@ Or add to your `pyproject.toml`:
 
 ```toml
 [project]
-dependencies = ["slim-bindings==2.0.0a5"]
+dependencies = ["slim-bindings"]
 ```
 
 ## Go
@@ -26,7 +26,7 @@ dependencies = ["slim-bindings==2.0.0a5"]
 | | |
 |---|---|
 | **Package** | `github.com/agntcy/slim-bindings-go` |
-| **Requirements** | Go 1.20+, C compiler (CGO) |
+| **Requirements** | Go 1.23+, C compiler (CGO) |
 | **Examples** | [examples](https://github.com/agntcy/slim-bindings/tree/main/go/examples) |
 
 ```bash
@@ -57,7 +57,7 @@ dotnet add package Agntcy.Slim
 Or add to your `.csproj`:
 
 ```xml
-<PackageReference Include="Agntcy.Slim" Version="2.0.0" />
+<PackageReference Include="Agntcy.Slim" Version="2.1.0" />
 ```
 
 The NuGet package bundles native libraries for Linux, macOS, and Windows (x64 and arm64). No additional setup is required after install.
@@ -74,6 +74,16 @@ See the [.NET SDK guide](./dotnet.md) for API overview, transport authentication
 
 The Java bindings provide synchronous methods with `CompletableFuture`-based async variants.
 
+Add to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>io.agntcy.slim</groupId>
+    <artifactId>slim-bindings-java</artifactId>
+    <version>1.2.0</version>
+</dependency>
+```
+
 ## Kotlin
 
 | | |
@@ -86,7 +96,7 @@ Add to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.agntcy.slim:slim-bindings-kotlin:2.0.0")
+    implementation("io.agntcy.slim:slim-bindings-kotlin:1.0.0")
 }
 ```
 
@@ -121,10 +131,10 @@ git clone https://github.com/agntcy/slim-bindings
 cd slim-bindings
 
 # Build the Rust FFI library
-cd rust && task bindings:build
+cd rust && task build
 
 # Build a specific binding (example: Python)
-cd python && task bindings:build
+cd python && task build
 ```
 
 See the README in each binding directory for language-specific build instructions.
