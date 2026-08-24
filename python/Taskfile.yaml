@@ -93,16 +93,6 @@ tasks:
 
         rustup target add {{.TARGET}}
 
-        # Honour uv.lock. UV_ARGS was referenced below but never assigned, so
-        # `uv run` re-resolved the build tools on every run: when maturin 1.15.0
-        # was released it was picked up despite the lock pinning 1.14.1, and it
-        # routes uniffi through the single-interpreter path, failing with
-        # "You can only specify one python interpreter for `uniffi` bindings".
-        # Build tooling must not float in a release pipeline. --frozen (not
-        # --locked) so a lockfile the runner's newer uv considers stale is still
-        # used as written instead of failing the build.
-        UV_ARGS=(--frozen)
-
         MATURIN_ARGS=(
           {{.RELEASE}}
           --out dist
