@@ -9,9 +9,17 @@ Each binding bundles two components:
 
 ## Supported Languages
 
-Python, Go, [.NET](./dotnet.md), Java, Kotlin, Node.js, and React Native.
+| Language | SDK guide |
+|---|---|
+| [Python](./python.md) | `slim-bindings` on PyPI |
+| [Go](./go.md) | `github.com/agntcy/slim-bindings-go` |
+| [.NET](./dotnet.md) | `Agntcy.Slim` on NuGet |
+| [Java](./java.md) | `slim-bindings-java` on Maven Central |
+| [Kotlin](./kotlin.md) | `slim-bindings-kotlin` on Maven Central |
+| [Node.js](./node.md) | `@agntcy/slim-bindings` on npm |
+| [React Native](./react-native.md) | `@agntcy/slim-bindings-react-native` on npm |
 
-See [Installation](./install.md) for per-language package names, requirements, and install commands. For .NET-specific API details, examples, and platform support, see the [.NET SDK guide](./dotnet.md).
+See [Installation](./install.md) for per-language package names, requirements, and install commands. Each language guide covers API overview, transport authentication, SLIMRPC, examples, and platform support.
 
 ## How It Fits Into SLIM
 
@@ -53,6 +61,6 @@ Work through the tutorials to learn the fundamentals step by step:
 ## What to Read Next
 
 - [Installation](./install.md) — Install the SDK for your language
-- [.NET SDK](./dotnet.md) — C# API reference, examples, and platform support
+- Language SDK guides — [Python](./python.md), [Go](./go.md), [.NET](./dotnet.md), [Java](./java.md), [Kotlin](./kotlin.md), [Node.js](./node.md), [React Native](./react-native.md)
 - [Architecture](../../architecture/index.md) — Understand the full SLIM architecture
 - [Sessions](../../architecture/sessions/index.md) — Deep dive into session types and the session lifecycle

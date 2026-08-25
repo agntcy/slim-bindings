@@ -21,6 +21,8 @@ Or add to your `pyproject.toml`:
 dependencies = ["slim-bindings"]
 ```
 
+See the [Python SDK guide](./python.md) for API overview, transport authentication, SLIMRPC, examples, and platform support.
+
 ## Go
 
 | | |
@@ -41,6 +43,8 @@ go run github.com/agntcy/slim-bindings-go/cmd/slim-bindings-setup
 
 !!! warning "CGO Requirement"
     The Go bindings use native libraries via [CGO](https://pkg.go.dev/cmd/cgo). A C compiler (GCC or Clang) must be installed.
+
+See the [Go SDK guide](./go.md) for API overview, transport authentication, SLIMRPC, examples, and platform support.
 
 ## .NET
 
@@ -78,11 +82,13 @@ Add to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>io.agntcy.slim</groupId>
-    <artifactId>slim-bindings-java</artifactId>
-    <version>1.2.0</version>
+  <groupId>io.agntcy.slim</groupId>
+  <artifactId>slim-bindings-java</artifactId>
+  <version>1.2.0</version>
 </dependency>
 ```
+
+See the [Java SDK guide](./java.md) for API overview, transport authentication, SLIMRPC, examples, and platform support.
 
 ## Kotlin
 
@@ -100,6 +106,8 @@ dependencies {
 }
 ```
 
+See the [Kotlin SDK guide](./kotlin.md) for API overview, transport authentication, SLIMRPC, examples, and platform support.
+
 ## Node.js
 
 | | |
@@ -111,6 +119,8 @@ dependencies {
 npm install @agntcy/slim-bindings
 ```
 
+See the [Node.js SDK guide](./node.md) for API overview, transport authentication, SLIMRPC, examples, and platform support.
+
 ## React Native
 
 | | |
@@ -121,6 +131,8 @@ npm install @agntcy/slim-bindings
 ```bash
 npm install @agntcy/slim-bindings-react-native
 ```
+
+See the [React Native SDK guide](./react-native.md) for native and browser quick starts, platform support, and examples.
 
 ## Building from Source
 
