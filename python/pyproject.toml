@@ -3,8 +3,8 @@
 
 [build-system]
 requires = [
-    "maturin~=1.11",
-    "maturin[patchelf]>=1.8.2; sys_platform == 'linux'",
+    "maturin>=1.11,<1.15",
+    "maturin[patchelf]>=1.8.2,<1.15; sys_platform == 'linux'",
     "uniffi-bindgen==0.31.0"
 ]
 build-backend = "maturin"
@@ -55,8 +55,8 @@ slim-bindings-simple-rpc-client-group = "examples.slimrpc.simple.client_group:ma
 
 [dependency-groups]
 building = [
-    "maturin~=1.11",
-    "maturin[patchelf]>=1.8.2; sys_platform == 'linux'",
+    "maturin>=1.11,<1.15",
+    "maturin[patchelf]>=1.8.2,<1.15; sys_platform == 'linux'",
     "uniffi-bindgen==0.31.0"
 ]
 
