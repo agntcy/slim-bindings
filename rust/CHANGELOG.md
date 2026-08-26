@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.1.1-rc.3...slim-bindings-v2.1.1) - 2026-08-26
+
+### Fixed
+
+- platform packages declare os/cpu/libc, so npm installs only the one matching the host ([#74](https://github.com/agntcy/slim-bindings/pull/74))
+- publish the linux musl platform packages, so Alpine resolves a binary instead of failing to load ([#74](https://github.com/agntcy/slim-bindings/pull/74))
+- stop publishing duplicate iOS static archives in the React Native package ([#78](https://github.com/agntcy/slim-bindings/pull/78))
+
 ## [2.1.1-rc.3](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.1.1-rc.2...slim-bindings-v2.1.1-rc.3) - 2026-08-25
 
 ### Fixed
