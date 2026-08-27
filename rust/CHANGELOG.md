@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.1.1...slim-bindings-v2.1.2) - 2026-08-26
+
+### Fixed
+
+- pack each Node platform package with its own native library. linux-arm64-gnu,
+  linux-x64-musl and linux-arm64-musl shipped the x86_64-gnu library, so those
+  packages installed correctly but failed to load
+
 ## [2.1.1](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.1.1-rc.3...slim-bindings-v2.1.1) - 2026-08-26
 
 ### Fixed
