@@ -294,44 +294,78 @@ jobs:
           name: node-generated-bindings
           path: ./node/generated/
 
+      # Into its own directory, NOT the workspace root: the previous `path: .`
+      # combined with a repo-wide `find` below also matched the x86_64-gnu library
+      # that ships inside node-generated-bindings (node/generated/libslim_bindings.so).
+      # Both have the same basename, so that copy landed second and overwrote this
+      # target's library - every linux package except x86_64-gnu shipped the gnu x64
+      # library (2.1.0 and 2.1.1: linux-arm64-gnu, linux-x64-musl, linux-arm64-musl).
       - name: Download library artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: bindings-${{ matrix.target }}
-          path: .
+          path: ./target-lib
 
       - name: Place library for Node pack
         run: |
           RELEASE_DIR="rust/target/${{ matrix.target }}/release"
           mkdir -p "$RELEASE_DIR"
-          if [ -n "$(find "$RELEASE_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-            echo "Library files (from artifact path):"
-            find "$RELEASE_DIR" -maxdepth 1 ! -path "$RELEASE_DIR" -ls
-            exit 0
-          fi
           TARGET="${{ matrix.target }}"
           case "$TARGET" in
-            *-apple-darwin)
-              find . -type f \( -name 'libslim_bindings*.dylib' -o -name 'slim_bindings*.dylib' \) -exec cp -v {} "$RELEASE_DIR/" \;
-              ;;
-            *-linux-gnu|*-linux-musl)
-              find . -type f \( -name 'libslim_bindings*.so' -o -name 'slim_bindings*.so' \) -exec cp -v {} "$RELEASE_DIR/" \;
-              ;;
-            *-windows-msvc|*-windows-gnu)
-              find . -type f \( -name 'slim_bindings*.dll' -o -name '*slim_bindings*.dll' \) -exec cp -v {} "$RELEASE_DIR/" \;
-              ;;
-            *)
-              find . -name '*slim_bindings*' -type f -exec cp -v {} "$RELEASE_DIR/" \; 2>/dev/null
-              ;;
+            *-apple-darwin)               PATTERN='*.dylib' ;;
+            *-linux-gnu|*-linux-musl)     PATTERN='*.so' ;;
+            *-windows-msvc|*-windows-gnu) PATTERN='*.dll' ;;
+            *)                            PATTERN='*slim_bindings*' ;;
           esac
-          if [ -n "$(find "$RELEASE_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-            echo "Library files (copied):"
-            find "$RELEASE_DIR" -maxdepth 1 ! -path "$RELEASE_DIR" -ls
-            exit 0
+          # Only ever from the artifact for THIS target.
+          find ./target-lib -type f -name "$PATTERN" -exec cp -v {} "$RELEASE_DIR/" \;
+          if [ -z "$(find "$RELEASE_DIR" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+            echo "::error::No $PATTERN found in the bindings-$TARGET artifact."
+            find ./target-lib -maxdepth 3 -ls 2>/dev/null | head -40
+            exit 1
           fi
-          echo "No library files found after download."
-          find . -maxdepth 4 -ls 2>/dev/null | head -80
-          exit 1
+          echo "Library files (copied):"
+          find "$RELEASE_DIR" -maxdepth 1 ! -path "$RELEASE_DIR" -ls
+
+      # The packed library must actually match the target. Nothing verified this
+      # before, so a wrong-ABI/wrong-arch library shipped silently: consumers only
+      # find out at dlopen time, and no CI job loads these packages.
+      - name: Verify library matches target
+        run: |
+          TARGET="${{ matrix.target }}"
+          RELEASE_DIR="rust/target/$TARGET/release"
+          case "$TARGET" in
+            x86_64-unknown-linux-gnu)   lib=libslim_bindings.so; want_arch=x86-64;  want_libc=glibc ;;
+            aarch64-unknown-linux-gnu)  lib=libslim_bindings.so; want_arch=aarch64; want_libc=glibc ;;
+            x86_64-unknown-linux-musl)  lib=libslim_bindings.so; want_arch=x86-64;  want_libc=musl ;;
+            aarch64-unknown-linux-musl) lib=libslim_bindings.so; want_arch=aarch64; want_libc=musl ;;
+            *-apple-darwin|*-windows-*)
+              echo "Non-ELF target $TARGET; readelf checks not applicable."
+              exit 0
+              ;;
+            *) echo "::error::Unknown target $TARGET"; exit 1 ;;
+          esac
+
+          got_arch=$(readelf -h "$RELEASE_DIR/$lib" | awk -F: '/Machine/{gsub(/^ +/,"",$2); print $2}')
+          case "$got_arch" in
+            *X86-64*)  arch=x86-64 ;;
+            *AArch64*) arch=aarch64 ;;
+            *)         arch="unknown ($got_arch)" ;;
+          esac
+
+          # musl links libc.so; glibc links libc.so.6 / ld-linux-*
+          needed=$(readelf -d "$RELEASE_DIR/$lib" | grep -oE '\[libc[^]]*\]|\[ld-linux[^]]*\]' | tr -d '[]' | tr '\n' ' ')
+          case "$needed" in
+            *libc.so.6*|*ld-linux*) libc=glibc ;;
+            *libc.so*)              libc=musl ;;
+            *)                      libc="unknown ($needed)" ;;
+          esac
+
+          echo "$TARGET -> arch=$arch libc=$libc (NEEDED: $needed)"
+          if [ "$arch" != "$want_arch" ] || [ "$libc" != "$want_libc" ]; then
+            echo "::error::$lib for $TARGET is arch=$arch libc=$libc, expected arch=$want_arch libc=$want_libc."
+            exit 1
+          fi
 
       - name: Strip native libraries
         uses: ./.github/actions/strip-libraries
