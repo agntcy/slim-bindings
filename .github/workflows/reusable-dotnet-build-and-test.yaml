@@ -45,6 +45,9 @@ on:
 env:
   LIBRARY_NAME: slim_bindings
 
+permissions:
+  contents: read
+
 jobs:
   build-dotnet-package:
     name: Build .NET package

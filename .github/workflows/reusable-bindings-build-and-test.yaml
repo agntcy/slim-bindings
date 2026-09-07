@@ -41,6 +41,9 @@ env:
   PYTHON_VERSION: '3.11'
   AWS_LC_SYS_CMAKE_BUILDER: '0'
 
+permissions:
+  contents: read
+
 jobs:
   generate-matrix:
     name: Generate Platform Matrix

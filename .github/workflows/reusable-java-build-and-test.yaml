@@ -27,6 +27,9 @@ on:
         type: string
         default: ./java
 
+permissions:
+  contents: read
+
 jobs:
   java-bindings-build-and-test:
     name: Java Bindings Build and Test
