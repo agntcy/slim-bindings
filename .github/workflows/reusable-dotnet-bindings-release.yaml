@@ -36,6 +36,9 @@ env:
   LIBRARY_NAME: ${{ inputs.library-name }}
   NUGET_PACKAGE_NAME: ${{ inputs.nuget-package-name }}
 
+permissions:
+  contents: read
+
 jobs:
   release-dotnet-bindings:
     name: Release .NET Bindings

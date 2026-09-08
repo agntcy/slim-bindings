@@ -1,5 +1,7 @@
 # SLIM Bindings
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agntcy/slim-bindings/badge)](https://scorecard.dev/viewer/?uri=github.com/agntcy/slim-bindings)
+
 Language bindings for [SLIM (Secure Low-Latency Interactive Messaging)](https://github.com/agntcy/slim), built on top of [UniFFI](https://mozilla.github.io/uniffi-rs/).
 
 This repository hosts the Rust FFI adapter crate and the per-language wrappers that expose the SLIM data plane to applications written in Python, Go, .NET, Java, Kotlin, Node.js, and React Native.

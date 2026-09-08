@@ -27,6 +27,9 @@ on:
         type: string
         default: ./kotlin
 
+permissions:
+  contents: read
+
 jobs:
   kotlin-bindings-build-and-test:
     name: Kotlin Bindings Build and Test
