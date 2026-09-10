@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "agntcy-slim"
 version = "2.3.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-service",
@@ -29,7 +29,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-auth"
 version = "0.15.4"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-version",
  "aws-lc-rs",
@@ -78,7 +78,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-bindings"
 version = "2.3.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim",
  "agntcy-slim-auth",
@@ -117,7 +117,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-config"
 version = "0.16.1"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-version",
@@ -174,7 +174,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-controller"
 version = "0.13.1"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-config",
@@ -206,7 +206,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-datapath"
 version = "0.18.7"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-proto",
@@ -253,7 +253,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-mls"
 version = "0.3.10"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-persistence",
@@ -275,7 +275,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-persistence"
 version = "0.1.0"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "async-trait",
  "aws-lc-rs",
@@ -293,7 +293,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-proto"
 version = "0.6.1"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-version",
@@ -312,7 +312,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-rpc"
 version = "2.3.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-bindings",
@@ -337,7 +337,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-service"
 version = "0.12.11"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-config",
@@ -364,7 +364,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-session"
 version = "0.7.11"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-auth",
  "agntcy-slim-datapath",
@@ -397,7 +397,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-signal"
 version = "0.1.26"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-version",
  "tokio",
@@ -407,7 +407,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-tracing"
 version = "0.4.20"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 dependencies = [
  "agntcy-slim-config",
  "agntcy-slim-version",
@@ -431,7 +431,7 @@ dependencies = [
 [[package]]
 name = "agntcy-slim-version"
 version = "2.3.2"
-source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#0025a7e13789ec1c2d9666a4fc97d9fe15e856e5"
+source = "git+https://github.com/agntcy/slim?branch=feat%2Fslimrpc-shared-responses#63aafbe11c1817a19626985d9fc6200070cfe437"
 
 [[package]]
 name = "ahash"
