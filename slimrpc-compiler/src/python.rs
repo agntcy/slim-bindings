@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// Supported parameters for the Python code generator plugin.
 const TYPES_IMPORT: &str = "types_import";
+const SHARED_RESPONSES: &str = "shared_responses";
 
 // --- TEMPLATE DEFINITIONS ---
 
@@ -384,11 +385,204 @@ const REGISTER_METHOD_TEMPLATE: &str = r#"    server.register_{{RPC_TYPE}}(
     )
 "#;
 
+// --- Shared-responses templates ---
+
+const UNARY_UNARY_SHARED_HANDLER_CLASS_TEMPLATE: &str = r#"
+
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_SharedHandler(slim_bindings.UnaryUnarySharedHandler):
+    def __init__(self, servicer):
+        self.servicer = servicer
+
+    async def handle(self, request: bytes, context: slim_bindings.Context, peer_stream: slim_bindings.PeerResponseStream) -> bytes:
+        try:
+            request_msg = {{INPUT_TYPE_FULL_PATH}}.FromString(request)
+
+            async def peer_iterator():
+                while True:
+                    msg = await peer_stream.next_async()
+                    if msg.is_end():
+                        break
+                    if msg.is_data():
+                        yield msg.source, {{OUTPUT_TYPE_FULL_PATH}}.FromString(msg.payload)
+
+            response = await self.servicer.{{METHOD_NAME}}(request_msg, context, peer_iterator())
+            return {{OUTPUT_TYPE_FULL_PATH}}.SerializeToString(response)
+        except slim_bindings.RpcError:
+            raise
+        except Exception as e:
+            raise slim_bindings.RpcError.Rpc(
+                code=slim_bindings.RpcCode.INTERNAL,
+                message=str(e),
+                details=None
+            )"#;
+
+const UNARY_STREAM_SHARED_HANDLER_CLASS_TEMPLATE: &str = r#"
+
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_SharedHandler(slim_bindings.UnaryStreamSharedHandler):
+    def __init__(self, servicer):
+        self.servicer = servicer
+
+    async def handle(self, request: bytes, context: slim_bindings.Context, sink: slim_bindings.ResponseSink, peer_stream: slim_bindings.PeerResponseStream):
+        try:
+            request_msg = {{INPUT_TYPE_FULL_PATH}}.FromString(request)
+
+            async def peer_iterator():
+                while True:
+                    msg = await peer_stream.next_async()
+                    if msg.is_end():
+                        break
+                    if msg.is_data():
+                        yield msg.source, {{OUTPUT_TYPE_FULL_PATH}}.FromString(msg.payload)
+
+            response_iter = self.servicer.{{METHOD_NAME}}(request_msg, context, peer_iterator())
+            async for response in response_iter:
+                await sink.send_async({{OUTPUT_TYPE_FULL_PATH}}.SerializeToString(response))
+            await sink.close_async()
+        except slim_bindings.RpcError as e:
+            await sink.send_error_async(e)
+        except Exception as e:
+            rpc_error = slim_bindings.RpcError.Rpc(
+                code=slim_bindings.RpcCode.INTERNAL,
+                message=str(e),
+                details=None
+            )
+            await sink.send_error_async(rpc_error)"#;
+
+const STREAM_UNARY_SHARED_HANDLER_CLASS_TEMPLATE: &str = r#"
+
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_SharedHandler(slim_bindings.StreamUnarySharedHandler):
+    def __init__(self, servicer):
+        self.servicer = servicer
+
+    async def handle(self, stream: slim_bindings.RequestStream, context: slim_bindings.Context, peer_stream: slim_bindings.PeerResponseStream) -> bytes:
+        try:
+            async def request_iterator():
+                while True:
+                    stream_msg = await stream.next_async()
+                    if stream_msg.is_end():
+                        break
+                    if stream_msg.is_error():
+                        raise stream_msg[0]
+                    if stream_msg.is_data():
+                        yield {{INPUT_TYPE_FULL_PATH}}.FromString(stream_msg[0])
+
+            async def peer_iterator():
+                while True:
+                    msg = await peer_stream.next_async()
+                    if msg.is_end():
+                        break
+                    if msg.is_data():
+                        yield msg.source, {{OUTPUT_TYPE_FULL_PATH}}.FromString(msg.payload)
+
+            response = await self.servicer.{{METHOD_NAME}}(request_iterator(), context, peer_iterator())
+            return {{OUTPUT_TYPE_FULL_PATH}}.SerializeToString(response)
+        except slim_bindings.RpcError:
+            raise
+        except Exception as e:
+            raise slim_bindings.RpcError.Rpc(
+                code=slim_bindings.RpcCode.INTERNAL,
+                message=str(e),
+                details=None
+            )"#;
+
+const STREAM_STREAM_SHARED_HANDLER_CLASS_TEMPLATE: &str = r#"
+
+class _{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_SharedHandler(slim_bindings.StreamStreamSharedHandler):
+    def __init__(self, servicer):
+        self.servicer = servicer
+
+    async def handle(self, stream: slim_bindings.RequestStream, context: slim_bindings.Context, sink: slim_bindings.ResponseSink, peer_stream: slim_bindings.PeerResponseStream):
+        try:
+            async def request_iterator():
+                while True:
+                    stream_msg = await stream.next_async()
+                    if stream_msg.is_end():
+                        break
+                    if stream_msg.is_error():
+                        raise stream_msg[0]
+                    if stream_msg.is_data():
+                        yield {{INPUT_TYPE_FULL_PATH}}.FromString(stream_msg[0])
+
+            async def peer_iterator():
+                while True:
+                    msg = await peer_stream.next_async()
+                    if msg.is_end():
+                        break
+                    if msg.is_data():
+                        yield msg.source, {{OUTPUT_TYPE_FULL_PATH}}.FromString(msg.payload)
+
+            response_iter = self.servicer.{{METHOD_NAME}}(request_iterator(), context, peer_iterator())
+            async for response in response_iter:
+                await sink.send_async({{OUTPUT_TYPE_FULL_PATH}}.SerializeToString(response))
+            await sink.close_async()
+        except slim_bindings.RpcError as e:
+            await sink.send_error_async(e)
+        except Exception as e:
+            rpc_error = slim_bindings.RpcError.Rpc(
+                code=slim_bindings.RpcCode.INTERNAL,
+                message=str(e),
+                details=None
+            )
+            await sink.send_error_async(rpc_error)"#;
+
+const SHARED_REGISTER_METHOD_TEMPLATE: &str = r#"    server.register_{{RPC_TYPE}}_shared(
+        service_name="{{PACKAGE_NAME}}.{{SERVICE_NAME}}",
+        method_name="{{METHOD_NAME}}",
+        handler=_{{SERVICE_NAME}}Servicer_{{METHOD_NAME}}_SharedHandler(servicer),
+    )
+"#;
+
+const ADD_SHARED_SERVICER_FUNCTION_TEMPLATE: &str = r#"
+
+def add_{{SERVICE_NAME}}Servicer_to_server_shared(servicer, server: slim_bindings.Server):
+{{REGISTER_METHODS}}
+"#;
+
+const UNARY_METHOD_SHARED_SERVICER_TEMPLATE: &str = r#"    def {{METHOD_NAME}}(self, request, context, peer_responses):
+        """Method for {{METHOD_NAME}} (shared-responses). Implement your service logic here.
+
+        peer_responses: async iterable of (source, {{OUTPUT_TYPE_SIMPLE}}) tuples from peer servers.
+        """
+        raise slim_bindings.RpcError.Rpc(
+            code=slim_bindings.RpcCode.UNIMPLEMENTED,
+            message="Method not implemented!",
+            details=None
+        )
+
+"#;
+
+const STREAM_METHOD_SHARED_SERVICER_TEMPLATE: &str = r#"    def {{METHOD_NAME}}(self, request_iterator, context, peer_responses):
+        """Method for {{METHOD_NAME}} (shared-responses). Implement your service logic here.
+
+        peer_responses: async iterable of (source, {{OUTPUT_TYPE_SIMPLE}}) tuples from peer servers.
+        """
+        raise slim_bindings.RpcError.Rpc(
+            code=slim_bindings.RpcCode.UNIMPLEMENTED,
+            message="Method not implemented!",
+            details=None
+        )
+
+"#;
+
+const SERVICE_SHARED_SERVICER_TEMPLATE: &str = r#"
+class {{SERVICE_NAME}}SharedServicer:
+    """Shared-responses server servicer for {{SERVICE_NAME}}.
+
+    Implement this class and register it with
+    ``add_{{SERVICE_NAME}}Servicer_to_server_shared`` when using a server created
+    with ``Server.new_with_shared_responses``.  Each method receives an extra
+    ``peer_responses`` argument — an async iterable of ``(source, response)``
+    tuples yielding decoded peer responses from other servers in the multicast GROUP.
+    """
+
+{{METHOD_SERVICERS}}"#;
+
 // --- END TEMPLATE DEFINITIONS ---
 
 /// Generate Python slimrpc code from a CodeGeneratorRequest
 pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> {
     let mut types_module_import = String::new();
+    let mut shared_responses = false;
 
     // Parse parameters, if any
     if let Some(p) = &request.parameter {
@@ -400,6 +594,9 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
                 match key {
                     TYPES_IMPORT => {
                         types_module_import = value.to_string();
+                    }
+                    SHARED_RESPONSES => {
+                        shared_responses = value == "true";
                     }
                     _ => {
                         return Err(anyhow::anyhow!("Unknown parameter: {}", key));
@@ -529,6 +726,9 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
             let mut method_servicers_content = String::new();
             let mut handler_classes_for_service = String::new();
             let mut register_methods_content = String::new();
+            let mut shared_method_servicers_content = String::new();
+            let mut shared_handler_classes_for_service = String::new();
+            let mut shared_register_methods_content = String::new();
 
             // Generate methods for the client stub and server servicer
             for method in service.method {
@@ -614,6 +814,45 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
                     .replace("{{RPC_TYPE}}", rpc_type)
                     .replace("{{PACKAGE_NAME}}", &package_name);
                 register_methods_content.push_str(&current_register_method);
+
+                // Shared-responses variants
+                if shared_responses {
+                    let shared_method_template = if is_client_streaming {
+                        STREAM_METHOD_SHARED_SERVICER_TEMPLATE
+                    } else {
+                        UNARY_METHOD_SHARED_SERVICER_TEMPLATE
+                    };
+                    // Simple type name for docstring (last component of the full path)
+                    let output_type_simple = output_type_full_path
+                        .split('.')
+                        .last()
+                        .unwrap_or(&output_type_full_path);
+                    let current_shared_method_servicer = shared_method_template
+                        .replace("{{METHOD_NAME}}", &method_name)
+                        .replace("{{INPUT_TYPE_FULL_PATH}}", &input_type_full_path)
+                        .replace("{{OUTPUT_TYPE_SIMPLE}}", output_type_simple);
+                    shared_method_servicers_content.push_str(&current_shared_method_servicer);
+
+                    let shared_handler_template = match (is_client_streaming, is_server_streaming) {
+                        (false, false) => UNARY_UNARY_SHARED_HANDLER_CLASS_TEMPLATE,
+                        (false, true) => UNARY_STREAM_SHARED_HANDLER_CLASS_TEMPLATE,
+                        (true, false) => STREAM_UNARY_SHARED_HANDLER_CLASS_TEMPLATE,
+                        (true, true) => STREAM_STREAM_SHARED_HANDLER_CLASS_TEMPLATE,
+                    };
+                    let current_shared_handler = shared_handler_template
+                        .replace("{{SERVICE_NAME}}", &service_name)
+                        .replace("{{METHOD_NAME}}", &method_name)
+                        .replace("{{INPUT_TYPE_FULL_PATH}}", &input_type_full_path)
+                        .replace("{{OUTPUT_TYPE_FULL_PATH}}", &output_type_full_path);
+                    shared_handler_classes_for_service.push_str(&current_shared_handler);
+
+                    let current_shared_register = SHARED_REGISTER_METHOD_TEMPLATE
+                        .replace("{{SERVICE_NAME}}", &service_name)
+                        .replace("{{METHOD_NAME}}", &method_name)
+                        .replace("{{RPC_TYPE}}", rpc_type)
+                        .replace("{{PACKAGE_NAME}}", &package_name);
+                    shared_register_methods_content.push_str(&current_shared_register);
+                }
             }
 
             // Populate service stub template
@@ -642,6 +881,24 @@ pub fn generate(request: CodeGeneratorRequest) -> Result<CodeGeneratorResponse> 
                 .replace("{{SERVICE_NAME}}", &service_name)
                 .replace("{{REGISTER_METHODS}}", register_methods_content.trim_end());
             add_servicer_functions_content.push_str(&current_add_servicer_function);
+
+            // Shared-responses service-level definitions
+            if shared_responses {
+                let current_shared_servicer = SERVICE_SHARED_SERVICER_TEMPLATE
+                    .replace("{{SERVICE_NAME}}", &service_name)
+                    .replace("{{METHOD_SERVICERS}}", &shared_method_servicers_content);
+                service_definitions_content.push_str(&current_shared_servicer);
+
+                handler_classes_content.push_str(&shared_handler_classes_for_service);
+
+                let current_add_shared_servicer_function = ADD_SHARED_SERVICER_FUNCTION_TEMPLATE
+                    .replace("{{SERVICE_NAME}}", &service_name)
+                    .replace(
+                        "{{REGISTER_METHODS}}",
+                        shared_register_methods_content.trim_end(),
+                    );
+                add_servicer_functions_content.push_str(&current_add_shared_servicer_function);
+            }
         }
 
         // Only add a file to the response if services were found and generated
@@ -1309,6 +1566,94 @@ mod tests {
                 "generated output differed on run {i}"
             );
         }
+    }
+
+    #[test]
+    fn test_generate_shared_responses_unary_unary() {
+        let method = create_test_method("Echo", ".test.EchoRequest", ".test.EchoResponse", false, false);
+        let service = create_test_service("EchoService", vec![method]);
+        let file_descriptor = create_test_file_descriptor("echo.proto", "test", vec![service]);
+
+        let request = CodeGeneratorRequest {
+            file_to_generate: vec!["echo.proto".to_string()],
+            parameter: Some("shared_responses=true".to_string()),
+            proto_file: vec![file_descriptor],
+            compiler_version: None,
+        };
+
+        let response = generate(request).unwrap();
+        let content = response.file[0].content.as_ref().unwrap();
+
+        // Shared servicer class
+        assert!(content.contains("class EchoServiceSharedServicer:"));
+        assert!(content.contains("def Echo(self, request, context, peer_responses):"));
+        assert!(content.contains("peer_responses: async iterable of (source, EchoResponse)"));
+        // Shared handler class
+        assert!(content.contains("class _EchoServiceServicer_Echo_SharedHandler(slim_bindings.UnaryUnarySharedHandler):"));
+        assert!(content.contains("async def handle(self, request: bytes, context: slim_bindings.Context, peer_stream: slim_bindings.PeerResponseStream) -> bytes:"));
+        assert!(content.contains("yield msg.source, pb2.EchoResponse.FromString(msg.payload)"));
+        assert!(content.contains("self.servicer.Echo(request_msg, context, peer_iterator())"));
+        // Shared registration function
+        assert!(content.contains("def add_EchoServiceServicer_to_server_shared(servicer, server: slim_bindings.Server):"));
+        assert!(content.contains("server.register_unary_unary_shared("));
+        // Original non-shared code still present
+        assert!(content.contains("class EchoServiceServicer:"));
+        assert!(content.contains("def add_EchoServiceServicer_to_server(servicer, server: slim_bindings.Server):"));
+    }
+
+    #[test]
+    fn test_generate_shared_responses_all_shapes() {
+        let methods = vec![
+            create_test_method("Unary", ".pkg.Req", ".pkg.Res", false, false),
+            create_test_method("ServerStream", ".pkg.Req", ".pkg.Res", false, true),
+            create_test_method("ClientStream", ".pkg.Req", ".pkg.Res", true, false),
+            create_test_method("Bidi", ".pkg.Req", ".pkg.Res", true, true),
+        ];
+        let service = create_test_service("AllShapes", methods);
+        let file_descriptor = create_test_file_descriptor("all.proto", "pkg", vec![service]);
+
+        let request = CodeGeneratorRequest {
+            file_to_generate: vec!["all.proto".to_string()],
+            parameter: Some("shared_responses=true".to_string()),
+            proto_file: vec![file_descriptor],
+            compiler_version: None,
+        };
+
+        let response = generate(request).unwrap();
+        let content = response.file[0].content.as_ref().unwrap();
+
+        assert!(content.contains("slim_bindings.UnaryUnarySharedHandler"));
+        assert!(content.contains("slim_bindings.UnaryStreamSharedHandler"));
+        assert!(content.contains("slim_bindings.StreamUnarySharedHandler"));
+        assert!(content.contains("slim_bindings.StreamStreamSharedHandler"));
+        assert!(content.contains("register_unary_unary_shared"));
+        assert!(content.contains("register_unary_stream_shared"));
+        assert!(content.contains("register_stream_unary_shared"));
+        assert!(content.contains("register_stream_stream_shared"));
+        // Stream servicer stubs take request_iterator
+        assert!(content.contains("def ClientStream(self, request_iterator, context, peer_responses):"));
+        assert!(content.contains("def Bidi(self, request_iterator, context, peer_responses):"));
+    }
+
+    #[test]
+    fn test_generate_no_shared_responses_by_default() {
+        let method = create_test_method("Echo", ".test.Req", ".test.Res", false, false);
+        let service = create_test_service("EchoService", vec![method]);
+        let file_descriptor = create_test_file_descriptor("echo.proto", "test", vec![service]);
+
+        let request = CodeGeneratorRequest {
+            file_to_generate: vec!["echo.proto".to_string()],
+            parameter: None,
+            proto_file: vec![file_descriptor],
+            compiler_version: None,
+        };
+
+        let response = generate(request).unwrap();
+        let content = response.file[0].content.as_ref().unwrap();
+
+        assert!(!content.contains("SharedHandler"));
+        assert!(!content.contains("SharedServicer"));
+        assert!(!content.contains("_shared("));
     }
 
     #[test]

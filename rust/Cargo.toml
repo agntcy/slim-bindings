@@ -16,5 +16,9 @@ web = ["slim-bindings-impl/web"]
 rpc = ["dep:slim-rpc-impl"]
 
 [dependencies]
-slim-bindings-impl = { package = "agntcy-slim-bindings", version = "2.2.0", default-features = false }
-slim-rpc-impl = { package = "agntcy-slim-rpc", version = "2.2.0", features = ["uniffi"], optional = true }
+slim-bindings-impl = { package = "agntcy-slim-bindings", version = "2", default-features = false }
+slim-rpc-impl = { package = "agntcy-slim-rpc", version = "2", features = ["uniffi"], optional = true }
+
+[patch.crates-io]
+agntcy-slim-rpc = { git = "https://github.com/agntcy/slim", branch = "feat/slimrpc-shared-responses" }
+agntcy-slim-bindings = { git = "https://github.com/agntcy/slim", branch = "feat/slimrpc-shared-responses" }
