@@ -17,20 +17,20 @@ from examples.slimrpc.simple.types.example_pb2_slimrpc import TestGroupStub
 logger = logging.getLogger(__name__)
 
 
-async def run_multicast_unary(stub: TestGroupStub) -> None:
+async def run_multicast_unary(stub: TestGroupStub, metadata: dict) -> None:
     logger.info("=== Multicast Unary-Unary (shared-responses) ===")
     request = ExampleRequest(example_integer=1, example_string="hello")
     async for context, resp in stub.ExampleUnaryUnary(
-        request, timeout=timedelta(seconds=5)
+        request, timeout=timedelta(seconds=5), metadata=metadata
     ):
         logger.info(f"  [{context}] {resp}")
 
 
-async def run_multicast_unary_stream(stub: TestGroupStub) -> None:
+async def run_multicast_unary_stream(stub: TestGroupStub, metadata: dict) -> None:
     logger.info("=== Multicast Unary-Stream (shared-responses) ===")
     request = ExampleRequest(example_integer=1, example_string="hello")
     async for context, resp in stub.ExampleUnaryStream(
-        request, timeout=timedelta(seconds=5)
+        request, timeout=timedelta(seconds=5), metadata=metadata
     ):
         logger.info(f"  [{context}] {resp}")
 
@@ -40,18 +40,18 @@ async def stream_requests():
         yield ExampleRequest(example_integer=i, example_string=f"item {i}")
 
 
-async def run_multicast_stream_unary(stub: TestGroupStub) -> None:
+async def run_multicast_stream_unary(stub: TestGroupStub, metadata: dict) -> None:
     logger.info("=== Multicast Stream-Unary (shared-responses) ===")
     async for context, resp in stub.ExampleStreamUnary(
-        stream_requests(), timeout=timedelta(seconds=5)
+        stream_requests(), timeout=timedelta(seconds=5), metadata=metadata
     ):
         logger.info(f"  [{context}] {resp}")
 
 
-async def run_multicast_stream_stream(stub: TestGroupStub) -> None:
+async def run_multicast_stream_stream(stub: TestGroupStub, metadata: dict) -> None:
     logger.info("=== Multicast Stream-Stream (shared-responses) ===")
     async for context, resp in stub.ExampleStreamStream(
-        stream_requests(), timeout=timedelta(seconds=5)
+        stream_requests(), timeout=timedelta(seconds=5), metadata=metadata
     ):
         logger.info(f"  [{context}] {resp}")
 
@@ -85,36 +85,37 @@ async def amain(server: str, servers_str: str) -> None:
     local_app = service.create_app_with_secret(local_name, SHARED_SECRET)
     await local_app.subscribe_async(local_name, conn_id)
 
-    # new_group_shared_with_connection stamps the session with the shared-responses
-    # metadata keys so each server receives a PeerResponseStream from other servers.
-    channel = slim_bindings.Channel.new_group_shared_with_connection(
+    channel = slim_bindings.Channel.new_group_with_connection(
         local_app, server_names, conn_id
     )
 
     stub = TestGroupStub(channel)
 
+    # Pass shared-responses metadata on each call to opt in to shared mode.
+    shared_metadata = slim_bindings.make_shared_responses_metadata()
+
     print("SLIM_RPC_SHARED_GROUP_CLIENT_STARTED", flush=True)
 
     try:
-        await run_multicast_unary(stub)
+        await run_multicast_unary(stub, shared_metadata)
     except slim_bindings.RpcError as e:
         logger.error(f"RPC error in multicast unary-unary: {e}")
         raise
 
     try:
-        await run_multicast_unary_stream(stub)
+        await run_multicast_unary_stream(stub, shared_metadata)
     except slim_bindings.RpcError as e:
         logger.error(f"RPC error in multicast unary-stream: {e}")
         raise
 
     try:
-        await run_multicast_stream_unary(stub)
+        await run_multicast_stream_unary(stub, shared_metadata)
     except slim_bindings.RpcError as e:
         logger.error(f"RPC error in multicast stream-unary: {e}")
         raise
 
     try:
-        await run_multicast_stream_stream(stub)
+        await run_multicast_stream_stream(stub, shared_metadata)
     except slim_bindings.RpcError as e:
         logger.error(f"RPC error in multicast stream-stream: {e}")
         raise

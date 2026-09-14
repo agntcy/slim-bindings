@@ -133,9 +133,7 @@ async def amain(instance: str, server: str) -> None:
     local_app = service.create_app_with_secret(local_name, SHARED_SECRET)
     await local_app.subscribe_async(local_name, conn_id)
 
-    # new_with_shared_responses_and_connection accepts shared-responses sessions;
-    # a standard Server.new_with_connection would reject them with failed_precondition.
-    rpc_server = slim_bindings.Server.new_with_shared_responses_and_connection(
+    rpc_server = slim_bindings.Server.new_with_connection(
         local_app, local_name, conn_id
     )
 
