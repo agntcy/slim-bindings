@@ -36,6 +36,9 @@ env:
   LIBRARY_NAME: ${{ inputs.library-name }}
   GO_BINDINGS_REPO: ${{ inputs.go-bindings-repo }}
 
+permissions:
+  contents: read
+
 jobs:
   # ==========================================================================
   # Job 1: Generate and publish Go bindings to pre-release branch

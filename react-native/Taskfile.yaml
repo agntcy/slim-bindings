@@ -348,7 +348,10 @@ tasks:
       - echo "✅ Clean complete"
     silent: true
 
-  # Copy built iOS static libs into ios/static/<target>/ for npm publish. Run xcframework:ios after to create XCFramework.
+  # Copy built iOS static libs into ios/static/<target>/ as the input for
+  # xcframework:ios. NOT published: the podspec only references
+  # ios/SlimBindings.xcframework, so shipping ios/static/ too duplicated ~450MB
+  # of archives and pushed the tarball past npm's payload limit (E413).
   # Requires: Rust libs built for each IOS_VENDOR_TARGETS (e.g. adapter:bindings:build:all TARGET=aarch64-apple-ios-sim and TARGET=aarch64-apple-ios).
   vendor:ios:
     desc: Vendor iOS static libs into ios/static/ for publish

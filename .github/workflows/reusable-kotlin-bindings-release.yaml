@@ -51,6 +51,9 @@ env:
   MAVEN_GROUP_ID: ${{ inputs.maven-group-id }}
   MAVEN_ARTIFACT_ID: ${{ inputs.maven-artifact-id }}
 
+permissions:
+  contents: read
+
 jobs:
   release-kotlin-bindings:
     name: Release Kotlin Bindings
