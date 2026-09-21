@@ -52,6 +52,8 @@ slim-bindings-server = "examples.slim:main"
 slim-bindings-simple-rpc-server = "examples.slimrpc.simple.server:main"
 slim-bindings-simple-rpc-client = "examples.slimrpc.simple.client:main"
 slim-bindings-simple-rpc-client-group = "examples.slimrpc.simple.client_group:main"
+slim-bindings-simple-rpc-server-shared = "examples.slimrpc.simple.server_shared:main"
+slim-bindings-simple-rpc-client-group-shared = "examples.slimrpc.simple.client_group_shared:main"
 
 [dependency-groups]
 building = [

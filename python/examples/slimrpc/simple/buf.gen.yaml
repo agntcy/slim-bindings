@@ -13,6 +13,8 @@ plugins:
   # Requires `protoc-gen-slimrpc-python` on PATH (built from the in-repo slimrpc-compiler by `task generate-proto`).
   - local: protoc-gen-slimrpc-python
     out: types
+    opt:
+      - shared_responses=true
   # Generate python protobuf related code
   # Generates *_pb2.py files, one for each .proto
   - remote: buf.build/protocolbuffers/python:v29.3
