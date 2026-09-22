@@ -42,6 +42,8 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     permissions:
       contents: write
+      # Needed for keyless (OIDC-based) cosign signing of release binaries.
+      id-token: write
     defaults:
       run:
         shell: bash
@@ -80,6 +82,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -114,3 +119,30 @@ jobs:
           zip: windows
           token: ${{ secrets.GITHUB_TOKEN }}
           manifest-path: ./slimrpc-compiler/Cargo.toml
+
+      # taiki-e/upload-rust-binary-action already uploaded the archives above;
+      # keyless-sign each one here and attach the detached signature/cert as
+      # extra release assets so consumers can verify with
+      # `cosign verify-blob --certificate ... --signature ... <archive>`.
+      - name: Sign and attach binary signatures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          case "${{ matrix.platform.os }}" in
+            windows) ext=zip ;;
+            *) ext=tar.gz ;;
+          esac
+          for name in protoc-gen-slimrpc-python protoc-gen-slimrpc-go protoc-gen-slimrpc-csharp; do
+            archive="${name}-${{ matrix.platform.archive }}.${ext}"
+            if [ -f "$archive" ]; then
+              cosign sign-blob --yes \
+                --output-signature "${archive}.sig" \
+                --output-certificate "${archive}.pem" \
+                "$archive"
+              gh release upload "$RELEASE_TAG" "${archive}.sig" "${archive}.pem" --clobber
+            else
+              echo "::warning::Expected archive $archive not found; skipping signing."
+            fi
+          done
