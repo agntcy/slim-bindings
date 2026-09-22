@@ -1,0 +1,162 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigestsToSemver",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "configMigration": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
+      "matchStrings": [
+        "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?<currentValue>[^\"@\\s]+)\"?\\s*$"
+      ],
+      "currentValueTemplate": "{{currentValue}}",
+      "description": [
+        "Custom dependency manager for updating tool version defined in Taskfile."
+      ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
+      "matchStrings": [
+        "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?:(?<currentValue>[^@\"\\s]+)@)?(?<currentDigest>sha256:[a-f0-9]+)\"?\\s*$"
+      ],
+      "currentValueTemplate": "{{currentValue}}",
+      "description": [
+        "Custom dependency manager for updating image tag@digest defined in Taskfile."
+      ]
+    }
+  ],
+  "enabled": true,
+  "minimumReleaseAge": "7 days",
+  "schedule": [
+    "before 8am on Monday",
+    "before 8am on Wednesday",
+    "before 8am on Friday"
+  ],
+  "prCreation": "not-pending",
+  "enabledManagers": [
+    "custom.regex",
+    "github-actions",
+    "cargo",
+    "gomod",
+    "npm",
+    "maven",
+    "gradle",
+    "pep621",
+    "nuget"
+  ],
+  "labels": ["dependencies"],
+  "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "groupName": "Rust",
+      "groupSlug": "rust",
+      "matchManagers": ["cargo"],
+      "addLabels": ["rust"],
+      "description": [
+        "Add rust label to PRs which bumps Rust dependencies.",
+        "Group Rust dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Go",
+      "groupSlug": "go",
+      "matchManagers": ["gomod"],
+      "addLabels": ["go"],
+      "description": [
+        "Add go label to PRs which bumps Go dependencies.",
+        "Group Go dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Python",
+      "groupSlug": "python",
+      "matchManagers": ["pep621"],
+      "addLabels": ["python"],
+      "description": [
+        "Add python label to PRs which bumps Python dependencies.",
+        "Group Python dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Node",
+      "groupSlug": "node",
+      "matchManagers": ["npm"],
+      "addLabels": ["javascript"],
+      "description": [
+        "Add javascript label to PRs which bumps Node dependencies.",
+        "Group Node dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Java",
+      "groupSlug": "java",
+      "matchManagers": ["maven", "gradle"],
+      "addLabels": ["java"],
+      "description": [
+        "Add java label to PRs which bumps Java/Kotlin dependencies.",
+        "Group Java/Kotlin dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": ".NET",
+      "groupSlug": "dotnet",
+      "matchManagers": ["nuget"],
+      "addLabels": ["dotnet"],
+      "description": [
+        "Add dotnet label to PRs which bumps .NET dependencies.",
+        "Group .NET dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Taskfile",
+      "groupSlug": "taskfile",
+      "matchFileNames": ["Taskfile.*"],
+      "addLabels": ["build"],
+      "description": [
+        "Add build label to PRs which are related to build tools defined in Taskfile.",
+        "Group Taskfile dependency updates in single PR."
+      ]
+    },
+    {
+      "groupName": "Github Actions",
+      "groupSlug": "github-actions",
+      "matchManagers": ["github-actions"],
+      "addLabels": ["ci"],
+      "description": [
+        "Add ci label to PRs which are related to Github Actions.",
+        "Group CI dependency updates in single PR."
+      ]
+    },
+    {
+      "matchJsonata": [
+        "$exists(vulnerabilityFixVersion) or isVulnerabilityAlert = true"
+      ],
+      "enabled": true,
+      "description": [
+        "Always allow vulnerability/security fixes, even when other rules disable specific dependencies."
+      ]
+    }
+  ],
+  "postUpdateOptions": ["gomodTidy"],
+  "prConcurrentLimit": 20,
+  "prHourlyLimit": 10,
+  "printConfig": false,
+  "rebaseWhen": "behind-base-branch",
+  "reviewersFromCodeOwners": true,
+  "semanticCommits": "enabled",
+  "timezone": "Etc/UTC",
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "minimumReleaseAge": null,
+    "schedule": ["at any time"]
+  }
+}
