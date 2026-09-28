@@ -44,7 +44,12 @@ jobs:
           - language: go
             build-mode: autobuild
           - language: java-kotlin
-            build-mode: autobuild
+            # The Kotlin sources depend on UniFFI-generated bindings that are
+            # produced by a separate multi-stage build (compile the Rust
+            # cdylib, run uniffi-bindgen, patch the output) which autobuild
+            # can't reproduce, so it fails compiling the Kotlin examples.
+            # Extract sources without compiling, like csharp below.
+            build-mode: none
           - language: csharp
             build-mode: none
     steps:
@@ -73,16 +78,28 @@ jobs:
   # stable enough to rely on here).
   # ==========================================================================
   clippy:
-    name: clippy (${{ matrix.workspace }})
+    name: clippy (${{ matrix.name }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        workspace:
-          - rust
-          - slimrpc-compiler
+        include:
+          - name: rust
+            workspace: rust
+            # The "web" and "rpc" features of agntcy-slim-bindings-ffi are
+            # mutually exclusive (rpc depends on a runtime that "web" compiles
+            # out), so they cannot both be active in the same build. Lint the
+            # default feature set (rpc) here and "web" separately below,
+            # instead of using --all-features.
+            args: --all-targets
+          - name: rust (web)
+            workspace: rust
+            args: --all-targets --no-default-features --features web
+          - name: slimrpc-compiler
+            workspace: slimrpc-compiler
+            args: --all-targets --all-features
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -96,4 +113,4 @@ jobs:
 
       - name: Run cargo clippy
         working-directory: ./${{ matrix.workspace }}
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy ${{ matrix.args }} -- -D warnings
