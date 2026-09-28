@@ -6,9 +6,18 @@
 # replace an integer with a string, so "z" is set through a package override
 # instead: a separate key path that applies to every dependency (all of SLIM),
 # leaving only the thin generated wrapper crate at the template's level.
+#
+# This crate is generated fresh by `ubrn build web` outside the main `rust`
+# workspace, so it re-resolves dependencies instead of reusing rust/Cargo.lock.
+# agntcy-slim-mls and agntcy-slim-persistence are published independently and
+# can drift onto incompatible mls-rs-core versions (a diamond dependency
+# conflict), breaking the build. Pin them to the versions already verified
+# compatible in rust/Cargo.lock.
 [dependencies]
 wasm-bindgen = "=0.2.128"
 getrandom = { version = "0.4", features = ["wasm_js"] }
+agntcy-slim-mls = "=0.4.1"
+agntcy-slim-persistence = "=0.2.0"
 
 [profile.release.package."*"]
 opt-level = "z"
