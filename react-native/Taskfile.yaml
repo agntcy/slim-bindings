@@ -68,10 +68,10 @@ tasks:
   install-wasm-bindgen:
     desc: Install the wasm-bindgen CLI version used by the generated Rust crate
     status:
-      - wasm-bindgen --version | grep -q "0.2.106"
+      - wasm-bindgen --version | grep -q "0.2.128"
     cmds:
       - echo "📦 Installing wasm-bindgen-cli..."
-      - cargo install wasm-bindgen-cli --version 0.2.106
+      - cargo install wasm-bindgen-cli --version 0.2.128
 
   install-wasm-tools:
     desc: Install wasm-bindgen-cli and wasm-pack
