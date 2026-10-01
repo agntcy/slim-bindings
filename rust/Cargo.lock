@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "agntcy-slim-bindings-ffi"
-version = "2.1.2"
+version = "2.2.0"
 dependencies = [
  "agntcy-slim-bindings",
  "agntcy-slim-rpc",
