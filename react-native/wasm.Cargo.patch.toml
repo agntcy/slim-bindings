@@ -1,14 +1,16 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-# ubrn 0.31.0-3 emits opt-level as the string "3", which newer Cargo versions
-# reject. Use Cargo's valid string form for size optimization; keeping the TOML
-# type as a string also allows ubrn's manifest merger to replace the value.
+# Browser builds are optimized for size (opt-level "z"). ubrn >= 0.31.0-5 writes
+# `[profile.release] opt-level = 3` as an integer, and its manifest merger cannot
+# replace an integer with a string, so "z" is set through a package override
+# instead: a separate key path that applies to every dependency (all of SLIM),
+# leaving only the thin generated wrapper crate at the template's level.
 [dependencies]
-wasm-bindgen = "=0.2.106"
+wasm-bindgen = "=0.2.128"
 getrandom = { version = "0.4", features = ["wasm_js"] }
 
-[profile.release]
+[profile.release.package."*"]
 opt-level = "z"
 
 [workspace]
