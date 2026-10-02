@@ -41,11 +41,16 @@ jobs:
     needs: build-and-test-bindings
     permissions:
       contents: write
+      # Needed for keyless (OIDC-based) cosign signing of release artifacts.
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       # Download all library artifacts from build-libraries job
       - name: Download all library artifacts
@@ -111,6 +116,23 @@ jobs:
           echo "📋 Release artifacts:"
           ls -lah ./release-artifacts/
 
+      # Keyless signing via Sigstore/Fulcio+Rekor: each artifact gets a
+      # detached signature (.sig) and signing certificate (.pem), published
+      # alongside it so consumers can verify provenance with
+      # `cosign verify-blob --certificate ... --signature ... <file>`.
+      - name: Sign release artifacts with cosign
+        working-directory: ./release-artifacts
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          for f in *.zip; do
+            cosign sign-blob --yes \
+              --output-signature "${f}.sig" \
+              --output-certificate "${f}.pem" \
+              "$f"
+          done
+          ls -lah .
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
@@ -127,7 +149,15 @@ jobs:
             - Windows aarch64 (MSVC)
 
             Built from commit: ${{ github.sha }}
-          files: ./release-artifacts/*.zip
+
+            **Verifying artifacts:** each `.zip` ships with a detached
+            Sigstore signature (`.sig`) and signing certificate (`.pem`).
+            Verify with:
+            `cosign verify-blob --certificate <file>.pem --signature <file>.sig --certificate-identity-regexp ".*" --certificate-oidc-issuer https://token.actions.githubusercontent.com <file>`
+          files: |
+            ./release-artifacts/*.zip
+            ./release-artifacts/*.sig
+            ./release-artifacts/*.pem
           draft: false
 
   # ==========================================================================
@@ -162,6 +192,32 @@ jobs:
 
       - name: Show files
         run: ls -l dist
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Keyless-sign the wheels before publishing. Signatures/certificates
+      # are uploaded as a workflow artifact (not to PyPI, which does not
+      # accept extra files) so provenance is still verifiable; see the
+      # release-libraries job for the same approach applied to the native
+      # library archives attached to the GitHub release.
+      - name: Sign wheels with cosign
+        run: |
+          mkdir -p wheel-signatures
+          for f in dist/*.whl; do
+            base="$(basename "$f")"
+            cosign sign-blob --yes \
+              --output-signature "wheel-signatures/${base}.sig" \
+              --output-certificate "wheel-signatures/${base}.pem" \
+              "$f"
+          done
+
+      - name: Upload wheel signatures
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: wheel-signatures
+          path: wheel-signatures/
+          retention-days: 90
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
