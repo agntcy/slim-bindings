@@ -24,6 +24,10 @@ inputs:
     description: 'Enable rust cache'
     required: false
     default: 'true'
+  install-cross-toolchain:
+    description: 'Install LLVM 19 and the aarch64/x86_64 Linux cross-compilers (only needed when actually cross-compiling; host-only builds can skip this)'
+    required: false
+    default: 'true'
 runs:
   using: 'composite'
   steps:
@@ -45,7 +49,7 @@ runs:
       uses: ./.github/actions/setup-task
 
     - name: Install C/C++ toolchain
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && inputs.install-cross-toolchain == 'true'
       shell: bash
       run: |
         sudo apt-get update
