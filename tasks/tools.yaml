@@ -99,11 +99,12 @@ tasks:
       - |
         BIN="{{.TOOLS_INSTALL_DIR}}" && \
         VERSION="1.56.0" && \
-        curl -sSL \
+        curl -fsSL --retry 3 --retry-delay 2 \
         "https://github.com/bufbuild/buf/releases/download/v${VERSION}/buf-$(uname -s)-$(uname -m)" \
         -o /tmp/buf && \
-        mv /tmp/buf "${BIN}/buf" && \
-        chmod +x "${BIN}/buf"
+        chmod +x /tmp/buf && \
+        /tmp/buf --version >/dev/null && \
+        mv /tmp/buf "${BIN}/buf"
     status:
       - test -f {{.TOOLS_INSTALL_DIR}}/buf
 
@@ -147,8 +148,8 @@ tasks:
           exit 0
         fi
 
-        curl -sSL "{{.MINISIGN_URL}}/{{.MINISIGN_VERSION}}/minisign-{{.MINISIGN_VERSION}}-{{.MINISIGN_PLATFORM}}.{{.MINISIGN_EXT}}" \
-          -o "minisign.{{.MINISIGN_EXT}}"
+        curl -fsSL --retry 3 --retry-delay 2 "{{.MINISIGN_URL}}/{{.MINISIGN_VERSION}}/minisign-{{.MINISIGN_VERSION}}-{{.MINISIGN_PLATFORM}}.{{.MINISIGN_EXT}}" \
+          -o "minisign.{{.MINISIGN_EXT}}" || exit 1
         if [[ "{{.MINISIGN_EXT}}" == "zip" ]]; then
           unzip -qo "minisign.{{.MINISIGN_EXT}}"
         else
@@ -180,7 +181,7 @@ tasks:
         [[ "{{ARCH}}" == "amd64" ]] && A="x86_64"
         [[ "{{ARCH}}" == "arm64" ]] && A="aarch_64"
         [[ "{{OS}}" == "darwin" ]] && O="osx"
-        curl -L {{.PROTOC_URL}}/v{{.PROTOC_VERSION}}/protoc-{{.PROTOC_VERSION}}-$O-$A.zip -o protoc.zip
+        curl -fsSL --retry 3 --retry-delay 2 {{.PROTOC_URL}}/v{{.PROTOC_VERSION}}/protoc-{{.PROTOC_VERSION}}-$O-$A.zip -o protoc.zip || exit 1
         unzip -o protoc.zip
         mv bin/protoc {{.TOOLS_INSTALL_DIR}}
         mv include {{.TOOLS_INSTALL_DIR}}
@@ -260,8 +261,8 @@ tasks:
         # Fallback to ziglang.org
         if [ "$DOWNLOADED" = "false" ]; then
           echo "All mirrors failed, falling back to ziglang.org"
-          curl -sSL -o "$FILENAME" "https://ziglang.org/download/{{.ZIG_VERSION}}/${FILENAME}"
-          curl -sSL -o "$SIGFILE" "https://ziglang.org/download/{{.ZIG_VERSION}}/${SIGFILE}"
+          curl -fsSL --retry 3 --retry-delay 2 -o "$FILENAME" "https://ziglang.org/download/{{.ZIG_VERSION}}/${FILENAME}" || exit 1
+          curl -fsSL --retry 3 --retry-delay 2 -o "$SIGFILE" "https://ziglang.org/download/{{.ZIG_VERSION}}/${SIGFILE}" || exit 1
         fi
 
         # Verify signature with minisign
