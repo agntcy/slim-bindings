@@ -546,22 +546,29 @@ jobs:
         env:
           BINDINGS_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          missing=()
-          for pkg in $(node -p "Object.keys(require('./package.json').optionalDependencies).join(' ')"); do
-            found=""
-            for attempt in 1 2 3; do
-              if npm view "${pkg}@${BINDINGS_VERSION}" version >/dev/null 2>&1; then
-                found="yes"
-                break
+          # Freshly published packages can take minutes to become visible, so
+          # re-check the missing ones with backoff (~4 min total, shared by all
+          # packages) and bypass npm's metadata cache.
+          missing=($(node -p "Object.keys(require('./package.json').optionalDependencies).join(' ')"))
+          for attempt in $(seq 1 10); do
+            pending=()
+            for pkg in "${missing[@]}"; do
+              if npm view --prefer-online "${pkg}@${BINDINGS_VERSION}" version >/dev/null 2>&1; then
+                echo "  ✅ ${pkg}@${BINDINGS_VERSION}"
+              else
+                pending+=("$pkg")
               fi
-              sleep 10
             done
-            if [ -n "$found" ]; then
-              echo "  ✅ ${pkg}@${BINDINGS_VERSION}"
-            else
-              echo "  ❌ ${pkg}@${BINDINGS_VERSION} is not on the registry"
-              missing+=("$pkg")
+            missing=("${pending[@]}")
+            if [ ${#missing[@]} -eq 0 ] || [ "$attempt" -eq 10 ]; then
+              break
             fi
+            delay=$(( attempt * 5 + 10 < 30 ? attempt * 5 + 10 : 30 ))
+            echo "  ⏳ ${#missing[@]} not visible yet (attempt ${attempt}/10), retrying in ${delay}s"
+            sleep "$delay"
+          done
+          for pkg in "${missing[@]}"; do
+            echo "  ❌ ${pkg}@${BINDINGS_VERSION} is not on the registry"
           done
           if [ ${#missing[@]} -gt 0 ]; then
             echo "Refusing to publish: optionalDependencies missing from the registry: ${missing[*]}"
