@@ -42,18 +42,18 @@
     "@ubjs/node": "0.31.0-3"
   },
   "optionalDependencies": {
-    "@agntcy/slim-bindings-darwin-arm64": "0.7.0",
-    "@agntcy/slim-bindings-darwin-x64": "0.7.0",
-    "@agntcy/slim-bindings-linux-arm64-gnu": "0.7.0",
-    "@agntcy/slim-bindings-linux-arm64-musl": "0.7.0",
-    "@agntcy/slim-bindings-linux-x64-gnu": "0.7.0",
-    "@agntcy/slim-bindings-linux-x64-musl": "0.7.0",
-    "@agntcy/slim-bindings-win32-arm64-msvc": "0.7.0",
-    "@agntcy/slim-bindings-win32-x64-msvc": "0.7.0"
+    "@agntcy/slim-bindings-darwin-arm64": "2.1.2",
+    "@agntcy/slim-bindings-darwin-x64": "2.1.2",
+    "@agntcy/slim-bindings-linux-arm64-gnu": "2.1.2",
+    "@agntcy/slim-bindings-linux-arm64-musl": "2.1.2",
+    "@agntcy/slim-bindings-linux-x64-gnu": "2.1.2",
+    "@agntcy/slim-bindings-linux-x64-musl": "2.1.2",
+    "@agntcy/slim-bindings-win32-arm64-msvc": "2.1.2",
+    "@agntcy/slim-bindings-win32-x64-msvc": "2.1.2"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.0",
     "uniffi-bindgen-react-native": "0.31.0-3"
   }
 }
