@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.2.0...slim-bindings-v3.0.0) - 2026-10-09
+
+### Changed
+
+- align the bindings major version with slim 3.x. No API changes since 2.2.0
+- the Go module path is now `github.com/agntcy/slim-bindings-go/v3`; update imports from `/v2`
+
 ## [2.2.0](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v2.1.2...slim-bindings-v2.2.0) - 2026-10-01
 
 ### Added
