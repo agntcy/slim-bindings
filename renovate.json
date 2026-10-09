@@ -9,7 +9,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.ya?ml$/"],
       "matchStrings": [
         "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?<currentValue>[^\"@\\s]+)\"?\\s*$"
       ],
@@ -20,7 +20,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.ya?ml$/"],
       "matchStrings": [
         "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?:(?<currentValue>[^@\"\\s]+)@)?(?<currentDigest>sha256:[a-f0-9]+)\"?\\s*$"
       ],
@@ -118,7 +118,7 @@
     {
       "groupName": "Taskfile",
       "groupSlug": "taskfile",
-      "matchFileNames": ["Taskfile.*"],
+      "matchFileNames": ["**/Taskfile.*"],
       "addLabels": ["build"],
       "description": [
         "Add build label to PRs which are related to build tools defined in Taskfile.",
@@ -133,6 +133,14 @@
       "description": [
         "Add ci label to PRs which are related to Github Actions.",
         "Group CI dependency updates in single PR."
+      ]
+    },
+    {
+      "matchPackageNames": ["@agntcy/slim-bindings", "@agntcy/slim-bindings-*"],
+      "enabled": false,
+      "description": [
+        "Never bump our own packages: the versions in package.json are placeholders",
+        "that the release workflow overwrites with the tag version."
       ]
     },
     {
@@ -155,6 +163,8 @@
   "timezone": "Etc/UTC",
   "vulnerabilityAlerts": {
     "enabled": true,
+    "groupName": "Security fixes",
+    "groupSlug": "security",
     "labels": ["security"],
     "minimumReleaseAge": null,
     "schedule": ["at any time"]
