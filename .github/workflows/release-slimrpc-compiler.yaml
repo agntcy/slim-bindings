@@ -121,9 +121,9 @@ jobs:
           manifest-path: ./slimrpc-compiler/Cargo.toml
 
       # taiki-e/upload-rust-binary-action already uploaded the archives above;
-      # keyless-sign each one here and attach the detached signature/cert as
-      # extra release assets so consumers can verify with
-      # `cosign verify-blob --certificate ... --signature ... <archive>`.
+      # keyless-sign each one here and attach the Sigstore bundle as an
+      # extra release asset so consumers can verify with
+      # `cosign verify-blob --bundle ... <archive>`.
       - name: Sign and attach binary signatures
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,10 +138,9 @@ jobs:
             archive="${name}-${{ matrix.platform.archive }}.${ext}"
             if [ -f "$archive" ]; then
               cosign sign-blob --yes \
-                --output-signature "${archive}.sig" \
-                --output-certificate "${archive}.pem" \
+                --bundle "${archive}.sigstore.json" \
                 "$archive"
-              gh release upload "$RELEASE_TAG" "${archive}.sig" "${archive}.pem" --clobber
+              gh release upload "$RELEASE_TAG" "${archive}.sigstore.json" --clobber
             else
               echo "::warning::Expected archive $archive not found; skipping signing."
             fi
