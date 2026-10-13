@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0](https://github.com/agntcy/slim-bindings/compare/protoc-slimrpc-plugin-v2.0.2...protoc-slimrpc-plugin-v3.0.0) - 2026-10-13
+
+### Added
+
+- *(slimrpc-compiler)* [**breaking**] target slim-bindings-go/v3 ([#118](https://github.com/agntcy/slim-bindings/pull/118))
+
 ## [2.0.2](https://github.com/agntcy/slim-bindings/compare/protoc-slimrpc-plugin-v2.0.1...protoc-slimrpc-plugin-v2.0.2) - 2026-10-02
 
 ### Other
