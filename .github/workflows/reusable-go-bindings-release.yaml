@@ -316,7 +316,7 @@ jobs:
               go run ${MODULE_PATH}/cmd/slim-bindings-setup@$VERSION
               echo '✅ Downloaded native libraries'
 
-              # Copy test program and point its import at the /v2 module path.
+              # Copy test program and point its import at the /vN module path.
               cp /repo/.github/tests/go/test_installation.go main.go
               sed -i \"s|github.com/${GO_BINDINGS_REPO_NAME}|${MODULE_PATH}|g\" main.go
 
@@ -377,7 +377,7 @@ jobs:
           go run "${MODULE_PATH}/cmd/slim-bindings-setup@$VERSION"
           echo "✅ Downloaded native libraries"
 
-          # Copy test program and point its import at the /v2 module path
+          # Copy test program and point its import at the /vN module path
           # (.bak suffix keeps sed portable across BSD/macOS and GNU).
           cp "$GITHUB_WORKSPACE/.github/tests/go/test_installation.go" main.go
           sed -i.bak "s|github.com/${GO_BINDINGS_REPO_NAME}|${MODULE_PATH}|g" main.go && rm -f main.go.bak

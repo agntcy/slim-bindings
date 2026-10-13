@@ -9,7 +9,7 @@ managed:
 inputs:
   - proto_file: example_with_imports.proto
 plugins:
-  - local: ../../../target/release/protoc-gen-slimrpc-go
+  - local: ../../target/release/protoc-gen-slimrpc-go
     out: types
     opt:
       - paths=source_relative

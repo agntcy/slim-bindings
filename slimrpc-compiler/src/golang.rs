@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"time"
 
-	slim_rpc "github.com/agntcy/slim-bindings-go/v2/slim_rpc"
+	slim_rpc "github.com/agntcy/slim-bindings-go/v3/slim_rpc"
 	"google.golang.org/protobuf/proto"
 {{PROTO_IMPORTS}})
 

@@ -12,7 +12,7 @@ managed:
 plugins:
   # slimrpc service stubs (client interface, server interface, handler
   # registration). Requires protoc-gen-slimrpc-go in PATH.
-  - local: ../../../target/release/protoc-gen-slimrpc-go
+  - local: ../../target/release/protoc-gen-slimrpc-go
     out: types
     opt:
       - paths=source_relative
