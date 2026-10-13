@@ -99,6 +99,9 @@ jobs:
       # Publish to Maven Central (requires MVN_TOKEN_NAME, MVN_TOKEN_PASSWORD, GPG_SIGNING_KEY, GPG_PASSPHRASE)
       # Uses OSSRH Staging API (ossrh-staging-api.central.sonatype.com). OSSRH was shut down June 2025.
       # Requires Central Portal User Token: https://central.sonatype.org/publish/generate-portal-token/
+      # The server id must NOT be `central`: that id belongs to Maven's built-in
+      # Central repository, and newer Maven only sends its credentials to
+      # repo.maven.apache.org, so the staging API got none and returned 401.
       - name: Add Maven Central server to settings
         env:
           MVN_TOKEN_NAME: ${{ secrets.MVN_TOKEN_NAME }}
@@ -111,7 +114,7 @@ jobs:
                     xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
             <servers>
               <server>
-                <id>central</id>
+                <id>sonatype-central</id>
                 <username>${MVN_TOKEN_NAME}</username>
                 <password>${MVN_TOKEN_PASSWORD}</password>
               </server>
@@ -138,15 +141,18 @@ jobs:
           VERSION="$EXTRACTED_VERSION"
           echo "Publishing version: $VERSION"
 
+          # credentialScope=id: match server credentials by id only, so they
+          # are used for the staging URL regardless of Maven's origin checks.
           mvn deploy \
             -Drevision="$VERSION" \
             -DskipTests \
-            -DaltDeploymentRepository=central::default::https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/
+            -Dmaven.repository.credentialScope=id \
+            -DaltDeploymentRepository=sonatype-central::https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/
 
           # OSSRH Staging API: transfer deployment to Central Portal (required)
           # Namespace = first segment of groupId (io.agntcy for io.agntcy.slim)
           AUTH=$(echo -n "$MVN_TOKEN_NAME:$MVN_TOKEN_PASSWORD" | base64 | tr -d '\n')
-          curl -sS -X POST \
+          curl -sS --fail-with-body -X POST \
             -H "Authorization: Bearer $AUTH" \
             "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/io.agntcy?publishing_type=automatic"
           echo "✅ Successfully published to Maven Central"

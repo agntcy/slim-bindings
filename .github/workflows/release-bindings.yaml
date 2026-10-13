@@ -543,10 +543,12 @@ jobs:
           BINDINGS_VERSION: ${{ steps.version.outputs.version }}
         run: |
           # Freshly published packages can take minutes to become visible, so
-          # re-check the missing ones with backoff (~4 min total, shared by all
-          # packages) and bypass npm's metadata cache.
+          # re-check the missing ones with backoff (~9 min total, shared by all
+          # packages) and bypass npm's metadata cache. 3.0.0 failed here after
+          # ~4 min with one package still propagating.
+          max_attempts=20
           missing=($(node -p "Object.keys(require('./package.json').optionalDependencies).join(' ')"))
-          for attempt in $(seq 1 10); do
+          for attempt in $(seq 1 "$max_attempts"); do
             pending=()
             for pkg in "${missing[@]}"; do
               if npm view --prefer-online "${pkg}@${BINDINGS_VERSION}" version >/dev/null 2>&1; then
@@ -556,11 +558,11 @@ jobs:
               fi
             done
             missing=("${pending[@]}")
-            if [ ${#missing[@]} -eq 0 ] || [ "$attempt" -eq 10 ]; then
+            if [ ${#missing[@]} -eq 0 ] || [ "$attempt" -eq "$max_attempts" ]; then
               break
             fi
             delay=$(( attempt * 5 + 10 < 30 ? attempt * 5 + 10 : 30 ))
-            echo "  ⏳ ${#missing[@]} not visible yet (attempt ${attempt}/10), retrying in ${delay}s"
+            echo "  ⏳ ${#missing[@]} not visible yet (attempt ${attempt}/${max_attempts}), retrying in ${delay}s"
             sleep "$delay"
           done
           for pkg in "${missing[@]}"; do
