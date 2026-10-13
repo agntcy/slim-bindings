@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.1](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.0...slim-bindings-v3.3.1) - 2026-10-13
+
+### Fixed
+
+- release pipeline: 3.0.0 and 3.3.0 were only partly published. 3.3.1 is the first 3.x release on PyPI, Maven Central (Java), the Go module (`github.com/agntcy/slim-bindings-go/v3`) and GitHub Releases. No code changes since 3.3.0
+- sign release artifacts with Sigstore bundles: each artifact now ships with a `.sigstore.json` bundle in place of the `.sig`/`.pem` pair; verify with `cosign verify-blob --bundle` ([#113](https://github.com/agntcy/slim-bindings/pull/113))
+- publish Java bindings to Maven Central again; Maven 3.10 withheld the deploy credentials ([#115](https://github.com/agntcy/slim-bindings/pull/115))
+
 ## [3.3.0](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.0.0...slim-bindings-v3.3.0) - 2026-10-12
 
 ### Changed
