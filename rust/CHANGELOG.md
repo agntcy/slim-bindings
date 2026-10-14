@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.2](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.1...slim-bindings-v3.3.2) - 2026-10-14
+
+### Other
+
+- *(deps)* upgrade to slim 3.4.1 ([#121](https://github.com/agntcy/slim-bindings/pull/121))
+
 ## [3.3.1](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.0...slim-bindings-v3.3.1) - 2026-10-13
 
 ### Fixed
