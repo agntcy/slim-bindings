@@ -16,7 +16,7 @@
 [dependencies]
 wasm-bindgen = "=0.2.128"
 getrandom = { version = "0.4", features = ["wasm_js"] }
-agntcy-slim-mls = "=0.4.8"
+agntcy-slim-mls = "=0.4.9"
 agntcy-slim-persistence = "=0.2.0"
 
 [profile.release.package."*"]
