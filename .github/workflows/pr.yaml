@@ -5,44 +5,11 @@
 name: ci-test-and-build-bindings
 
 on:
+  merge_group:
   push:
-    paths:
-      - '.github/workflows/pr.yaml'
-      - '.github/workflows/reusable-bindings-build-and-test.yaml'
-      - '.github/workflows/reusable-dotnet-build-and-test.yaml'
-      - '.github/workflows/reusable-java-build-and-test.yaml'
-      - '.github/workflows/reusable-kotlin-build-and-test.yaml'
-      - '.github/actions/setup-rust/action.yaml'
-      - 'rust/**'
-      - 'python/**'
-      - 'go/**'
-      - 'dotnet/**'
-      - 'java/**'
-      - 'kotlin/**'
-      - 'node/**'
-      - 'react-native/**'
-      - 'tasks/**'
-      - 'Taskfile.yaml'
     branches:
       - main
   pull_request:
-    paths:
-      - '.github/workflows/pr.yaml'
-      - '.github/workflows/reusable-bindings-build-and-test.yaml'
-      - '.github/workflows/reusable-dotnet-build-and-test.yaml'
-      - '.github/workflows/reusable-java-build-and-test.yaml'
-      - '.github/workflows/reusable-kotlin-build-and-test.yaml'
-      - '.github/actions/setup-rust/action.yaml'
-      - 'rust/**'
-      - 'python/**'
-      - 'go/**'
-      - 'dotnet/**'
-      - 'java/**'
-      - 'kotlin/**'
-      - 'node/**'
-      - 'react-native/**'
-      - 'tasks/**'
-      - 'Taskfile.yaml'
 
 permissions:
   contents: read
@@ -56,3 +23,17 @@ jobs:
     name: Bindings - build & test
     uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
 
+  success:
+    name: Success
+    if: ${{ always() }}
+    needs:
+      - bindings-build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless the build and test job succeeded
+        if: ${{ needs.bindings-build-and-test.result != 'success' }}
+        env:
+          RESULT: ${{ needs.bindings-build-and-test.result }}
+        run: |
+          echo "::error::Bindings build and test did not succeed: ${RESULT}"
+          exit 1
