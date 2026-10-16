@@ -14,7 +14,11 @@ inputs:
     required: false
     default: '.'
   cache-enabled:
-    description: 'Enable rust cache'
+    description: 'Enable the caches (Rust target directory and installed tools)'
+    required: false
+    default: 'true'
+  cache-target:
+    description: 'Cache the cargo registry and the target directory. Jobs that do not compile much can turn it off and keep the (small) tools cache, which only depends on cache-enabled'
     required: false
     default: 'true'
   cache-key:
@@ -32,7 +36,7 @@ runs:
         rustflags: ''
         # v2 defaults to deny; keep the previous behaviour (warnings do not fail builds).
         build-warnings: warn
-        cache: ${{ inputs.cache-enabled }}
+        cache: ${{ inputs.cache-enabled == 'true' && inputs.cache-target == 'true' }}
         cache-workspaces: ${{ inputs.workspace }}
         cache-on-failure: false
         # A cache entry is written once and never updated: while the key is unchanged, a run that
