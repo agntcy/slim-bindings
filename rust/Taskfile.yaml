@@ -55,7 +55,7 @@ tasks:
       - echo "🦀 Building Rust bindings library... {{.TARGET}}"
       - task: rust:crossbuild
         vars:
-          ARGS: --config 'profile.release.strip="none"' -v
+          ARGS: --config 'profile.release.strip="none"'
           TARGET: "{{.TARGET}}"
           PROFILE: "{{.PROFILE}}"
       # zigbuild always uses --target on Linux, so only target/<triple>/<profile>/ exists.
@@ -69,11 +69,11 @@ tasks:
           echo "🦀 Skip host-native cdylib (TARGET != host)."
           exit 0
         fi
-        # CI consumers (Java, Kotlin, .NET, Go, Node, Python) all read the cdylib built above under
-        # target/<triple>/<profile>/, which keeps the UniFFI metadata (strip="none"). The host-native
-        # copy only matters for local runs. In CI it was a full extra compile on every run, even with
-        # a restored Rust cache (cargo logged "Dirty <crate>: the config settings changed" for each
-        # crate; the exact setting was not identified). Set HOST_NATIVE=true to build it anyway.
+        # Local convenience only: Java/Kotlin bindgen runs prefer target/<profile>/ over the zigbuild
+        # artifact. In CI every consumer (Java, Kotlin, .NET, Go, Node, Python) reads the cdylib built
+        # above under target/<triple>/<profile>/, which keeps the UniFFI metadata (strip="none"), so
+        # the host-native copy is a full extra compile there (about 6-10 minutes) and is skipped.
+        # Set HOST_NATIVE=true to build it anyway.
         if [[ -n "${CI:-}" && "${HOST_NATIVE:-}" != "true" ]]; then
           echo "🦀 Skip host-native cdylib (CI)."
           exit 0
@@ -82,9 +82,9 @@ tasks:
         cd "{{.TASKFILE_DIR}}"
         PROFILE="{{.PROFILE}}"
         if [[ "$PROFILE" == "release" ]]; then
-          cargo build --release --locked -v
+          cargo build --release --locked
         else
-          cargo build --locked -v
+          cargo build --locked
         fi
       - echo "🦀 Rust bindings library built successfully."
 
