@@ -35,7 +35,11 @@ runs:
         cache: ${{ inputs.cache-enabled }}
         cache-workspaces: ${{ inputs.workspace }}
         cache-on-failure: false
-        cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{ inputs.cache-key || github.job }}-rust
+        # A cache entry is written once and never updated: while the key is unchanged, a run that
+        # restores it saves nothing. The key only follows Cargo.lock, the manifests and rustc, so
+        # bump the trailing version whenever the layout of rust/target changes (for example a new
+        # target directory such as rust/target/wheels-zig), otherwise the new files are never saved.
+        cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{ inputs.cache-key || github.job }}-rust-v2
         cache-all-crates: true
         # Installed tools get their own cache below (keyed on what pins their versions).
         cache-bin: false
