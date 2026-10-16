@@ -38,34 +38,14 @@ vars:
   _DEFAULT_LIB_PATH:
     sh: |
       # UniFFI bindgen reads the cdylib (.dylib / .so / .dll), not staticlib (.a / .lib).
-      # Anchor paths from this Taskfile dir: var sh may run before deps, but when
-      # TARGET==host, `cargo build` (no --target) already placed the cdylib under
-      # target/<profile>/ from an earlier task (e.g. rust:bindings:build:all).
-      # Prefer that over target/<triple>/<profile>/ from zigbuild: on Linux GNU the
-      # latter can lack UNIFFI_META* in the dynamic symbol table (rust/.cargo STRIP_*).
+      # Anchor paths from this Taskfile dir: var sh may run before deps. The library always
+      # lives under target/<triple>/<profile>/ (bindings:build:all builds with --target).
       set -eu
       cd "{{.ROOT_DIR}}"
       TD="$(pwd)/../rust/target"
       OS=$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
-      HOST=$(rustc -vV | sed -n 's/^host: //p' | tr -d '\r' | xargs)
       TARGET=$(printf '%s' '{{.TARGET}}' | tr -d '\r' | xargs)
       PF="{{.PROFILE}}"
-      if [[ "$TARGET" == "$HOST" ]]; then
-        case "$OS" in
-          darwin*)
-            N="$TD/$PF/lib{{.LIB_NAME}}.dylib"
-            if [[ -f "$N" ]]; then echo "$N"; exit 0; fi
-            ;;
-          mingw*|msys*|cygwin*)
-            N="$TD/$PF/{{.LIB_NAME}}.dll"
-            if [[ -f "$N" ]]; then echo "$N"; exit 0; fi
-            ;;
-          *)
-            N="$TD/$PF/lib{{.LIB_NAME}}.so"
-            if [[ -f "$N" ]]; then echo "$N"; exit 0; fi
-            ;;
-        esac
-      fi
       case "$OS" in
         darwin*)
           echo "$TD/$TARGET/$PF/lib{{.LIB_NAME}}.dylib"
@@ -150,26 +130,19 @@ tasks:
         fi
         TD="$(pwd)/../rust/target"
         PROFILE="{{.PROFILE}}"
-        HOST=$(rustc -vV | sed -n 's/^host: //p' | tr -d '\r' | xargs)
         TARGET=$(printf '%s' '{{.TARGET}}' | tr -d '\r' | xargs)
         os=$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
         case "$os" in
           darwin*)
             LIB="$TD/$TARGET/$PROFILE/lib{{.LIB_NAME}}.dylib"
-            native="$TD/$PROFILE/lib{{.LIB_NAME}}.dylib"
             ;;
           mingw*|msys*|cygwin*)
             LIB="$TD/$TARGET/$PROFILE/{{.LIB_NAME}}.dll"
-            native="$TD/$PROFILE/{{.LIB_NAME}}.dll"
             ;;
           *)
             LIB="$TD/$TARGET/$PROFILE/lib{{.LIB_NAME}}.so"
-            native="$TD/$PROFILE/lib{{.LIB_NAME}}.so"
             ;;
         esac
-        if [[ "$TARGET" == "$HOST" && -f "$native" ]]; then
-          LIB="$native"
-        fi
         echo "Using cdylib for UniFFI bindgen: $LIB"
         ls -lah "$LIB"
         rm -rf generated/uniffi
@@ -333,26 +306,19 @@ tasks:
         cd "{{.ROOT_DIR}}"
         TD="$(pwd)/../rust/target"
         PROFILE="{{.PROFILE}}"
-        HOST=$(rustc -vV | sed -n 's/^host: //p' | tr -d '\r' | xargs)
         TARGET=$(printf '%s' '{{.TARGET}}' | tr -d '\r' | xargs)
         os=$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
         case "$os" in
           darwin*)
             LIB="$TD/$TARGET/$PROFILE/lib{{.LIB_NAME}}.dylib"
-            native="$TD/$PROFILE/lib{{.LIB_NAME}}.dylib"
             ;;
           mingw*|msys*|cygwin*)
             LIB="$TD/$TARGET/$PROFILE/{{.LIB_NAME}}.dll"
-            native="$TD/$PROFILE/{{.LIB_NAME}}.dll"
             ;;
           *)
             LIB="$TD/$TARGET/$PROFILE/lib{{.LIB_NAME}}.so"
-            native="$TD/$PROFILE/lib{{.LIB_NAME}}.so"
             ;;
         esac
-        if [[ "$TARGET" == "$HOST" && -f "$native" ]]; then
-          LIB="$native"
-        fi
         case "$LIB" in
           /*) ABS_LIB="$LIB" ;;
           *) ABS_LIB="$(pwd)/$LIB" ;;

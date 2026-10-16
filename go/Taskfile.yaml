@@ -291,8 +291,10 @@ tasks:
     vars:
       VERSION: v0.7.1+v0.31.0
     status:
+      # --version prints the semver without the tag's leading "v" (e.g. "uniffi-bindgen 0.7.1+v0.31.0"),
+      # so match without it; otherwise the install is never skipped, even when ~/.cargo/bin is cached.
       - "command -v uniffi-bindgen-go >/dev/null && uniffi-bindgen-go --version
-        2>/dev/null | grep -Fq '{{.VERSION}}'"
+        2>/dev/null | grep -Fq '{{trimPrefix \"v\" .VERSION}}'"
     cmds:
       - echo "📦 Installing uniffi-bindgen-go..."
       - "cargo install uniffi-bindgen-go --git

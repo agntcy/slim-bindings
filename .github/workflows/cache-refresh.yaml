@@ -1,0 +1,30 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: refresh-ci-caches
+
+# Rebuilds on main so the Rust and tools caches stay populated for PRs and releases.
+# Only runs on main save caches (cache-save-if), and GitHub evicts caches that were
+# not accessed for 7 days. A new stable Rust release also changes the cache key, which
+# would otherwise make every PR miss until the next push to main.
+on:
+  schedule:
+    # Twice a week, so a cache is never idle for 7 days.
+    - cron: "0 3 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh caches
+    # Scheduled runs always use the default branch; a manual run from another
+    # branch would not save anything, so skip it.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    uses: ./.github/workflows/reusable-bindings-build-and-test.yaml

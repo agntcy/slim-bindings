@@ -104,7 +104,16 @@ tasks:
       - install-wasm-bindgen
     cmds:
       - echo "🌐 Generating SLIM browser/WASM bindings..."
-      - npx ubrn build web --config ubrn.config.yaml --release
+      # Both cargo builds ubrn runs (the rust crate on the host, and the generated wasm crate for
+      # wasm32) get a target directory inside rust/target, which the CI Rust cache already covers;
+      # the generated crate's own react-native/wasm/target is outside of it and is rebuilt from
+      # scratch on every run (about 260 crates, the slim crates included).
+      #
+      # uniffi-runtime-javascript is a path dependency inside node_modules. Cargo decides whether a
+      # path crate is stale by the mtime of its sources, and npm writes new mtimes on every install,
+      # so it (and everything above it) would rebuild on every run. Pin the mtimes to a fixed old date.
+      - find node_modules/uniffi-bindgen-react-native -type f -exec touch -t 202001010000 {} +
+      - CARGO_TARGET_DIR="{{.TASKFILE_DIR}}/../rust/target/web" npx ubrn build web --config ubrn.config.yaml --release
       - test -f src/index.web.ts
       - test -d generated/web
       - npm run typecheck:web
