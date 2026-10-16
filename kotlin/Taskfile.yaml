@@ -76,7 +76,7 @@ tasks:
   generate:
     desc: Generate Kotlin bindings from compiled Rust library
     deps:
-      - task: adapter:bindings:build:all
+      - task: adapter:bindings:ensure
         vars:
           PROFILE: "{{.PROFILE}}"
       - task: rust:install-uniffi-bindgen

@@ -79,6 +79,40 @@ tasks:
         fi
       - echo "🦀 Rust bindings library built successfully."
 
+  bindings:ensure:
+    desc: In CI, require the prebuilt cdylib (never rebuild); locally, build it
+    dir: "{{.TASKFILE_DIR}}"
+    silent: true
+    cmds:
+      # CLI invocation so TARGET/PROFILE propagate through nested includes.
+      - |
+        if [ -n "${CI:-}" ]; then
+          task bindings:check-lib TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}"
+        else
+          task bindings:build:all TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}"
+        fi
+
+  bindings:check-lib:
+    desc: Fail unless the prebuilt cdylib for TARGET/PROFILE exists (CI artifact restore check)
+    dir: "{{.TASKFILE_DIR}}"
+    silent: true
+    cmds:
+      - |
+        set -eu
+        TARGET="{{.TARGET}}"
+        case "$TARGET" in
+          *-apple-*) lib="libslim_bindings.dylib" ;;
+          *-windows-*) lib="slim_bindings.dll" ;;
+          *) lib="libslim_bindings.so" ;;
+        esac
+        path="target/$TARGET/{{.PROFILE}}/$lib"
+        if [ ! -f "$path" ]; then
+          echo "error: prebuilt library $path not found." >&2
+          echo "CI must restore the bindings-$TARGET artifact before this step; refusing to rebuild." >&2
+          exit 1
+        fi
+        echo "✅ Using prebuilt library: $path"
+
   lint:
     desc: Run Rust format check and clippy for the bindings crate
     dir: "{{.TASKFILE_DIR}}"
