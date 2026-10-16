@@ -255,6 +255,16 @@ tasks:
           echo "🦀 musl: RUSTFLAGS=$RUSTFLAGS (needed to emit cdylib)"
         fi
 
+        # Export the deployment target rustc would use anyway (11.0 on arm64, 10.12 on x86_64).
+        # maturin sets MACOSX_DEPLOYMENT_TARGET to the same value when packaging the Python
+        # wheels, and the cc-based build scripts (aws-lc-sys, libsqlite3-sys) rerun when that
+        # variable appears, which rebuilds the whole dependency tree a second time.
+        if [[ "$TARGET_OS" == "darwin" && -z "${MACOSX_DEPLOYMENT_TARGET:-}" ]]; then
+          MACOSX_DEPLOYMENT_TARGET=$(rustc --target "{{.TARGET}}" --print deployment-target | sed 's/.*=//')
+          export MACOSX_DEPLOYMENT_TARGET
+          echo "🦀 macOS: MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+        fi
+
         ARGS=()
 
         # Use zigbuild for Linux or gnu targets, cargo build for others
