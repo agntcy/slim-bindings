@@ -56,23 +56,14 @@ tasks:
       - npm install
     silent: true
 
-  # Only builds when library is missing (CI places it from artifact; local dev builds).
-  ensure-bindings-lib:
-    desc: Build Rust bindings lib if not already in target release dir
-    dir: "{{.TASKFILE_DIR}}"
-    status:
-      - sh -c 'find "{{.TASKFILE_DIR}}/../rust/target/{{.TARGET}}/release" -maxdepth 1 -name "*slim_bindings*" -type f 2>/dev/null | grep -q .'
-    cmds:
-      # Use CLI invocation so PROFILE=release propagates (task: vars can drop through nested includes)
-      - task adapter:bindings:build:all TARGET={{.TARGET}} PROFILE=release
-
   generate:
     desc: Generate Node.js bindings using uniffi-bindgen-react-native (napi target)
     dir: "{{.TASKFILE_DIR}}"
     deps:
-      - task: ensure-bindings-lib
+      - task: adapter:bindings:ensure
         vars:
           TARGET: "{{.TARGET}}"
+          PROFILE: release
       - task: install-uniffi-bindgen-react-native
     cmds:
       - echo "🔧 Generating Node.js bindings (napi)..."
