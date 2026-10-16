@@ -80,16 +80,25 @@ tasks:
       - echo "🦀 Rust bindings library built successfully."
 
   bindings:ensure:
-    desc: In CI, require the prebuilt cdylib (never rebuild); locally, build it
+    desc: "Make the cdylib available: check for a prebuilt one in CI, build it otherwise (override with REBUILD=true|false)"
     dir: "{{.TASKFILE_DIR}}"
     silent: true
+    vars:
+      # true  -> always build (e.g. dev loop, or CI job that must compile)
+      # false -> only check for the prebuilt library
+      # unset -> false when CI is set, true otherwise
+      REBUILD: '{{.REBUILD | default ""}}'
     cmds:
       # CLI invocation so TARGET/PROFILE propagate through nested includes.
       - |
-        if [ -n "${CI:-}" ]; then
-          task bindings:check-lib TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}"
-        else
+        rebuild="{{.REBUILD}}"
+        if [ -z "$rebuild" ]; then
+          if [ -n "${CI:-}" ]; then rebuild=false; else rebuild=true; fi
+        fi
+        if [ "$rebuild" = "true" ]; then
           task bindings:build:all TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}"
+        else
+          task bindings:check-lib TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}"
         fi
 
   bindings:check-lib:
