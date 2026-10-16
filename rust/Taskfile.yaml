@@ -71,9 +71,9 @@ tasks:
         fi
         # CI consumers (Java, Kotlin, .NET, Go, Node, Python) all read the cdylib built above under
         # target/<triple>/<profile>/, which keeps the UniFFI metadata (strip="none"). The host-native
-        # copy only matters for local runs, and its build does not share artifacts with the zigbuild
-        # one (cargo reports "config settings changed" for every crate), so in CI it is a full
-        # extra compile. Set HOST_NATIVE=true to build it anyway.
+        # copy only matters for local runs. In CI it was a full extra compile on every run, even with
+        # a restored Rust cache (cargo logged "Dirty <crate>: the config settings changed" for each
+        # crate; the exact setting was not identified). Set HOST_NATIVE=true to build it anyway.
         if [[ -n "${CI:-}" && "${HOST_NATIVE:-}" != "true" ]]; then
           echo "🦀 Skip host-native cdylib (CI)."
           exit 0
