@@ -6,11 +6,6 @@ name: reusable-java-build-and-test
 on:
   workflow_call:
     inputs:
-      rust-cache:
-        description: Enable the Rust build cache (restored on every ref, saved only on main)
-        required: false
-        type: boolean
-        default: true
       runner:
         description: Github hosted runner or Self hosted runner
         required: false
@@ -55,7 +50,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ${{ inputs.rust-workspace }}
-          cache-enabled: ${{ inputs.rust-cache }}
+          cache-enabled: false
 
       - name: Setup Java
         uses: ./.github/actions/setup-java

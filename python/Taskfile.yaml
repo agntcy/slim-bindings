@@ -126,14 +126,9 @@ tasks:
 
         echo "Running maturin with the following args: ${MATURIN_ARGS[@]}"
 
-        # --no-install-project: only install the build tools (maturin). Without it uv first builds
-        # and installs this project through its PEP 517 backend, a silent extra full cargo build
-        # that maturin build below then repeats.
         PATH=${PATH}:{{.TOOLS_INSTALL_DIR}} \
         uv run                              \
           ${UV_ARGS[@]}                     \
-          --no-install-project              \
-          --group building                  \
           maturin build                     \
           ${MATURIN_ARGS[@]}
 

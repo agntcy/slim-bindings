@@ -6,11 +6,6 @@ name: reusable-bindings-build-and-test
 on:
   workflow_call:
     inputs:
-      rust-cache:
-        description: Enable the Rust build cache (restored on every ref, saved only on main)
-        required: false
-        type: boolean
-        default: true
       runner:
         description: Github hosted runner or Self hosted runner
         required: false
@@ -167,8 +162,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
-          cache-enabled: ${{ inputs.rust-cache }}
-          cache-key: ${{ matrix.platform.target }}
+          cache-enabled: false
       - name: Build library
         working-directory: ./rust
         env:
@@ -260,7 +254,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ${{ inputs.rust-workspace }}
-          cache-enabled: ${{ inputs.rust-cache }}
+          cache-enabled: false
 
       - name: Setup Go
         uses: ./.github/actions/setup-go
@@ -590,7 +584,6 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
-      rust-cache: ${{ inputs.rust-cache }}
       rust-target: x86_64-unknown-linux-gnu
       tag-name: ${{ inputs.tag-name }}
 
@@ -605,7 +598,6 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
-      rust-cache: ${{ inputs.rust-cache }}
 
   java-bindings-build-and-test:
     name: "Java Bindings Build and Test"
@@ -618,4 +610,3 @@ jobs:
     with:
       runner: ${{ inputs.runner }}
       rust-workspace: ${{ inputs.rust-workspace }}
-      rust-cache: ${{ inputs.rust-cache }}

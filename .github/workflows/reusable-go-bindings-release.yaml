@@ -65,6 +65,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
+          cache-enabled: false
 
       # Only the Go-specific artifact: pure Go source/headers/docs, no native
       # libs (its upload step excludes *.a; consumers fetch native libs on
