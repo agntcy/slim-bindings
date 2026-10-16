@@ -111,6 +111,7 @@ jobs:
               },
               {
                 "runner": "macos-15-intel",
+                "build-runner": "macos-15",
                 "os": "macos",
                 "target": "x86_64-apple-darwin",
                 "python-platform": "macosx_10_12_x86_64",
@@ -145,7 +146,10 @@ jobs:
   build-libraries:
     needs: generate-matrix
     name: "${{ matrix.platform.target }}"
-    runs-on: ${{ matrix.platform.runner }}
+    # `build-runner` lets a target cross-compile on a faster runner: the Intel
+    # macOS runner took over an hour, so x86_64-apple-darwin builds on Apple
+    # Silicon. Jobs that run the binaries keep using `runner`.
+    runs-on: ${{ matrix.platform.build-runner || matrix.platform.runner }}
     defaults:
       run:
         shell: bash
