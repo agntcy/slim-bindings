@@ -1,6 +1,6 @@
 [package]
 name = "agntcy-slim-bindings-ffi"
-version = "3.3.2"
+version = "3.3.3"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/agntcy/slim-bindings"
@@ -16,5 +16,5 @@ web = ["slim-bindings-impl/web"]
 rpc = ["dep:slim-rpc-impl"]
 
 [dependencies]
-slim-bindings-impl = { package = "agntcy-slim-bindings", version = "=3.4.1", default-features = false }
-slim-rpc-impl = { package = "agntcy-slim-rpc", version = "=3.4.1", features = ["uniffi"], optional = true }
+slim-bindings-impl = { package = "agntcy-slim-bindings", version = "=3.4.3", default-features = false }
+slim-rpc-impl = { package = "agntcy-slim-rpc", version = "=3.4.3", features = ["uniffi"], optional = true }
