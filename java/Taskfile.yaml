@@ -134,7 +134,7 @@ tasks:
     # Always run from this Taskfile's directory (paths and uniffi.toml are relative).
     dir: "{{.ROOT_DIR}}"
     deps:
-      - task: adapter:bindings:build:all
+      - task: adapter:bindings:ensure
         vars:
           PROFILE: "{{.PROFILE}}"
       - install-uniffi-bindgen-java

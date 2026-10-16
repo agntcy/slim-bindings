@@ -6,7 +6,7 @@ version: '3'
 includes:
   rust:
     taskfile: ../rust/Taskfile.yaml
-    # Must be callable so generate can invoke rust:bindings:build:all for local builds
+    # Must be callable so generate can invoke rust:bindings:ensure (local builds)
     internal: false
   tools:
     taskfile: ../tasks/tools.yaml
@@ -113,7 +113,7 @@ tasks:
   generate:
     desc: "Generate C# bindings from the target folder"
     deps:
-      - task: rust:bindings:build:all
+      - task: rust:bindings:ensure
         vars:
           PROFILE: "{{.PROFILE}}"
           TARGET: "{{.TARGET}}"
@@ -135,8 +135,10 @@ tasks:
 
         # Fall back to local build: build Rust library, then use its output
         if [[ -z "$lib_file" || ! -f "$lib_file" ]]; then
-          echo "No CI artifacts found, building Rust library locally..."
-          (cd {{.BINDINGS_DIR}} && task bindings:build:all PROFILE="{{.PROFILE}}")
+          echo "No ARTIFACTS_DIR library found, using the library from bindings:ensure..."
+          # bindings:ensure (generate dep) already checked or built it; calling it again keeps
+          # this fallback from rebuilding in CI, where it only verifies the prebuilt library.
+          (cd {{.BINDINGS_DIR}} && task bindings:ensure TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}")
 
           local_lib="{{.LIB_PATH}}"
           if [[ -f "$local_lib" ]]; then
