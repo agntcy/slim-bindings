@@ -24,6 +24,10 @@ inputs:
     description: 'Enable rust cache'
     required: false
     default: 'true'
+  tools-cache:
+    description: 'Cache the uniffi bindgen and cargo-zigbuild binaries so they are not rebuilt every run'
+    required: false
+    default: 'true'
 runs:
   using: 'composite'
   steps:
@@ -40,6 +44,28 @@ runs:
         cache-all-crates: true
         cache-bin: false # cache-bin has a bug at the swatinem cache level, if it's enabled, it will cause the bin cache to be cleared
         cache-directories: ${{ inputs.cache-directories }}
+
+    # The uniffi bindgens are built from git and took 2-9 minutes each per run.
+    # Cache only those binaries (not rustup's proxies in ~/.cargo/bin). Their
+    # install tasks check the installed version and reinstall with --force when
+    # a pin changes, so a stale entry only costs one rebuild.
+    - name: Cache cargo tools
+      if: inputs.tools-cache == 'true' && runner.os != 'Windows'
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          ~/.cargo/bin/uniffi-bindgen*
+          ~/.cargo/bin/cargo-zigbuild
+        key: ${{ runner.os }}-${{ runner.arch }}-cargo-tools-${{ github.job }}-${{ hashFiles('tasks/rust.yaml', '*/Taskfile.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-cargo-tools-${{ github.job }}-
+
+    # Prebuilt binary; building it from source took 4-6 minutes per job. The
+    # install-cargo-binstall task skips once `cargo binstall` works.
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@3be4ad2b146f3302f92e5956c54fedbb6ae8cccc # v1.25.3
+      with:
+        version: 1.25.3
 
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task

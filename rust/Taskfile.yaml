@@ -38,7 +38,8 @@ tasks:
       - which cargo-zigbuild
     cmds:
       - echo "🦀 Installing required cargo components..."
-      - cargo install cargo-zigbuild
+      # Prefer the prebuilt binary; fall back to a source build without binstall.
+      - cargo binstall --no-confirm cargo-zigbuild || cargo install cargo-zigbuild
 
   bindings:build:all:
     desc: Build the Rust library with UniFFI
