@@ -25,7 +25,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Rust
-      id: setup-rust
+      id: setup-rust-v2
       uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
       with:
         components: rustc, clippy, rustfmt
@@ -35,7 +35,7 @@ runs:
         cache: ${{ inputs.cache-enabled }}
         cache-workspaces: ${{ inputs.workspace }}
         cache-on-failure: false
-        cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{ inputs.cache-key || github.job }}-rust
+        cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{ inputs.cache-key || github.job }}-rust-v2
         cache-all-crates: true
         # Installed tools get their own cache below (keyed on what pins their versions).
         cache-bin: false
