@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       rust-cache:
-        description: Enable the Rust build cache (disable for release builds)
+        description: Enable the Rust build cache (restored on every ref, saved only on main)
         required: false
         type: boolean
         default: true
@@ -72,7 +72,6 @@ jobs:
         with:
           workspace: ${{ inputs.rust-workspace }}
           cache-enabled: ${{ inputs.rust-cache }}
-          cache-key: dotnet
 
       - name: Setup .NET
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0

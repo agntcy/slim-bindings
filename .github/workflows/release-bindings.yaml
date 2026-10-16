@@ -31,8 +31,6 @@ jobs:
     uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
     with:
       tag-name: ${{ github.ref_name }}
-      # Release builds do not read or write the shared Rust cache.
-      rust-cache: false
 
   # ==========================================================================
   # Job 2: Create GitHub release with library artifacts (for test tags)

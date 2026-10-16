@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       rust-cache:
-        description: Enable the Rust build cache (disable for release builds)
+        description: Enable the Rust build cache (restored on every ref, saved only on main)
         required: false
         type: boolean
         default: true
@@ -261,7 +261,6 @@ jobs:
         with:
           workspace: ${{ inputs.rust-workspace }}
           cache-enabled: ${{ inputs.rust-cache }}
-          cache-key: go-generate
 
       - name: Setup Go
         uses: ./.github/actions/setup-go

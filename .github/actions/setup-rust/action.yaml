@@ -25,7 +25,7 @@ inputs:
     required: false
     default: 'true'
   cache-key:
-    description: 'Extra cache key part (e.g. the build target) so jobs on the same OS do not share one cache'
+    description: 'Extra cache key part (e.g. the build target) jobs with a different compile workload (e.g. per target) get their own cache; leave empty to share'
     required: false
     default: ''
 runs:
@@ -37,13 +37,24 @@ runs:
       with:
         components: rustc, clippy, rustfmt
         rustflags: ''
-        cache: ${{ inputs.cache-enabled }}
-        cache-workspaces: ${{ inputs.workspace }}
+        # Caching is handled by the Swatinem/rust-cache step below so that saving can be
+        # restricted to the default branch (setup-rust-toolchain does not expose save-if).
+        cache: false
+
+    # Every ref restores (PRs, merge queue, releases); only pushes to main save. Caches saved by
+    # main are readable from any ref, while a PR-scoped cache is never visible to main or tags,
+    # so a PR cannot poison release builds.
+    - name: Setup Rust cache
+      if: inputs.cache-enabled == 'true'
+      uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      with:
+        workspaces: ${{ inputs.workspace }}
         cache-on-failure: false
-        cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust-${{hashFiles('**/Cargo.lock')}}
+        shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust-${{hashFiles('**/Cargo.lock')}}
         cache-all-crates: true
         cache-bin: false # cache-bin has a bug at the swatinem cache level, if it's enabled, it will cause the bin cache to be cleared
         cache-directories: ${{ inputs.cache-directories }}
+        save-if: ${{ github.ref == 'refs/heads/main' }}
 
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task
