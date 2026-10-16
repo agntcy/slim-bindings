@@ -114,6 +114,16 @@ tasks:
           )
         fi
 
+        # maturin --zig compiles with the zig wrappers bundled in maturin, while the Build library
+        # step uses the standalone cargo-zigbuild. The wrapper path (and so the -C linker flag and
+        # the CC_* / CMAKE_TOOLCHAIN_FILE_* env) differs between the two, which makes cargo rebuild
+        # the whole dependency tree whenever they share a target directory, and each build then
+        # invalidates the other. Give maturin its own directory (inside rust/target, so the Rust
+        # cache keeps it) and both builds stay fresh.
+        if [[ "{{.TARGET_ABI}}" = "gnu" || "{{.TARGET_ABI}}" = "musl" ]]; then
+          MATURIN_ARGS+=(--target-dir "{{.TASKFILE_DIR}}/../rust/target/wheels-zig")
+        fi
+
         # uv must only install the build tools (maturin), never build this project. A plain
         # `uv run` / `uv sync` installs the project through its PEP 517 backend (maturin) first,
         # which is a silent extra full cargo build. `uv run` has no --no-install-project, so sync
