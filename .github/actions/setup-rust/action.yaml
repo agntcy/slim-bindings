@@ -16,7 +16,8 @@ inputs:
   cache-directories:
     description: 'Additional cache directories (whitespace-separated)'
     required: false
-    default: ''
+    default: |
+      .tools
   cache-enabled:
     description: 'Enable rust cache'
     required: false
@@ -39,42 +40,13 @@ runs:
         cache-on-failure: false
         cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust
         cache-all-crates: true
-        cache-bin: false # cache-bin has a bug at the swatinem cache level, if it's enabled, it will cause the bin cache to be cleared
+        # Caches binaries installed with cargo install during the job (uniffi bindgens, cargo-zigbuild, ...)
+        cache-bin: true
         cache-directories: ${{ inputs.cache-directories }}
         # Every ref restores (PRs, merge queue, releases); only pushes to main save. Caches saved
         # by main are readable from any ref, while a PR-scoped cache is never visible to main or
         # tags, so a PR cannot poison release builds.
         cache-save-if: ${{ github.ref == 'refs/heads/main' }}
-
-    # Installed tools (cargo install'ed uniffi bindgens, cargo-zigbuild, slimrpc plugins and the
-    # .tools dir with buf/protoc/zig/minisign). Same policy as the Rust cache: every ref restores,
-    # only pushes to main save. On a miss the closest older entry is restored and the install
-    # tasks only reinstall what changed.
-    - name: Restore tools cache
-      if: inputs.cache-enabled == 'true' && github.ref != 'refs/heads/main'
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-      with:
-        path: |
-          ~/.cargo/bin
-          ~/.cargo/.crates.toml
-          ~/.cargo/.crates2.json
-          .tools
-        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
-        restore-keys: |
-          tools-${{ runner.os }}-${{ runner.arch }}-
-
-    - name: Restore and save tools cache
-      if: inputs.cache-enabled == 'true' && github.ref == 'refs/heads/main'
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-      with:
-        path: |
-          ~/.cargo/bin
-          ~/.cargo/.crates.toml
-          ~/.cargo/.crates2.json
-          .tools
-        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
-        restore-keys: |
-          tools-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task
