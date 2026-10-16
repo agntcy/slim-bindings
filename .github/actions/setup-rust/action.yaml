@@ -24,6 +24,10 @@ inputs:
     description: 'Enable rust cache'
     required: false
     default: 'true'
+  cache-key:
+    description: 'Extra cache key part (e.g. the build target) so jobs on the same OS do not share one cache'
+    required: false
+    default: ''
 runs:
   using: 'composite'
   steps:
@@ -36,7 +40,7 @@ runs:
         cache: ${{ inputs.cache-enabled }}
         cache-workspaces: ${{ inputs.workspace }}
         cache-on-failure: false
-        cache-shared-key: ${{runner.os}}-rust-${{hashFiles('**/Cargo.lock')}}
+        cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust-${{hashFiles('**/Cargo.lock')}}
         cache-all-crates: true
         cache-bin: false # cache-bin has a bug at the swatinem cache level, if it's enabled, it will cause the bin cache to be cleared
         cache-directories: ${{ inputs.cache-directories }}

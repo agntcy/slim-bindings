@@ -6,6 +6,11 @@ name: reusable-dotnet-build-and-test
 on:
   workflow_call:
     inputs:
+      rust-cache:
+        description: Enable the Rust build cache (disable for release builds)
+        required: false
+        type: boolean
+        default: true
       runner:
         description: GitHub hosted runner or self-hosted runner
         required: false
@@ -66,7 +71,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ${{ inputs.rust-workspace }}
-          cache-enabled: false
+          cache-enabled: ${{ inputs.rust-cache }}
+          cache-key: dotnet
 
       - name: Setup .NET
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
