@@ -135,8 +135,10 @@ tasks:
 
         # Fall back to local build: build Rust library, then use its output
         if [[ -z "$lib_file" || ! -f "$lib_file" ]]; then
-          echo "No CI artifacts found, building Rust library locally..."
-          (cd {{.BINDINGS_DIR}} && task bindings:build:all PROFILE="{{.PROFILE}}")
+          echo "No ARTIFACTS_DIR library found, using the library from bindings:ensure..."
+          # bindings:ensure (generate dep) already checked or built it; calling it again keeps
+          # this fallback from rebuilding in CI, where it only verifies the prebuilt library.
+          (cd {{.BINDINGS_DIR}} && task bindings:ensure TARGET="{{.TARGET}}" PROFILE="{{.PROFILE}}")
 
           local_lib="{{.LIB_PATH}}"
           if [[ -f "$local_lib" ]]; then
