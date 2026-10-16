@@ -33,7 +33,7 @@ runs:
     - name: Setup Python
       if: ${{ inputs.py-install == 'true' }}
       id: setup-python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: ${{ inputs.py-version }}
 
@@ -44,7 +44,7 @@ runs:
 
     - name: Load cached Poetry Binary
       if: ${{ inputs.poetry-install == 'true' }}
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.local
         key: venv-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-python.outputs.python-version }}-${{ inputs.poetry-version }}
@@ -75,7 +75,7 @@ runs:
 
     - name: Load cached venv
       if: ${{ inputs.poetry-install == 'true' }}
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.cache/pypoetry/virtualenvs
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
