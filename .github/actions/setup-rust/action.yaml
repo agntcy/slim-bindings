@@ -50,7 +50,7 @@ runs:
       with:
         workspaces: ${{ inputs.workspace }}
         cache-on-failure: false
-        shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust-${{hashFiles('**/Cargo.lock')}}
+        shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust
         cache-all-crates: true
         cache-bin: false # cache-bin has a bug at the swatinem cache level, if it's enabled, it will cause the bin cache to be cleared
         cache-directories: ${{ inputs.cache-directories }}
