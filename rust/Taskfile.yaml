@@ -69,6 +69,15 @@ tasks:
           echo "🦀 Skip host-native cdylib (TARGET != host)."
           exit 0
         fi
+        # Local convenience only: Java/Kotlin bindgen runs prefer target/<profile>/ over the zigbuild
+        # artifact. In CI every consumer (Java, Kotlin, .NET, Go, Node, Python) reads the cdylib built
+        # above under target/<triple>/<profile>/, which keeps the UniFFI metadata (strip="none"), so
+        # the host-native copy is a second full compile there (about 10 minutes) and is skipped.
+        # Set HOST_NATIVE=true to build it anyway.
+        if [[ -n "${CI:-}" && "${HOST_NATIVE:-}" != "true" ]]; then
+          echo "🦀 Skip host-native cdylib (CI)."
+          exit 0
+        fi
         echo "🦀 Building host-native cdylib for UniFFI (cargo build, no --target)..."
         cd "{{.TASKFILE_DIR}}"
         PROFILE="{{.PROFILE}}"
