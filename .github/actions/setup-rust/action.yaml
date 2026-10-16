@@ -13,11 +13,6 @@ inputs:
     description: 'Cargo workspace to cache'
     required: false
     default: '.'
-  cache-directories:
-    description: 'Additional cache directories (whitespace-separated)'
-    required: false
-    default: |
-      .tools
   cache-enabled:
     description: 'Enable rust cache'
     required: false
@@ -42,16 +37,53 @@ runs:
         cache-on-failure: false
         cache-shared-key: ${{runner.os}}-${{runner.arch}}-${{inputs.cache-key}}-rust
         cache-all-crates: true
-        # Caches binaries installed with cargo install during the job (uniffi bindgens, cargo-zigbuild, ...)
-        # Needs rust-cache >= 2.9.2 (setup-rust-toolchain v2): older versions drop cargo-binstall'ed
-        # binaries (cargo-zigbuild, cargo-audit, ...) from the cache while cargo's install metadata
-        # still lists them, so later runs skip the install and the binary is missing.
-        cache-bin: true
-        cache-directories: ${{ inputs.cache-directories }}
+        # Installed tools get their own cache below (keyed on what pins their versions).
+        cache-bin: false
         # Every ref restores (PRs, merge queue, releases); only pushes to main save. Caches saved
         # by main are readable from any ref, while a PR-scoped cache is never visible to main or
         # tags, so a PR cannot poison release builds.
         cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+
+    # Installed tools: cargo install'ed binaries (uniffi bindgens, cargo-zigbuild, slimrpc plugins)
+    # and .tools (buf, protoc, zig, minisign). Keyed on the files that pin their versions, so a
+    # version bump refreshes it independently of the Rust cache. A miss restores the newest older
+    # entry and the install tasks (status checks) only reinstall what changed. The runner image
+    # version is part of the key because ~/.cargo/bin also holds the rustup proxies, which must
+    # match the image. Every ref restores, only pushes to main save.
+    - name: Compute tools cache key
+      id: tools-key
+      if: inputs.cache-enabled == 'true'
+      shell: bash
+      run: |
+        # ImageVersion is set by GitHub-hosted runners; read it from the process env, which the
+        # `env` expression context does not expose.
+        echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore tools cache
+      if: inputs.cache-enabled == 'true' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          ~/.cargo/bin
+          ~/.cargo/.crates.toml
+          ~/.cargo/.crates2.json
+          .tools
+        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
+        restore-keys: |
+          tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-
+
+    - name: Restore and save tools cache
+      if: inputs.cache-enabled == 'true' && github.ref == 'refs/heads/main'
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: |
+          ~/.cargo/bin
+          ~/.cargo/.crates.toml
+          ~/.cargo/.crates2.json
+          .tools
+        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
+        restore-keys: |
+          tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-
 
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task
