@@ -167,7 +167,10 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
-          cache-enabled: ${{ inputs.rust-cache }}
+          # x86_64-pc-windows-gnu is consumed by nothing on main: Python skips it, .NET excludes it
+          # and it ships no cdylib package. Only the Go release (tags) uses it, which can build it
+          # cold. Do not spend part of the 10 GB cache limit on it.
+          cache-enabled: ${{ inputs.rust-cache && !contains(matrix.platform.target, 'windows-gnu') }}
           cache-key: ${{ matrix.platform.target }}
       - name: Build library
         working-directory: ./rust
