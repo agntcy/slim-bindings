@@ -53,7 +53,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.1",
-    "typescript": "^5.0.0",
+    "typescript": "^7.0.0",
     "uniffi-bindgen-react-native": "0.31.0-3"
   }
 }
