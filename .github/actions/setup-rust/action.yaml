@@ -42,7 +42,7 @@ runs:
         # Every ref restores (PRs, merge queue, releases); only pushes to main save. Caches saved
         # by main are readable from any ref, while a PR-scoped cache is never visible to main or
         # tags, so a PR cannot poison release builds.
-        cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+        cache-save-if: true # TEMP: verify caching on the PR branch, restore main-only before merge
 
     # Installed tools: cargo install'ed binaries (uniffi bindgens, cargo-zigbuild, slimrpc plugins)
     # and .tools (buf, protoc, zig, minisign). Keyed on the files that pin their versions, so a
@@ -60,7 +60,7 @@ runs:
         echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
     - name: Restore tools cache
-      if: inputs.cache-enabled == 'true' && github.ref != 'refs/heads/main'
+      if: inputs.cache-enabled == 'true' && false # TEMP
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -73,7 +73,7 @@ runs:
           tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-
 
     - name: Restore and save tools cache
-      if: inputs.cache-enabled == 'true' && github.ref == 'refs/heads/main'
+      if: inputs.cache-enabled == 'true' # TEMP
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
