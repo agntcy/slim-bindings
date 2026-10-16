@@ -69,14 +69,22 @@ tasks:
           echo "🦀 Skip host-native cdylib (TARGET != host)."
           exit 0
         fi
+        # CI consumers (Java, Kotlin, .NET, Go, Node, Python) all read the cdylib built above under
+        # target/<triple>/<profile>/, which keeps the UniFFI metadata (strip="none"). The host-native
+        # copy only matters for local runs, and its build does not share artifacts with the zigbuild
+        # one (cargo reports "config settings changed" for every crate), so in CI it is a full
+        # extra compile. Set HOST_NATIVE=true to build it anyway.
+        if [[ -n "${CI:-}" && "${HOST_NATIVE:-}" != "true" ]]; then
+          echo "🦀 Skip host-native cdylib (CI)."
+          exit 0
+        fi
         echo "🦀 Building host-native cdylib for UniFFI (cargo build, no --target)..."
         cd "{{.TASKFILE_DIR}}"
         PROFILE="{{.PROFILE}}"
-        # TEMP: -v prints "Dirty <crate>: <reason>" to debug why the host-native build is not cached
         if [[ "$PROFILE" == "release" ]]; then
-          cargo build --release --locked -v
+          cargo build --release --locked
         else
-          cargo build --locked -v
+          cargo build --locked
         fi
       - echo "🦀 Rust bindings library built successfully."
 
