@@ -173,6 +173,8 @@ jobs:
         working-directory: ./rust
         env:
           PLATFORM_TARGET: ${{ matrix.platform.target }}
+          # TEMP: log why cargo rebuilds crates ("dirty" reasons) to debug the host-native rebuild
+          CARGO_LOG: cargo::core::compiler::fingerprint=info
         run: |
           task bindings:build:all TARGET="$PLATFORM_TARGET" PROFILE=release
       - name: Normalize cargo output path
