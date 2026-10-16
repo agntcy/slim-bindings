@@ -114,10 +114,15 @@ tasks:
           )
         fi
 
+        # uv must only install the build tools (maturin), never build this project. Without
+        # --no-install-project, `uv sync` / `uv run` build and install the project through its
+        # PEP 517 backend (maturin), which is a silent extra full cargo build.
+        UV_BUILD_ARGS=(--no-install-project --group building)
+
         # Workaround for windows
         if [[ "{{.TARGET_OS}}" = "windows" ]]; then
-          uv sync ${UV_ARGS[@]}
-          uv run ${UV_ARGS[@]} maturin develop --uv {{.RELEASE}}
+          uv sync ${UV_BUILD_ARGS[@]}
+          uv run ${UV_BUILD_ARGS[@]} maturin develop --uv {{.RELEASE}}
 
           # This file is a leftover from the previous build, delete it otherwise
           # maturin will try to add it to the wheel, and it will fail
@@ -128,7 +133,7 @@ tasks:
 
         PATH=${PATH}:{{.TOOLS_INSTALL_DIR}} \
         uv run                              \
-          ${UV_ARGS[@]}                     \
+          ${UV_BUILD_ARGS[@]}               \
           maturin build                     \
           ${MATURIN_ARGS[@]}
 
