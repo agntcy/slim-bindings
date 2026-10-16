@@ -72,10 +72,11 @@ tasks:
         echo "🦀 Building host-native cdylib for UniFFI (cargo build, no --target)..."
         cd "{{.TASKFILE_DIR}}"
         PROFILE="{{.PROFILE}}"
+        # TEMP: -v prints "Dirty <crate>: <reason>" to debug why the host-native build is not cached
         if [[ "$PROFILE" == "release" ]]; then
-          cargo build --release --locked
+          cargo build --release --locked -v
         else
-          cargo build --locked
+          cargo build --locked -v
         fi
       - echo "🦀 Rust bindings library built successfully."
 
