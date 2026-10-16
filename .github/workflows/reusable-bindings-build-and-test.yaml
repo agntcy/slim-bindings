@@ -173,7 +173,10 @@ jobs:
         working-directory: ./rust
         env:
           PLATFORM_TARGET: ${{ matrix.platform.target }}
+          # TEMP: build the host-native cdylib too so the logs show both builds' rustc flags
+          HOST_NATIVE: "true"
         run: |
+          env | grep -i -E "linker|^CC|^AR_|RUSTFLAGS" || true
           task bindings:build:all TARGET="$PLATFORM_TARGET" PROFILE=release
       - name: Normalize cargo output path
         run: |

@@ -55,7 +55,7 @@ tasks:
       - echo "🦀 Building Rust bindings library... {{.TARGET}}"
       - task: rust:crossbuild
         vars:
-          ARGS: --config 'profile.release.strip="none"'
+          ARGS: --config 'profile.release.strip="none"' -v
           TARGET: "{{.TARGET}}"
           PROFILE: "{{.PROFILE}}"
       # zigbuild always uses --target on Linux, so only target/<triple>/<profile>/ exists.
@@ -82,9 +82,9 @@ tasks:
         cd "{{.TASKFILE_DIR}}"
         PROFILE="{{.PROFILE}}"
         if [[ "$PROFILE" == "release" ]]; then
-          cargo build --release --locked
+          cargo build --release --locked -v
         else
-          cargo build --locked
+          cargo build --locked -v
         fi
       - echo "🦀 Rust bindings library built successfully."
 
