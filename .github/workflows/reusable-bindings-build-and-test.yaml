@@ -657,8 +657,8 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "version=$(bash .github/scripts/get-binding-version.sh)" >> "$GITHUB_OUTPUT"
           else
-            # Not a release: only used to exercise the packaging in pull requests.
-            echo "version=0.0.0-ci.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+            # Not a release: keep the version committed in package.json, as the other bindings do.
+            echo "version=$(node -p "require('./react-native/package.json').version")" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Setup Rust
