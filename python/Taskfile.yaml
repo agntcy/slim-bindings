@@ -98,9 +98,18 @@ tasks:
           --out dist
           --target {{.TARGET}}
           --frozen
-          --strip
           -i {{.INTERPRETERS}}
         )
+
+        # --strip makes rustc strip the cargo artifact itself, and on ELF that removes .symtab.
+        # maturin runs uniffi-bindgen on that artifact, and UniFFI library mode reads the
+        # UNIFFI_META* symbols from .symtab, so on Linux it then generates nothing and the wheel
+        # ships without slim_bindings.py / slim_rpc.py. (Mach-O keeps its exported symbols, so
+        # macOS is not affected.) This went unnoticed while uv installed the project first, which
+        # populated maturin's output directory with an unstripped build.
+        if [[ "{{.TARGET_ABI}}" != "gnu" && "{{.TARGET_ABI}}" != "musl" ]]; then
+          MATURIN_ARGS+=(--strip)
+        fi
 
         if [[ "{{.TARGET_ABI}}" = "gnu" ]]; then
           MATURIN_ARGS+=(
@@ -129,23 +138,6 @@ tasks:
         # which is a silent extra full cargo build. `uv run` has no --no-install-project, so sync
         # the dependencies explicitly and run with --no-sync.
         uv sync --no-install-project --group building
-
-        # On Linux, maturin build does not generate the UniFFI Python modules (slim_bindings.py and
-        # slim_rpc.py), unlike on macOS, and packages whatever it finds in
-        # <target-dir>/maturin/uniffi/slim_bindings._slim_bindings. Until the project stopped being
-        # installed through uv, that install populated this directory as a side effect. Generate
-        # the modules there explicitly from the prebuilt library instead.
-        if [[ "{{.TARGET_ABI}}" = "gnu" || "{{.TARGET_ABI}}" = "musl" ]]; then
-          BINDINGS_DIR="{{.TASKFILE_DIR}}/../rust/target/wheels-zig/maturin/uniffi/slim_bindings._slim_bindings"
-          LIB="{{.TASKFILE_DIR}}/../rust/target/{{.TARGET}}/{{.PROFILE | default "release"}}/libslim_bindings.so"
-          if [ ! -f "$LIB" ]; then
-            echo "error: prebuilt library $LIB not found" >&2
-            exit 1
-          fi
-          rm -rf "$BINDINGS_DIR"
-          (cd "{{.TASKFILE_DIR}}/../rust" && uv run --project "{{.TASKFILE_DIR}}" --no-sync \
-            uniffi-bindgen generate --library "$LIB" --language python --out-dir "$BINDINGS_DIR")
-        fi
 
         # Workaround for windows
         if [[ "{{.TARGET_OS}}" = "windows" ]]; then
