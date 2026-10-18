@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.5](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.4...slim-bindings-v3.3.5) - 2026-10-18
+
+### Fixed
+
+- release bindings with the fixed Linux Python wheels ([#139](https://github.com/agntcy/slim-bindings/pull/139))
+
 ## [3.3.4](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.3...slim-bindings-v3.3.4) - 2026-10-18
 
 ### Other
