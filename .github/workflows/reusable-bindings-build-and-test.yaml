@@ -137,13 +137,13 @@ jobs:
                 "runner": "macos-15",
                 "os": "ios",
                 "target": "aarch64-apple-ios",
-                "exclude": ${{ github.event_name == 'pull_request' }}
+                "exclude": false
               },
               {
                 "runner": "macos-15",
                 "os": "ios",
                 "target": "aarch64-apple-ios-sim",
-                "exclude": ${{ github.event_name == 'pull_request' }}
+                "exclude": false
               }
             ],
             "exclude": [
@@ -592,7 +592,7 @@ jobs:
           npm pack --dry-run 2>&1 | grep -q index_bg.wasm
 
       - name: Upload browser/WASM bindings
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ true }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: react-native-web
@@ -604,7 +604,7 @@ jobs:
   # the browser/WASM bindings. Runs on macOS only for xcodebuild (XCFramework); nothing is
   # compiled here. The iOS legs are skipped on pull requests, so this is too.
   react-native-package:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ true }}
     name: Package React Native
     needs:
       - build-libraries
