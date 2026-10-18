@@ -53,8 +53,9 @@ runs:
         # tags, so a PR cannot poison release builds.
         cache-save-if: ${{ github.ref == 'refs/heads/main' }}
 
-    # Installed tools: cargo install'ed binaries (uniffi bindgens, cargo-zigbuild, slimrpc plugins)
-    # and .tools (buf, protoc, zig, minisign). Keyed on the files that pin their versions, so a
+    # Installed tools: cargo install'ed binaries (uniffi bindgens, cargo-zigbuild, slimrpc plugins),
+    # the compiled uniffi-bindgen-react-native CLI (~/.cache/ubrn, see tasks/ubrn.yaml) and .tools
+    # (buf, protoc, zig, minisign). Keyed on the files that pin their versions, so a
     # version bump refreshes it independently of the Rust cache. A miss restores the newest older
     # entry and the install tasks (status checks) only reinstall what changed. The runner image
     # version is part of the key because ~/.cargo/bin also holds the rustup proxies, which must
@@ -78,6 +79,7 @@ runs:
           ~/.cargo/bin
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
+          ~/.cache/ubrn
           .tools
         key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
         restore-keys: |
@@ -91,6 +93,7 @@ runs:
           ~/.cargo/bin
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
+          ~/.cache/ubrn
           .tools
         key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
         restore-keys: |

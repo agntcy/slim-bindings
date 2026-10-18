@@ -1,0 +1,70 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+version: "3"
+
+# uniffi-bindgen-react-native ships as source. Its bin/cli.cjs runs `cargo run` on every call, and
+# compiles the CLI (1-3 minutes) whenever the package has no target/ directory, which a fresh
+# `npm install` never has. The package's whole target/ is about 1.5 GB, but the compiled CLI is a
+# single ~57 MB binary that produces the same output when run directly.
+#
+# These tasks keep that binary in a cache directory and point the launcher at it, so only the first
+# run compiles. The directory (~/.cache/ubrn) is part of the CI tools cache. Both tasks only act in
+# CI, so local installs are never rewritten.
+#
+# The binary records the directory it was compiled in, so entries are keyed by the package version
+# and the package path, and are only reused for the same install location.
+#
+# Variables (both required):
+#   PACKAGE_DIR  directory of the npm package (node_modules/uniffi-bindgen-react-native)
+#   LAUNCHER     the `ubrn` launcher to point at the binary (node_modules/.bin/ubrn or the global one)
+# Optional environment:
+#   UBRN_BINARY     use this prebuilt binary instead of the cache entry (e.g. built by another job)
+#   UBRN_CACHE_DIR  cache directory (default ~/.cache/ubrn)
+
+tasks:
+  restore:
+    desc: Point the ubrn launcher at a cached or prebuilt binary, if there is one
+    internal: true
+    silent: true
+    cmds:
+      - |
+        set -eu
+        [ -n "${CI:-}" ] || exit 0
+        PKG="{{.PACKAGE_DIR}}"
+        LAUNCHER="{{.LAUNCHER}}"
+        if [ ! -d "$PKG" ]; then echo "ubrn: $PKG not found, nothing to restore"; exit 0; fi
+        if [ -n "${UBRN_BINARY:-}" ]; then
+          BIN="$UBRN_BINARY"
+        else
+          VERSION=$(node -p "require('$PKG/package.json').version")
+          HASH=$(printf '%s' "$PKG" | shasum | cut -c1-12)
+          BIN="${UBRN_CACHE_DIR:-$HOME/.cache/ubrn}/$(uname -sm | tr ' ' -)-$VERSION-$HASH/uniffi-bindgen-react-native"
+        fi
+        if [ ! -x "$BIN" ]; then
+          echo "ubrn: no prebuilt binary at $BIN, it will be compiled on first use"
+          exit 0
+        fi
+        # The launcher is a symlink into the package: replace it, not what it points to.
+        rm -f "$LAUNCHER"
+        printf '#!/usr/bin/env bash\nexec "%s" "$@"\n' "$BIN" > "$LAUNCHER"
+        chmod +x "$LAUNCHER"
+        echo "ubrn: using the prebuilt binary $BIN"
+
+  save:
+    desc: Keep the binary compiled by the first run in the cache directory
+    internal: true
+    silent: true
+    cmds:
+      - |
+        set -eu
+        [ -n "${CI:-}" ] || exit 0
+        PKG="{{.PACKAGE_DIR}}"
+        BUILT="$PKG/target/debug/uniffi-bindgen-react-native"
+        if [ ! -x "$BUILT" ]; then exit 0; fi
+        VERSION=$(node -p "require('$PKG/package.json').version")
+        HASH=$(printf '%s' "$PKG" | shasum | cut -c1-12)
+        DIR="${UBRN_CACHE_DIR:-$HOME/.cache/ubrn}/$(uname -sm | tr ' ' -)-$VERSION-$HASH"
+        if [ -x "$DIR/uniffi-bindgen-react-native" ]; then exit 0; fi
+        mkdir -p "$DIR"
+        cp "$BUILT" "$DIR/uniffi-bindgen-react-native"
+        echo "ubrn: saved the compiled binary to $DIR"
