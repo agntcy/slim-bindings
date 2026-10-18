@@ -12,6 +12,7 @@ includes:
     flatten: true
 
 env:
+  # Put the zig installed by tools:zig first so cargo-zigbuild and maturin --zig find it.
   PATH: "{{.TOOLS_INSTALL_DIR}}/zig:{{.PATH}}"
 
 vars:
