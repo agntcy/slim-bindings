@@ -58,18 +58,23 @@ jobs:
           which ubrn
           npm ls -g --depth=0 | head -5
 
-      - name: Run `task generate` while tracing file system calls
+      - name: Run `task generate` with a logging shim in front of ubrn
         working-directory: ./react-native
         run: |
-          echo "--- LIB_PATH as the Taskfile computes it"
-          task --dry generate TARGET=aarch64-apple-ios-sim 2>&1 | grep -E "LIB_PATH|ubrn generate|--library" | head -5 || true
-          sudo fs_usage -w -f pathname > /tmp/fsusage.log 2>&1 &
-          FS=$!
-          sleep 3
+          REAL="$(which ubrn)"
+          mkdir -p /tmp/shim
+          cat > /tmp/shim/ubrn <<SHIM
+          #!/usr/bin/env bash
+          echo "SHIM cwd=\$(pwd)" >&2
+          echo "SHIM args=\$*" >&2
+          for a in "\$@"; do
+            case "\$a" in
+              /*|../*) echo "SHIM path arg: \$a  exists=\$([ -e "\$a" ] && echo yes || echo NO)" >&2 ;;
+            esac
+          done
+          exec "$REAL" "\$@"
+          SHIM
+          chmod +x /tmp/shim/ubrn
           set +e
-          task generate TARGET=aarch64-apple-ios-sim
-          echo "task generate exit code: $?"
-          sleep 3
-          sudo kill $FS 2>/dev/null
-          echo "=== failed opens (ENOENT) by the bindgen process"
-          grep -E "\[  2\]" /tmp/fsusage.log | grep -E "uniffi-bindgen-rea" | grep -v -E "clang-format|prettier|/System/|/usr/lib" | tail -40 | cut -c1-300
+          PATH="/tmp/shim:$PATH" task generate TARGET=aarch64-apple-ios-sim 2>&1 | grep -E "SHIM|Error:|Generating|Using prebuilt" | cut -c1-300
+          echo "task generate exit code: ${PIPESTATUS[0]}"
