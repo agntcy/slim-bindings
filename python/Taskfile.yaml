@@ -98,15 +98,9 @@ tasks:
           --out dist
           --target {{.TARGET}}
           --frozen
+          --strip
           -i {{.INTERPRETERS}}
         )
-
-        # --strip makes rustc pass -C strip=symbols, which can drop the UNIFFI_META* symbols that
-        # maturin reads to generate slim_bindings.py / slim_rpc.py. The Linux wheels (zig builds)
-        # then shipped without them, so keep the library unstripped there.
-        if [[ "{{.TARGET_ABI}}" != "gnu" && "{{.TARGET_ABI}}" != "musl" ]]; then
-          MATURIN_ARGS+=(--strip)
-        fi
 
         if [[ "{{.TARGET_ABI}}" = "gnu" ]]; then
           MATURIN_ARGS+=(
@@ -135,6 +129,23 @@ tasks:
         # which is a silent extra full cargo build. `uv run` has no --no-install-project, so sync
         # the dependencies explicitly and run with --no-sync.
         uv sync --no-install-project --group building
+
+        # On Linux, maturin build does not write the UniFFI Python modules (slim_bindings.py and
+        # slim_rpc.py), unlike on macOS. Until the project stopped being installed through uv, that
+        # install generated them into the source tree as a side effect and maturin packaged them
+        # from there. Generate them explicitly from the prebuilt library instead.
+        if [[ "{{.TARGET_ABI}}" = "gnu" || "{{.TARGET_ABI}}" = "musl" ]]; then
+          BINDINGS_DIR="{{.TASKFILE_DIR}}/slim_bindings/_slim_bindings"
+          LIB="{{.TASKFILE_DIR}}/../rust/target/{{.TARGET}}/{{.PROFILE | default "release"}}/libslim_bindings.so"
+          if [ ! -f "$LIB" ]; then
+            echo "error: prebuilt library $LIB not found" >&2
+            exit 1
+          fi
+          rm -rf "$BINDINGS_DIR"
+          (cd "{{.TASKFILE_DIR}}/../rust" && uv run --project "{{.TASKFILE_DIR}}" --no-sync \
+            uniffi-bindgen generate --library "$LIB" --language python --out-dir "$BINDINGS_DIR")
+          printf 'from .slim_bindings import *  # NOQA\nfrom .slim_rpc import *  # NOQA\n' > "$BINDINGS_DIR/__init__.py"
+        fi
 
         # Workaround for windows
         if [[ "{{.TARGET_OS}}" = "windows" ]]; then
