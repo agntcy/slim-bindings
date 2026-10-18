@@ -22,10 +22,6 @@ jobs:
   bindings-build-and-test:
     name: Bindings - build & test
     uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
-    with:
-      # TEMP: exercise the iOS libraries and the React Native packaging on this PR.
-      # Remove this input (back to the default, false) before merging.
-      build-ios: true
 
   success:
     name: Success
