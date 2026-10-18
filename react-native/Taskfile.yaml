@@ -24,7 +24,10 @@ vars:
     sh: |
       CURRENT_TARGET=$(rustc -vV | sed -n "s|host: ||p")
       TARGET="{{.TARGET}}"
-      PROFILE="{{.PROFILE | default "release"}}"
+      # Always release: the generate tasks build and check the library with PROFILE=release, and
+      # the global PROFILE seen here can be "debug" (leaking in from an included Taskfile), which
+      # pointed ubrn at target/<triple>/debug/ while only the release library exists.
+      PROFILE="release"
       if [ -z "$TARGET" ] || [ "$TARGET" = "$CURRENT_TARGET" ]; then
         # Native build - output is in target/PROFILE/
         echo "{{.TASKFILE_DIR}}/../rust/target/${PROFILE}"
