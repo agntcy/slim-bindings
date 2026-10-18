@@ -130,6 +130,24 @@ tasks:
         # the dependencies explicitly and run with --no-sync.
         uv sync --no-install-project --group building
 
+        # On Linux (zig) builds, maturin build runs uniffi-bindgen on its own artifact and gets no
+        # output (stripped or not), so slim_bindings.py and slim_rpc.py are missing from the wheel.
+        # maturin packages whatever it finds in <target-dir>/maturin/uniffi/slim_bindings._slim_bindings,
+        # and until the project stopped being installed through uv, that install populated this
+        # directory as a side effect. Generate the modules there explicitly from the prebuilt
+        # library, which uniffi-bindgen reads fine.
+        if [[ "{{.TARGET_ABI}}" = "gnu" || "{{.TARGET_ABI}}" = "musl" ]]; then
+          BINDINGS_DIR="{{.TASKFILE_DIR}}/../rust/target/wheels-zig/maturin/uniffi/slim_bindings._slim_bindings"
+          LIB="{{.TASKFILE_DIR}}/../rust/target/{{.TARGET}}/{{.PROFILE | default "release"}}/libslim_bindings.so"
+          if [ ! -f "$LIB" ]; then
+            echo "error: prebuilt library $LIB not found" >&2
+            exit 1
+          fi
+          rm -rf "$BINDINGS_DIR"
+          (cd "{{.TASKFILE_DIR}}/../rust" && uv run --project "{{.TASKFILE_DIR}}" --no-sync \
+            uniffi-bindgen generate --library "$LIB" --language python --out-dir "$BINDINGS_DIR")
+        fi
+
         # Workaround for windows
         if [[ "{{.TARGET_OS}}" = "windows" ]]; then
           uv run --no-sync maturin develop --uv {{.RELEASE}}
@@ -146,6 +164,20 @@ tasks:
           --no-sync                         \
           maturin build                     \
           ${MATURIN_ARGS[@]}
+
+        # Fail the build if a wheel is missing the generated UniFFI modules.
+        uv run --no-sync python - dist/slim_bindings-*.whl <<'PY'
+        import sys, zipfile
+
+        missing = []
+        for wheel in sys.argv[1:]:
+            names = zipfile.ZipFile(wheel).namelist()
+            for module in ("slim_bindings.py", "slim_rpc.py"):
+                if f"slim_bindings/_slim_bindings/{module}" not in names:
+                    missing.append(f"{wheel}: {module}")
+        if missing:
+            sys.exit("error: generated modules missing from wheels:\n" + "\n".join(missing))
+        PY
 
   python:bindings:test:wheel:
     desc: "Test wheel installation across Python versions 3.10-3.14"
@@ -224,7 +256,7 @@ tasks:
 
           if uv venv "$VENV_DIR" --python "${py_version}" 2>&1; then
             if uv pip install --python "$VENV_DIR" "$WHEEL_FILE" 2>&1; then
-              if uv run --python "$VENV_DIR" python -c "import slim_bindings; print('  Module imported successfully')" 2>&1; then
+              if uv run --python "$VENV_DIR" python -c "import slim_bindings; slim_bindings.initialize_with_defaults(); print('  Module imported successfully')" 2>&1; then
                 echo "  Python ${py_version}: Installation and import successful"
               else
                 echo "  Python ${py_version}: Import failed"
