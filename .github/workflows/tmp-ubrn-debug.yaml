@@ -58,23 +58,18 @@ jobs:
           which ubrn
           npm ls -g --depth=0 | head -5
 
-      - name: Run ubrn generate while tracing file system calls
+      - name: Run `task generate` while tracing file system calls
         working-directory: ./react-native
         run: |
-          LIB="$GITHUB_WORKSPACE/rust/target/aarch64-apple-ios-sim/release/libslim_bindings.a"
-          mkdir -p generated/typescript generated/cpp
-          cd ../rust
-          echo "cwd=$(pwd)"
+          echo "--- LIB_PATH as the Taskfile computes it"
+          task --dry generate TARGET=aarch64-apple-ios-sim 2>&1 | grep -E "LIB_PATH|ubrn generate|--library" | head -5 || true
           sudo fs_usage -w -f pathname > /tmp/fsusage.log 2>&1 &
           FS=$!
           sleep 3
           set +e
-          ubrn generate jsi bindings \
-            --ts-dir ../react-native/generated/typescript \
-            --cpp-dir ../react-native/generated/cpp \
-            --library "$LIB"
-          echo "ubrn exit code: $?"
+          task generate TARGET=aarch64-apple-ios-sim
+          echo "task generate exit code: $?"
           sleep 3
           sudo kill $FS 2>/dev/null
-          echo "=== failed opens (ENOENT) by ubrn / uniffi processes"
-          grep -E "\[  2\]" /tmp/fsusage.log | grep -i -E "ubrn|uniffi|bindgen" | grep -v "\.dylib\|/System/\|/usr/lib" | tail -40 | cut -c1-260
+          echo "=== failed opens (ENOENT) by the bindgen process"
+          grep -E "\[  2\]" /tmp/fsusage.log | grep -E "uniffi-bindgen-rea" | grep -v -E "clang-format|prettier|/System/|/usr/lib" | tail -40 | cut -c1-300
