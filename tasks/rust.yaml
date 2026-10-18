@@ -265,6 +265,28 @@ tasks:
           echo "🦀 macOS: MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
         fi
 
+        # iOS: aws-lc-sys needs the SDK of the target (device or simulator) for bindgen and a
+        # linker wrapper that fixes the minimum OS version. Set it here so every caller (CI matrix
+        # legs and local runs) builds the same way; it is set after the task dependencies, so it
+        # does not leak into the cargo-binstall / cargo-zigbuild installs.
+        if [[ "$TARGET_OS" == "ios" ]]; then
+          export IPHONEOS_DEPLOYMENT_TARGET="${IPHONEOS_DEPLOYMENT_TARGET:-13.4}"
+          if [[ "$TARGET_ABI" == "sim" ]]; then
+            IOS_SDK=iphonesimulator
+            IOS_CLANG_TARGET="arm64-apple-ios15.0-simulator"
+            IOS_LINKER_VAR=CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER
+          else
+            IOS_SDK=iphoneos
+            IOS_CLANG_TARGET="arm64-apple-ios15.0"
+            IOS_LINKER_VAR=CARGO_TARGET_AARCH64_APPLE_IOS_LINKER
+          fi
+          IOS_LINKER="{{.REPO_ROOT}}/rust/.cargo/clang-ios-linker-wrapper.sh"
+          chmod +x "$IOS_LINKER"
+          export "$IOS_LINKER_VAR=$IOS_LINKER"
+          export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $(xcrun --sdk "$IOS_SDK" --show-sdk-path) -target $IOS_CLANG_TARGET"
+          echo "🦀 iOS: $IOS_SDK SDK, IPHONEOS_DEPLOYMENT_TARGET=$IPHONEOS_DEPLOYMENT_TARGET"
+        fi
+
         ARGS=()
 
         # Use zigbuild for Linux or gnu targets, cargo build for others

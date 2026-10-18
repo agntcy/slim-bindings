@@ -87,7 +87,8 @@ tasks:
   generate:
     desc: Generate React Native JSI bindings
     deps:
-      - task: adapter:bindings:build:all
+      # In CI the iOS library comes from the build job; locally this builds it.
+      - task: adapter:bindings:ensure
         vars:
           PROFILE: release
       - task: install-uniffi-bindgen-react-native
@@ -130,7 +131,8 @@ tasks:
     desc: Generate React Native JSI bindings from compiled library
     dir: "{{.TASKFILE_DIR}}"
     deps:
-      - task: adapter:bindings:build:all
+      # In CI the iOS library comes from the build job; locally this builds it.
+      - task: adapter:bindings:ensure
         vars:
           PROFILE: release
       - task: install-uniffi-bindgen-react-native

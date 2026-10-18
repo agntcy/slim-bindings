@@ -92,6 +92,8 @@ tasks:
         set -eu
         TARGET="{{.TARGET}}"
         case "$TARGET" in
+          # iOS only ships the static library (the XCFramework is built from it).
+          *-apple-ios*) lib="libslim_bindings.a" ;;
           *-apple-*) lib="libslim_bindings.dylib" ;;
           *-windows-*) lib="slim_bindings.dll" ;;
           *) lib="libslim_bindings.so" ;;
