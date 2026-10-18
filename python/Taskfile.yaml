@@ -98,9 +98,15 @@ tasks:
           --out dist
           --target {{.TARGET}}
           --frozen
-          --strip
           -i {{.INTERPRETERS}}
         )
+
+        # --strip makes rustc pass -C strip=symbols, which can drop the UNIFFI_META* symbols that
+        # maturin reads to generate slim_bindings.py / slim_rpc.py. The Linux wheels (zig builds)
+        # then shipped without them, so keep the library unstripped there.
+        if [[ "{{.TARGET_ABI}}" != "gnu" && "{{.TARGET_ABI}}" != "musl" ]]; then
+          MATURIN_ARGS+=(--strip)
+        fi
 
         if [[ "{{.TARGET_ABI}}" = "gnu" ]]; then
           MATURIN_ARGS+=(
@@ -146,6 +152,20 @@ tasks:
           --no-sync                         \
           maturin build                     \
           ${MATURIN_ARGS[@]}
+
+        # Fail the build if a wheel is missing the generated UniFFI modules.
+        uv run --no-sync python - dist/slim_bindings-*.whl <<'PY'
+        import sys, zipfile
+
+        missing = []
+        for wheel in sys.argv[1:]:
+            names = zipfile.ZipFile(wheel).namelist()
+            for module in ("slim_bindings.py", "slim_rpc.py"):
+                if f"slim_bindings/_slim_bindings/{module}" not in names:
+                    missing.append(f"{wheel}: {module}")
+        if missing:
+            sys.exit("error: generated modules missing from wheels:\n" + "\n".join(missing))
+        PY
 
   python:bindings:test:wheel:
     desc: "Test wheel installation across Python versions 3.10-3.14"
@@ -224,7 +244,7 @@ tasks:
 
           if uv venv "$VENV_DIR" --python "${py_version}" 2>&1; then
             if uv pip install --python "$VENV_DIR" "$WHEEL_FILE" 2>&1; then
-              if uv run --python "$VENV_DIR" python -c "import slim_bindings; print('  Module imported successfully')" 2>&1; then
+              if uv run --python "$VENV_DIR" python -c "import slim_bindings; slim_bindings.initialize_with_defaults(); print('  Module imported successfully')" 2>&1; then
                 echo "  Python ${py_version}: Installation and import successful"
               else
                 echo "  Python ${py_version}: Import failed"
