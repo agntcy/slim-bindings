@@ -1,0 +1,80 @@
+# TEMP: debug the React Native `ubrn generate` step. Delete before merging.
+name: tmp-ubrn-debug
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/tmp-ubrn-debug.yaml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  debug:
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          workspace: ./rust
+          cache-enabled: false
+
+      - name: Setup Task
+        uses: ./.github/actions/setup-task
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Download the iOS simulator library built by an earlier run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rn-ios-aarch64-apple-ios-sim
+          path: ${{ github.workspace }}/rn-ios
+          run-id: 39141159197
+          github-token: ${{ github.token }}
+
+      - name: Restore the library
+        run: |
+          mkdir -p rust/target/aarch64-apple-ios-sim/release
+          cp rn-ios/libslim_bindings.a rust/target/aarch64-apple-ios-sim/release/
+          ls -la rust/target/aarch64-apple-ios-sim/release
+
+      - name: Install ubrn
+        working-directory: ./react-native
+        run: |
+          task install-uniffi-bindgen-react-native
+          which ubrn
+          npm ls -g --depth=0 | head -5
+
+      - name: Run ubrn generate while tracing file system calls
+        working-directory: ./react-native
+        run: |
+          LIB="$GITHUB_WORKSPACE/rust/target/aarch64-apple-ios-sim/release/libslim_bindings.a"
+          mkdir -p generated/typescript generated/cpp
+          cd ../rust
+          echo "cwd=$(pwd)"
+          sudo fs_usage -w -f pathname > /tmp/fsusage.log 2>&1 &
+          FS=$!
+          sleep 3
+          set +e
+          ubrn generate jsi bindings \
+            --ts-dir ../react-native/generated/typescript \
+            --cpp-dir ../react-native/generated/cpp \
+            --library "$LIB"
+          echo "ubrn exit code: $?"
+          sleep 3
+          sudo kill $FS 2>/dev/null
+          echo "=== failed opens (ENOENT) by ubrn / uniffi processes"
+          grep -E "\[  2\]" /tmp/fsusage.log | grep -i -E "ubrn|uniffi|bindgen" | grep -v "\.dylib\|/System/\|/usr/lib" | tail -40 | cut -c1-260
