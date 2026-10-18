@@ -41,14 +41,9 @@ on:
         required: false
         type: string
         default: v0.7.1+v0.31.0
-      build-ios:
-        description: Build the iOS static libraries and package the React Native tarball (release tags)
-        required: false
-        type: boolean
-        default: false
     outputs:
       react-native-version:
-        description: Version set in the React Native package (empty unless build-ios is true)
+        description: Version set in the React Native package (empty on pull requests, where it is not packaged)
         value: ${{ jobs.react-native-package.outputs.version }}
 env:
   LIBRARY_NAME: slim_bindings
@@ -64,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      matrix-no-windows-gnu: ${{ steps.set-matrix.outputs.matrix-no-windows-gnu }}
+      matrix-python: ${{ steps.set-matrix.outputs.matrix-python }}
     steps:
       - name: Generate matrix
         id: set-matrix
@@ -137,6 +132,18 @@ jobs:
                 "target": "aarch64-apple-darwin",
                 "python-platform": "macosx_11_0_arm64",
                 "exclude": ${{ github.event_name == 'pull_request' }}
+              },
+              {
+                "runner": "macos-15",
+                "os": "ios",
+                "target": "aarch64-apple-ios",
+                "exclude": ${{ github.event_name == 'pull_request' }}
+              },
+              {
+                "runner": "macos-15",
+                "os": "ios",
+                "target": "aarch64-apple-ios-sim",
+                "exclude": ${{ github.event_name == 'pull_request' }}
               }
             ],
             "exclude": [
@@ -153,9 +160,9 @@ jobs:
           # Output full matrix for build job
           echo "matrix=$(echo "$MATRIX" | jq -c .)" >> "$GITHUB_OUTPUT"
 
-          # Create filtered matrix (exclude windows-gnu for Python tests)
-          MATRIX_NO_WIN_GNU=$(echo "$MATRIX" | jq -c '{platform: [.platform[] | select(.target != "x86_64-pc-windows-gnu")], exclude: .exclude}')
-          echo "matrix-no-windows-gnu=$(echo "$MATRIX_NO_WIN_GNU" | jq -c .)" >> "$GITHUB_OUTPUT"
+          # Create filtered matrix for the Python tests: no windows-gnu, and no iOS (no wheels there)
+          MATRIX_PYTHON=$(echo "$MATRIX" | jq -c '{platform: [.platform[] | select(.target != "x86_64-pc-windows-gnu" and .os != "ios")], exclude: .exclude}')
+          echo "matrix-python=$(echo "$MATRIX_PYTHON" | jq -c .)" >> "$GITHUB_OUTPUT"
 
   build-libraries:
     needs: generate-matrix
@@ -183,8 +190,17 @@ jobs:
           # x86_64-pc-windows-gnu is consumed by nothing on main: Python skips it, .NET excludes it
           # and it ships no cdylib package. Only the Go release (tags) uses it, which can build it
           # cold. Do not spend part of the 10 GB cache limit on it.
-          cache-enabled: ${{ inputs.rust-cache && !contains(matrix.platform.target, 'windows-gnu') }}
+          # iOS libraries are only consumed by the React Native packaging, in the same run, and are
+          # large: do not spend cache budget on them either.
+          cache-enabled: ${{ inputs.rust-cache && !contains(matrix.platform.target, 'windows-gnu') && matrix.platform.os != 'ios' }}
           cache-key: ${{ matrix.platform.target }}
+      - name: Install cargo-binstall (prebuilt binary)
+        if: matrix.platform.os == 'ios'
+        # Install the prebuilt cargo-binstall so the build task's `install-cargo-binstall` step
+        # (status-guarded on `cargo binstall`) skips compiling it from source. The source build
+        # pulls in aws-lc-sys, whose build script panics in CcBuilder::memcmp_check on the macOS
+        # CI runner, which broke the iOS static-lib build.
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
       - name: Build library
         working-directory: ./rust
         env:
@@ -209,12 +225,14 @@ jobs:
       # produced only libslim_bindings.a for several releases without failing
       # anything here, because the listing above is satisfied by the archive.
       # windows-gnu is not asserted: it ships no cdylib-based package today.
+      # iOS ships only the static archive (the React Native xcframework).
       - name: Verify shared library was produced
         working-directory: ./rust
         env:
           PLATFORM_TARGET: ${{ matrix.platform.target }}
         run: |
           case "$PLATFORM_TARGET" in
+            *-apple-ios*) expected="libslim_bindings.a" ;;
             *-apple-darwin) expected="libslim_bindings.dylib" ;;
             *-linux-gnu|*-linux-musl) expected="libslim_bindings.so" ;;
             *-windows-msvc) expected="slim_bindings.dll" ;;
@@ -233,27 +251,70 @@ jobs:
           fi
           echo "✅ $release_dir/$expected ($(du -h "$release_dir/$expected" | cut -f1))"
       - name: Upload libs
+        if: matrix.platform.os != 'ios'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: bindings-${{ matrix.platform.target }}
           path: ./rust/target/${{ matrix.platform.target }}/release/*slim_bindings*
+      # Not named bindings-*: the language jobs and the release zip pick up every bindings-*
+      # artifact, and these static libraries are only for react-native-package.
+      - name: Upload iOS library
+        if: matrix.platform.os == 'ios'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: rn-ios-${{ matrix.platform.target }}
+          path: ./rust/target/${{ matrix.platform.target }}/release/libslim_bindings.a
+          if-no-files-found: error
+          retention-days: 1
       - name: Install uv
-        if: "!contains(matrix.platform.target, 'windows-gnu')"
+        if: "!contains(matrix.platform.target, 'windows-gnu') && matrix.platform.os != 'ios'"
         uses: ./.github/actions/setup-python
         with:
           uv-install: 'true'
       - name: Generate python wheels
-        if: "!contains(matrix.platform.target, 'windows-gnu')"
+        if: "!contains(matrix.platform.target, 'windows-gnu') && matrix.platform.os != 'ios'"
         working-directory: ./python
         env:
           PLATFORM_TARGET: ${{ matrix.platform.target }}
         run: task python:bindings:packaging TARGET="$PLATFORM_TARGET" PROFILE=release
       - name: Upload wheels
-        if: "!contains(matrix.platform.target, 'windows-gnu')"
+        if: "!contains(matrix.platform.target, 'windows-gnu') && matrix.platform.os != 'ios'"
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: wheels-${{ matrix.platform.target }}
           path: ./python/dist
+
+      # uniffi-bindgen-react-native compiles its CLI from source on first use (1-3 minutes). Do it
+      # here, in parallel with the other legs, so react-native-package does not wait for it: only
+      # the device leg, and the binary is passed on as an artifact. The version is the project's
+      # dependency, the same one the package job uses.
+      - name: Setup Node (ubrn build)
+        if: ${{ matrix.platform.target == 'aarch64-apple-ios' }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Compile uniffi-bindgen-react-native
+        if: ${{ matrix.platform.target == 'aarch64-apple-ios' }}
+        working-directory: .
+        run: |
+          VERSION=$(node -p "require('./react-native/package.json').dependencies['uniffi-bindgen-react-native']")
+          npm install -g "uniffi-bindgen-react-native@${VERSION}"
+          # The launcher runs `cargo run`, which compiles the CLI on first use.
+          ubrn --help > /dev/null
+          BIN="$(npm root -g)/uniffi-bindgen-react-native/target/debug/uniffi-bindgen-react-native"
+          test -x "$BIN"
+          mkdir -p "$RUNNER_TEMP/ubrn"
+          cp "$BIN" "$RUNNER_TEMP/ubrn/"
+          ls -lah "$RUNNER_TEMP/ubrn"
+      - name: Upload uniffi-bindgen-react-native
+        if: ${{ matrix.platform.target == 'aarch64-apple-ios' }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: rn-ubrn
+          path: ${{ runner.temp }}/ubrn/uniffi-bindgen-react-native
+          if-no-files-found: error
+          retention-days: 1
 
   go-bindings-build-and-test:
     runs-on: ${{ inputs.runner }}
@@ -362,7 +423,7 @@ jobs:
       - build-libraries
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix-no-windows-gnu) }}
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix-python) }}
     defaults:
       run:
         shell: bash
@@ -531,7 +592,7 @@ jobs:
           npm pack --dry-run 2>&1 | grep -q index_bg.wasm
 
       - name: Upload browser/WASM bindings
-        if: ${{ inputs.build-ios }}
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: react-native-web
@@ -539,105 +600,14 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # ==========================================================================
-  # iOS static libraries for the React Native package. Built in parallel with the
-  # rest of the matrix and packaged by react-native-package, instead of building
-  # everything in one serial macOS job. Only needed for releases (build-ios).
-  # ==========================================================================
-  build-ios-libraries:
-    if: ${{ inputs.build-ios }}
-    name: "iOS ${{ matrix.target }}"
-    runs-on: macos-15
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./rust
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - aarch64-apple-ios
-          - aarch64-apple-ios-sim
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          workspace: ./rust
-          # Release-only job: tags do not save caches and nothing else restores these entries.
-          cache-enabled: false
-      - name: Install cargo-binstall (prebuilt binary)
-        # Install the prebuilt cargo-binstall so the build task's `install-cargo-binstall` step
-        # (status-guarded on `cargo binstall`) skips compiling it from source. The source build
-        # pulls in aws-lc-sys, whose build script panics in CcBuilder::memcmp_check on the macOS
-        # CI runner, which broke the iOS static-lib build.
-        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-      - name: Build library
-        env:
-          PLATFORM_TARGET: ${{ matrix.target }}
-        run: task bindings:build:all TARGET="$PLATFORM_TARGET" PROFILE=release
-      - name: Verify static library was produced
-        env:
-          PLATFORM_TARGET: ${{ matrix.target }}
-        run: |
-          lib="target/$PLATFORM_TARGET/release/libslim_bindings.a"
-          if [ ! -f "$lib" ]; then
-            echo "::error::$lib was not produced for $PLATFORM_TARGET."
-            ls -lah "target/$PLATFORM_TARGET/release" | grep slim_bindings || true
-            exit 1
-          fi
-          echo "✅ $lib ($(du -h "$lib" | cut -f1))"
-      - name: Upload iOS library
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: rn-ios-${{ matrix.target }}
-          path: ./rust/target/${{ matrix.target }}/release/libslim_bindings.a
-          if-no-files-found: error
-          retention-days: 1
-
-      # uniffi-bindgen-react-native compiles its CLI from source on first use (1-3 minutes). Do it
-      # here, in parallel with the other legs, so react-native-package does not wait for it: only
-      # the device leg (it finishes before the simulator one), and the binary is passed on as an
-      # artifact. The version is the project's devDependency, the same one the package job installs.
-      - name: Setup Node (ubrn build)
-        if: ${{ matrix.target == 'aarch64-apple-ios' }}
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: '24'
-          package-manager-cache: false
-      - name: Compile uniffi-bindgen-react-native
-        if: ${{ matrix.target == 'aarch64-apple-ios' }}
-        working-directory: .
-        run: |
-          VERSION=$(node -p "require('./react-native/package.json').dependencies['uniffi-bindgen-react-native']")
-          npm install -g "uniffi-bindgen-react-native@${VERSION}"
-          # The launcher runs `cargo run`, which compiles the CLI on first use.
-          ubrn --help > /dev/null
-          BIN="$(npm root -g)/uniffi-bindgen-react-native/target/debug/uniffi-bindgen-react-native"
-          test -x "$BIN"
-          mkdir -p "$RUNNER_TEMP/ubrn"
-          cp "$BIN" "$RUNNER_TEMP/ubrn/"
-          ls -lah "$RUNNER_TEMP/ubrn"
-      - name: Upload uniffi-bindgen-react-native
-        if: ${{ matrix.target == 'aarch64-apple-ios' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: rn-ubrn
-          path: ${{ runner.temp }}/ubrn/uniffi-bindgen-react-native
-          if-no-files-found: error
-          retention-days: 1
-
-  # Packages the React Native tarball from the iOS libraries and the browser/WASM
-  # bindings built above. Runs on macOS only for xcodebuild (XCFramework); nothing
-  # is compiled here.
+  # Packages the React Native tarball from the iOS libraries (built in the platform matrix) and
+  # the browser/WASM bindings. Runs on macOS only for xcodebuild (XCFramework); nothing is
+  # compiled here. The iOS legs are skipped on pull requests, so this is too.
   react-native-package:
-    if: ${{ inputs.build-ios }}
+    if: ${{ github.event_name != 'pull_request' }}
     name: Package React Native
     needs:
-      - build-ios-libraries
+      - build-libraries
       - react-native-wasm-build
     runs-on: macos-15
     outputs:

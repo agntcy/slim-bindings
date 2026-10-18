@@ -22,9 +22,6 @@ jobs:
   bindings-build-and-test:
     name: Bindings - build & test
     uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
-    with:
-      # Same rule as the other slow targets: skipped on pull requests, built on main and in the merge queue.
-      build-ios: ${{ github.event_name != 'pull_request' }}
 
   success:
     name: Success

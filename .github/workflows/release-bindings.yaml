@@ -31,8 +31,6 @@ jobs:
     uses: ./.github/workflows/reusable-bindings-build-and-test.yaml
     with:
       tag-name: ${{ github.ref_name }}
-      # Also builds the iOS libraries in parallel and packs the React Native tarball.
-      build-ios: true
 
   # ==========================================================================
   # Job 2: Create GitHub release with library artifacts (for test tags)
