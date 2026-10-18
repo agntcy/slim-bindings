@@ -612,7 +612,7 @@ jobs:
         if: ${{ matrix.target == 'aarch64-apple-ios' }}
         working-directory: .
         run: |
-          VERSION=$(node -p "require('./react-native/package.json').devDependencies['uniffi-bindgen-react-native']")
+          VERSION=$(node -p "require('./react-native/package.json').dependencies['uniffi-bindgen-react-native']")
           npm install -g "uniffi-bindgen-react-native@${VERSION}"
           # The launcher runs `cargo run`, which compiles the CLI on first use.
           ubrn --help > /dev/null

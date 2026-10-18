@@ -70,7 +70,7 @@ tasks:
     cmds:
       - echo "📦 Installing uniffi-bindgen-react-native..."
       # Same version as the project's devDependency, not whatever is latest.
-      - npm install -g "uniffi-bindgen-react-native@$(node -p "require('./package.json').devDependencies['uniffi-bindgen-react-native']")"
+      - npm install -g "uniffi-bindgen-react-native@$(node -p "require('./package.json').dependencies['uniffi-bindgen-react-native']")"
     silent: true
 
   install-wasm-bindgen:
