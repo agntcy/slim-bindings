@@ -739,7 +739,7 @@ jobs:
           if [[ "$BINDINGS_VERSION" == *-* ]]; then NPM_TAG="${BINDINGS_VERSION#*-}"; NPM_TAG="${NPM_TAG%%.*}"; NPM_TAG="${NPM_TAG:-next}"; else NPM_TAG="latest"; fi
           echo "Publishing with dist-tag: $NPM_TAG"
           shopt -s nullglob
-          packages=(rn-package/*.tgz)
+          packages=(./rn-package/*.tgz)
           if [[ ${#packages[@]} -ne 1 ]]; then
             echo "::error::Expected one React Native package, found ${#packages[@]}"
             exit 1
