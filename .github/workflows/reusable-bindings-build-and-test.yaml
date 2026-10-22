@@ -338,12 +338,25 @@ jobs:
         run: |
           VERSION=$(node -p "require('./react-native/package.json').dependencies['uniffi-bindgen-react-native']")
           npm install -g "uniffi-bindgen-react-native@${VERSION}"
-          # The launcher runs `cargo run`, which compiles the CLI on first use.
-          ubrn --help > /dev/null
-          BIN="$(npm root -g)/uniffi-bindgen-react-native/target/debug/uniffi-bindgen-react-native"
-          test -x "$BIN"
+          # Same cache entry layout as tasks/ubrn.yaml (~/.cache/ubrn, part of the tools cache set
+          # up by setup-rust): keyed by package version and install path, which is stable on the
+          # runner image.
+          PKG="$(npm root -g)/uniffi-bindgen-react-native"
+          HASH=$(printf '%s' "$PKG" | shasum | cut -c1-12)
+          CACHED="$HOME/.cache/ubrn/$(uname -sm | tr ' ' -)-$(node -p "require('$PKG/package.json').version")-$HASH/uniffi-bindgen-react-native"
           mkdir -p "$RUNNER_TEMP/ubrn"
-          cp "$BIN" "$RUNNER_TEMP/ubrn/"
+          if [ -x "$CACHED" ]; then
+            echo "Using the cached binary $CACHED"
+            cp "$CACHED" "$RUNNER_TEMP/ubrn/"
+          else
+            # The launcher runs `cargo run`, which compiles the CLI on first use.
+            ubrn --help > /dev/null
+            BIN="$PKG/target/debug/uniffi-bindgen-react-native"
+            test -x "$BIN"
+            cp "$BIN" "$RUNNER_TEMP/ubrn/"
+            mkdir -p "$(dirname "$CACHED")"
+            cp "$BIN" "$CACHED"
+          fi
           ls -lah "$RUNNER_TEMP/ubrn"
       - name: Upload uniffi-bindgen-react-native
         if: ${{ matrix.platform.target == 'aarch64-apple-ios' }}
