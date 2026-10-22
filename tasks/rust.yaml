@@ -234,9 +234,12 @@ tasks:
     desc: "Cross-compile the project using cargo-zigbuild"
     deps:
       - task: install-target
+      # Pinned: a new cargo-zigbuild release changes how cargo builds, which makes every artifact
+      # in the cached rust/target stale. When bumping it, also bump the cache-shared-key suffix in
+      # .github/actions/setup-rust/action.yaml.
       - task: install-cargo-components
         vars:
-          COMPONENTS: "cargo-zigbuild"
+          COMPONENTS: "cargo-zigbuild@=0.23.4"
       - task: tools:zig
       - task: tools:dlltool-wrapper
     cmds:
