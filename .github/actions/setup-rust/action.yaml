@@ -58,19 +58,10 @@ runs:
     # (buf, protoc, zig, minisign). Keyed on the files that pin their versions, so a
     # version bump refreshes it independently of the Rust cache. A miss restores the newest older
     # entry and the install tasks (status checks) only reinstall what changed. The runner image
-    # version is part of the key because ~/.cargo/bin also holds the rustup proxies, which must
-    # match the image. The job id and cache-key are part of the key because an entry is saved once:
+    # version is not part of the key: GitHub rotates images between runs, which made this cache
+    # miss on most of them. The job id and cache-key are part of the key because an entry is saved once:
     # without them the first job to finish (e.g. a lint job with no tools installed) would own the
     # entry and every other job would restore it empty. Every ref restores, only pushes to main save.
-    - name: Compute tools cache key
-      id: tools-key
-      if: inputs.cache-enabled == 'true'
-      shell: bash
-      run: |
-        # ImageVersion is set by GitHub-hosted runners; read it from the process env, which the
-        # `env` expression context does not expose.
-        echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
-
     - name: Restore tools cache
       if: inputs.cache-enabled == 'true' && github.ref != 'refs/heads/main'
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
@@ -81,9 +72,9 @@ runs:
           ~/.cargo/.crates2.json
           ~/.cache/ubrn
           .tools
-        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
+        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.cache-key }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
         restore-keys: |
-          tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-
+          tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.cache-key }}-
 
     - name: Restore and save tools cache
       if: inputs.cache-enabled == 'true' && github.ref == 'refs/heads/main'
@@ -95,9 +86,9 @@ runs:
           ~/.cargo/.crates2.json
           ~/.cache/ubrn
           .tools
-        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
+        key: tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.cache-key }}-${{ hashFiles('**/Taskfile.yaml', 'tasks/*.yaml', 'slimrpc-compiler/**') }}
         restore-keys: |
-          tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-
+          tools-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.cache-key }}-
 
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task

@@ -194,7 +194,9 @@ jobs:
         with:
           workspace: ./rust
           cache-enabled: ${{ inputs.rust-cache }}
-          cache-key: ${{ matrix.platform.target }}
+          # The wasm leg's target layout changed (rust/target/web is gone): -v2 makes it miss the old
+          # entry, which is never updated while its key is unchanged.
+          cache-key: ${{ matrix.platform.os == 'wasm' && format('{0}-v2', matrix.platform.target) || matrix.platform.target }}
       - name: Install cargo-binstall (prebuilt binary)
         if: matrix.platform.os == 'ios'
         # Install the prebuilt cargo-binstall so the build task's `install-cargo-binstall` step
