@@ -35,11 +35,16 @@ tasks:
 
   bindings:install-cargo-components:
     desc: Install required cargo components
+    vars:
+      # Pinned: a new cargo-zigbuild release changes how cargo builds, which makes every artifact
+      # in the cached rust/target stale. When bumping it, also bump the cache-shared-key suffix in
+      # .github/actions/setup-rust/action.yaml.
+      ZIGBUILD_VERSION: "0.23.4"
     status:
-      - which cargo-zigbuild
+      - cargo-zigbuild --version | grep -q "{{.ZIGBUILD_VERSION}}"
     cmds:
       - echo "🦀 Installing required cargo components..."
-      - cargo install cargo-zigbuild
+      - cargo install cargo-zigbuild --version "{{.ZIGBUILD_VERSION}}" --locked
 
   bindings:build:all:
     desc: Build the Rust library with UniFFI
