@@ -10,6 +10,9 @@ includes:
   rust:
     taskfile: ../tasks/rust.yaml
     internal: true
+  ubrn:
+    taskfile: ../tasks/ubrn.yaml
+    internal: true
 
 vars:
   # The Rust UniFFI bindings crate - in ../rust (sibling to react-native/)
@@ -24,7 +27,10 @@ vars:
     sh: |
       CURRENT_TARGET=$(rustc -vV | sed -n "s|host: ||p")
       TARGET="{{.TARGET}}"
-      PROFILE="{{.PROFILE | default "release"}}"
+      # Always release: the generate tasks build and check the library with PROFILE=release, and
+      # the global PROFILE seen here can be "debug" (leaking in from an included Taskfile), which
+      # pointed ubrn at target/<triple>/debug/ while only the release library exists.
+      PROFILE="release"
       if [ -z "$TARGET" ] || [ "$TARGET" = "$CURRENT_TARGET" ]; then
         # Native build - output is in target/PROFILE/
         echo "{{.TASKFILE_DIR}}/../rust/target/${PROFILE}"
@@ -58,11 +64,13 @@ tasks:
 
   install-uniffi-bindgen-react-native:
     desc: Install uniffi-bindgen-react-native tool
+    dir: "{{.TASKFILE_DIR}}"
     status:
       - which ubrn
     cmds:
       - echo "📦 Installing uniffi-bindgen-react-native..."
-      - npm install -g uniffi-bindgen-react-native
+      # Same version as the project's devDependency, not whatever is latest.
+      - npm install -g "uniffi-bindgen-react-native@$(node -p "require('./package.json').dependencies['uniffi-bindgen-react-native']")"
     silent: true
 
   install-wasm-bindgen:
@@ -87,7 +95,8 @@ tasks:
   generate:
     desc: Generate React Native JSI bindings
     deps:
-      - task: adapter:bindings:build:all
+      # In CI the iOS library comes from the build job; locally this builds it.
+      - task: adapter:bindings:ensure
         vars:
           PROFILE: release
       - task: install-uniffi-bindgen-react-native
@@ -113,6 +122,10 @@ tasks:
       # path crate is stale by the mtime of its sources, and npm writes new mtimes on every install,
       # so it (and everything above it) would rebuild on every run. Pin the mtimes to a fixed old date.
       - find node_modules/uniffi-bindgen-react-native -type f -exec touch -t 202001010000 {} +
+      # CARGO_TARGET_DIR also applies to the cargo run that the ubrn launcher does to compile its own
+      # CLI, so that compile lands in rust/target/web too and is kept by the Rust cache. (The
+      # launcher still prints "Building the uniffi-bindgen-react-native command" because the
+      # package has no target/ of its own; the build is incremental.)
       - CARGO_TARGET_DIR="{{.TASKFILE_DIR}}/../rust/target/web" npx ubrn build web --config ubrn.config.yaml --release
       - test -f src/index.web.ts
       - test -d generated/web
@@ -130,11 +143,16 @@ tasks:
     desc: Generate React Native JSI bindings from compiled library
     dir: "{{.TASKFILE_DIR}}"
     deps:
-      - task: adapter:bindings:build:all
+      # In CI the iOS library comes from the build job; locally this builds it.
+      - task: adapter:bindings:ensure
         vars:
           PROFILE: release
       - task: install-uniffi-bindgen-react-native
     cmds:
+      - task: ubrn:restore
+        vars:
+          PACKAGE_DIR: '$(npm root -g)/uniffi-bindgen-react-native'
+          LAUNCHER: '$(command -v ubrn)'
       - echo "🔧 Generating React Native JSI bindings..."
       - mkdir -p generated/typescript generated/cpp
       - |
@@ -143,6 +161,9 @@ tasks:
           --cpp-dir ../react-native/generated/cpp \
           --library \
           '{{.LIB_PATH}}'
+      - task: ubrn:save
+        vars:
+          PACKAGE_DIR: '$(npm root -g)/uniffi-bindgen-react-native'
       - echo "🔧 Fixing generator bug (async public → public async)... {{.TASKFILE_DIR}}"
       - sed -i '' 's/async public/public async/g' {{.TASKFILE_DIR}}/generated/typescript/slim_bindings.ts
       - sed -i '' 's/async static/static async/g' {{.TASKFILE_DIR}}/generated/typescript/slim_bindings.ts

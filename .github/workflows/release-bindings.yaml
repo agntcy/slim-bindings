@@ -584,137 +584,17 @@ jobs:
           npm publish --access public --tag "$NPM_TAG"
 
   # ==========================================================================
-  # Job 10a: Build the React Native package
-  # Runs on mac to build the iOS static libs. It uses none of the matrix
-  # artifacts, so it starts with the platform builds instead of after them,
-  # and hands the packed tarball to the publish job.
-  # ==========================================================================
-  build-react-native:
-    name: Build React Native package
-    runs-on: macos-15
-    permissions:
-      contents: read
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Get bindings version
-        id: version
-        run: echo "version=$(bash .github/scripts/get-binding-version.sh)" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          workspace: ./rust
-
-      - name: Setup Task
-        uses: ./.github/actions/setup-task
-
-      - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: '24'
-          package-manager-cache: false
-
-      - name: Install cargo-binstall (prebuilt binary)
-        # Install the prebuilt cargo-binstall so the build task's
-        # `install-cargo-binstall` step (status-guarded on `cargo binstall`)
-        # skips compiling it from source. The source build pulls in aws-lc-sys,
-        # whose build script panics in CcBuilder::memcmp_check on the macOS CI
-        # runner, which broke the iOS static-lib build.
-        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
-      - name: Build iOS static libs (device + simulator)
-        id: build-ios
-        working-directory: ./react-native
-        env:
-          # Required for ___chkstk_darwin: aws-lc-sys and linker need iOS 13.4+
-          IPHONEOS_DEPLOYMENT_TARGET: "13.4"
-          # Force linker wrapper via absolute path (Task's TASKFILE_DIR can differ on CI)
-          CARGO_TARGET_AARCH64_APPLE_IOS_LINKER: "${{ github.workspace }}/rust/.cargo/clang-ios-linker-wrapper.sh"
-          CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER: "${{ github.workspace }}/rust/.cargo/clang-ios-linker-wrapper.sh"
-        run: |
-          chmod +x "${{ github.workspace }}/rust/.cargo/clang-ios-linker-wrapper.sh"
-          rm -f /tmp/linker-args.log
-          _sim_sdk="$(xcrun --sdk iphonesimulator --show-sdk-path)"
-          BINDGEN_EXTRA_CLANG_ARGS="-isysroot ${_sim_sdk} -target arm64-apple-ios15.0-simulator"
-          export BINDGEN_EXTRA_CLANG_ARGS
-          task adapter:bindings:build:all TARGET=aarch64-apple-ios-sim PROFILE=release
-          _ios_sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
-          BINDGEN_EXTRA_CLANG_ARGS="-isysroot ${_ios_sdk} -target arm64-apple-ios15.0"
-          export BINDGEN_EXTRA_CLANG_ARGS
-          task adapter:bindings:build:all TARGET=aarch64-apple-ios PROFILE=release
-
-      - name: Vendor iOS libs and create XCFramework
-        working-directory: ./react-native
-        run: |
-          task vendor:ios
-          task xcframework:ios
-
-      - name: Generate React Native bindings
-        working-directory: ./react-native
-        env:
-          CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER: "${{ github.workspace }}/rust/.cargo/clang-ios-linker-wrapper.sh"
-          IPHONEOS_DEPLOYMENT_TARGET: "13.4"
-        run: |
-          _sim_sdk="$(xcrun --sdk iphonesimulator --show-sdk-path)"
-          BINDGEN_EXTRA_CLANG_ARGS="-isysroot ${_sim_sdk} -target arm64-apple-ios15.0-simulator"
-          export BINDGEN_EXTRA_CLANG_ARGS
-          task generate TARGET=aarch64-apple-ios-sim
-
-      - name: Generate browser/WASM bindings
-        working-directory: ./react-native
-        run: |
-          rustup target add wasm32-unknown-unknown
-          task generate:web
-
-      - name: Verify WASM artifacts for npm publish
-        working-directory: ./react-native
-        run: |
-          test -f web.ts
-          test -f generated/web/wasm-bindgen/index_bg.wasm
-          test -s generated/web/wasm-bindgen/index_bg.wasm
-          test -f generated/web/wasm-bindgen/index.js
-          npm pack --dry-run 2>&1 | grep -q index_bg.wasm
-
-      - name: Set version in package.json
-        working-directory: ./react-native
-        env:
-          BINDINGS_VERSION: ${{ steps.version.outputs.version }}
-        run: npm pkg set version="${BINDINGS_VERSION}"
-
-      # package.json has no pack/publish lifecycle scripts, so this tarball is
-      # exactly what `npm publish` would upload from the directory.
-      - name: Pack React Native package
-        working-directory: ./react-native
-        run: |
-          mkdir -p ../rn-package
-          npm pack --pack-destination ../rn-package
-          ls -lah ../rn-package
-
-      - name: Upload React Native package
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: react-native-package
-          path: rn-package/*.tgz
-          if-no-files-found: error
-          retention-days: 7
-
-  # ==========================================================================
-  # Job 10b: Publish React Native bindings to npm
-  # Waits for the build and test matrix like the other publish jobs, then
-  # publishes the packed tarball via npm trusted publishing (OIDC).
+  # Job 10: Publish React Native bindings to npm
+  # The tarball is packed by the react-native-package job of the build and test
+  # workflow (iOS libraries and WASM bindings built in parallel there). This job
+  # waits for the whole workflow like the other publish jobs, then publishes the
+  # tarball via npm trusted publishing (OIDC).
   # ==========================================================================
   publish-react-native:
     name: Publish React Native to npm
     runs-on: ubuntu-latest
     needs:
       - build-and-test-bindings
-      - build-react-native
     permissions:
       contents: read
       id-token: write
@@ -734,7 +614,7 @@ jobs:
 
       - name: Publish to npm
         env:
-          BINDINGS_VERSION: ${{ needs.build-react-native.outputs.version }}
+          BINDINGS_VERSION: ${{ needs.build-and-test-bindings.outputs.react-native-version }}
         run: |
           if [[ "$BINDINGS_VERSION" == *-* ]]; then NPM_TAG="${BINDINGS_VERSION#*-}"; NPM_TAG="${NPM_TAG%%.*}"; NPM_TAG="${NPM_TAG:-next}"; else NPM_TAG="latest"; fi
           echo "Publishing with dist-tag: $NPM_TAG"

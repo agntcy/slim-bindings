@@ -10,6 +10,9 @@ includes:
   rust:
     taskfile: ../tasks/rust.yaml
     internal: true
+  ubrn:
+    taskfile: ../tasks/ubrn.yaml
+    internal: true
   tools:
     taskfile: ../tasks/tools.yaml
     internal: true
@@ -67,6 +70,10 @@ tasks:
       - task: install-uniffi-bindgen-react-native
     cmds:
       - echo "🔧 Generating Node.js bindings (napi)..."
+      - task: ubrn:restore
+        vars:
+          PACKAGE_DIR: "{{.TASKFILE_DIR}}/node_modules/uniffi-bindgen-react-native"
+          LAUNCHER: "{{.TASKFILE_DIR}}/node_modules/.bin/ubrn"
       - |
         # Compute library path with release profile.
         # DYLIB_EXT/DYLIB_PREFIX must be derived from TARGET (not host) so CI on Linux finds .dylib for darwin artifacts.
@@ -118,6 +125,9 @@ tasks:
           --library --lib-colocated \
           --ts-dir "${OUT_DIR}" \
           "${DYLIB_PATH}"
+      - task: ubrn:save
+        vars:
+          PACKAGE_DIR: "{{.TASKFILE_DIR}}/node_modules/uniffi-bindgen-react-native"
       - |
         # slimrpc is a re-exported second UniFFI namespace whose symbols live in the
         # single slim_bindings cdylib (uniffi_reexport_scaffolding!). ubrn emits
