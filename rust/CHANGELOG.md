@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.9](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.8...slim-bindings-v3.3.9) - 2026-10-22
+
+### Other
+
+- pin cargo-zigbuild to 0.23.4 ([#152](https://github.com/agntcy/slim-bindings/pull/152))
+- build the React Native iOS libraries in parallel and package them in a separate job ([#143](https://github.com/agntcy/slim-bindings/pull/143))
+
 ## [3.3.8](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.7...slim-bindings-v3.3.8) - 2026-10-21
 
 ### Fixed
