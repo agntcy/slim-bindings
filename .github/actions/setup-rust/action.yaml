@@ -51,7 +51,7 @@ runs:
         # Every ref restores (PRs, merge queue, releases); only pushes to main save. Caches saved
         # by main are readable from any ref, while a PR-scoped cache is never visible to main or
         # tags, so a PR cannot poison release builds.
-        cache-save-if: ${{ github.ref == 'refs/heads/main' }}
+        cache-save-if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}
 
     # Installed tools: cargo install'ed binaries (uniffi bindgens, cargo-zigbuild, slimrpc plugins),
     # the compiled uniffi-bindgen-react-native CLI (~/.cache/ubrn, see tasks/ubrn.yaml) and .tools
@@ -72,7 +72,7 @@ runs:
         echo "image=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
     - name: Restore tools cache
-      if: inputs.cache-enabled == 'true' && github.ref != 'refs/heads/main'
+      if: inputs.cache-enabled == 'true' && github.ref != 'refs/heads/main' && github.event_name != 'pull_request'
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
@@ -86,7 +86,7 @@ runs:
           tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.tools-key.outputs.image }}-${{ github.job }}-${{ inputs.cache-key }}-
 
     - name: Restore and save tools cache
-      if: inputs.cache-enabled == 'true' && github.ref == 'refs/heads/main'
+      if: inputs.cache-enabled == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: |
