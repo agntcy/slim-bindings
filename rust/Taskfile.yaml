@@ -33,14 +33,6 @@ tasks:
     cmds:
       - task -l
 
-  bindings:install-cargo-components:
-    desc: Install required cargo components
-    status:
-      - which cargo-zigbuild
-    cmds:
-      - echo "🦀 Installing required cargo components..."
-      - cargo install cargo-zigbuild
-
   bindings:build:all:
     desc: Build the Rust library with UniFFI
     dir: "{{.TASKFILE_DIR}}"
@@ -50,7 +42,6 @@ tasks:
     deps:
       - task: zig
       - task: dlltool-wrapper
-      - bindings:install-cargo-components
     silent: true
     cmds:
       - echo "🦀 Building Rust bindings library... {{.TARGET}}"
