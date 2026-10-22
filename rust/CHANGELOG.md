@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.8](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.7...slim-bindings-v3.3.8) - 2026-10-21
+
+### Fixed
+
+- *(ci)* pass React Native tarball to npm publish as a local path ([#149](https://github.com/agntcy/slim-bindings/pull/149))
+
+## [3.3.7](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.6...slim-bindings-v3.3.7) - 2026-10-20
+
+### Other
+
+- *(deps)* bump slim crates to 3.4.6 ([#145](https://github.com/agntcy/slim-bindings/pull/145))
+
 ## [3.3.6](https://github.com/agntcy/slim-bindings/compare/slim-bindings-v3.3.5...slim-bindings-v3.3.6) - 2026-10-18
 
 ### Other

@@ -187,12 +187,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           workspace: ./rust
-          # x86_64-pc-windows-gnu is consumed by nothing on main: Python skips it, .NET excludes it
-          # and it ships no cdylib package. Only the Go release (tags) uses it, which can build it
-          # cold. Do not spend part of the 10 GB cache limit on it.
-          # iOS libraries are only consumed by the React Native packaging, in the same run, and are
-          # large: do not spend cache budget on them either.
-          cache-enabled: ${{ inputs.rust-cache && !contains(matrix.platform.target, 'windows-gnu') && matrix.platform.os != 'ios' }}
+          cache-enabled: ${{ inputs.rust-cache }}
           cache-key: ${{ matrix.platform.target }}
       - name: Install cargo-binstall (prebuilt binary)
         if: matrix.platform.os == 'ios'
