@@ -113,20 +113,26 @@ tasks:
       - install-wasm-bindgen
     cmds:
       - echo "🌐 Generating SLIM browser/WASM bindings..."
-      # Both cargo builds ubrn runs (the rust crate on the host, and the generated wasm crate for
-      # wasm32) get a target directory inside rust/target, which the CI Rust cache already covers;
-      # the generated crate's own react-native/wasm/target is outside of it and is rebuilt from
-      # scratch on every run (about 260 crates, the slim crates included).
+      # The compiled ubrn CLI is kept in ~/.cache/ubrn (tools cache), see tasks/ubrn.yaml. It is
+      # compiled here, outside CARGO_TARGET_DIR, so the binary ends up in the package's own target/
+      # where ubrn:save looks for it; on a cache hit the launcher is already pointed at it.
+      - task: ubrn:restore
+        vars:
+          PACKAGE_DIR: '{{.TASKFILE_DIR}}/node_modules/uniffi-bindgen-react-native'
+          LAUNCHER: '{{.TASKFILE_DIR}}/node_modules/.bin/ubrn'
+      - npx ubrn --help > /dev/null
+      - task: ubrn:save
+        vars:
+          PACKAGE_DIR: '{{.TASKFILE_DIR}}/node_modules/uniffi-bindgen-react-native'
+      # Both cargo builds ubrn runs (the rust crate for wasm32, and the generated wasm crate) use
+      # the standard rust/target layout, which the CI Rust cache covers; the generated crate's own
+      # react-native/wasm/target is outside of it and is rebuilt from scratch on every run.
       #
       # uniffi-runtime-javascript is a path dependency inside node_modules. Cargo decides whether a
       # path crate is stale by the mtime of its sources, and npm writes new mtimes on every install,
       # so it (and everything above it) would rebuild on every run. Pin the mtimes to a fixed old date.
       - find node_modules/uniffi-bindgen-react-native -type f -exec touch -t 202001010000 {} +
-      # CARGO_TARGET_DIR also applies to the cargo run that the ubrn launcher does to compile its own
-      # CLI, so that compile lands in rust/target/web too and is kept by the Rust cache. (The
-      # launcher still prints "Building the uniffi-bindgen-react-native command" because the
-      # package has no target/ of its own; the build is incremental.)
-      - CARGO_TARGET_DIR="{{.TASKFILE_DIR}}/../rust/target/web" npx ubrn build web --config ubrn.config.yaml --release
+      - CARGO_TARGET_DIR="{{.TASKFILE_DIR}}/../rust/target" npx ubrn build web --config ubrn.config.yaml --release
       - test -f src/index.web.ts
       - test -d generated/web
       - npm run typecheck:web
