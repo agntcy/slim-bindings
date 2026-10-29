@@ -9,6 +9,8 @@ type contextKey int
 const (
 	sessionContextKey contextKey = iota
 	metadataContextKey
+	peerSubjectContextKey
+	peerIssuerContextKey
 )
 
 // WithMetadata returns a new context with the given metadata attached
@@ -35,8 +37,57 @@ func SessionIdFromContext(ctx context.Context) (string, bool) {
 	return sessionId, ok
 }
 
+// WithPeerSubject returns a new context with the given peer subject attached
+func WithPeerSubject(ctx context.Context, subject string) context.Context {
+	return context.WithValue(ctx, peerSubjectContextKey, subject)
+}
+
+// PeerSubjectFromContext extracts the verified subject (`sub`) of the peer that sent the request
+// Returns the subject and true if found, or empty string and false if not found
+func PeerSubjectFromContext(ctx context.Context) (string, bool) {
+	subject, ok := ctx.Value(peerSubjectContextKey).(string)
+	return subject, ok
+}
+
+// WithPeerIssuer returns a new context with the given peer issuer attached
+func WithPeerIssuer(ctx context.Context, issuer string) context.Context {
+	return context.WithValue(ctx, peerIssuerContextKey, issuer)
+}
+
+// PeerIssuerFromContext extracts the verified issuer (`iss`) of the peer that sent the request
+// Returns the issuer and true if found, or empty string and false if not found
+func PeerIssuerFromContext(ctx context.Context) (string, bool) {
+	issuer, ok := ctx.Value(peerIssuerContextKey).(string)
+	return issuer, ok
+}
+
+// withRpcContextValues attaches the session ID, metadata, and peer identity from rpcContext to ctx
+func withRpcContextValues(ctx context.Context, rpcContext *Context) context.Context {
+	// Add session ID to context
+	sessionId := rpcContext.SessionId()
+	if sessionId != "" {
+		ctx = WithSessionId(ctx, sessionId)
+	}
+
+	// Add metadata to context
+	metadata := rpcContext.Metadata()
+	if len(metadata) > 0 {
+		ctx = WithMetadata(ctx, metadata)
+	}
+
+	// Add the verified peer identity to context
+	if subject := rpcContext.PeerSubject(); subject != nil {
+		ctx = WithPeerSubject(ctx, *subject)
+	}
+	if issuer := rpcContext.PeerIssuer(); issuer != nil {
+		ctx = WithPeerIssuer(ctx, *issuer)
+	}
+
+	return ctx
+}
+
 // ContextFromRpcContext creates a Go context.Context from a Context
-// It extracts the deadline, metadata, and session ID and applies them to the context
+// It extracts the deadline, metadata, session ID, and verified peer identity and applies them to the context
 func ContextFromRpcContext(rpcContext *Context) (context.Context, context.CancelFunc) {
 	ctx := context.Background()
 
@@ -50,19 +101,7 @@ func ContextFromRpcContext(rpcContext *Context) (context.Context, context.Cancel
 		cancel = func() {}
 	}
 
-	// Add session ID to context
-	sessionId := rpcContext.SessionId()
-	if sessionId != "" {
-		ctx = WithSessionId(ctx, sessionId)
-	}
-
-	// Add metadata to context
-	metadata := rpcContext.Metadata()
-	if len(metadata) > 0 {
-		ctx = WithMetadata(ctx, metadata)
-	}
-
-	return ctx, cancel
+	return withRpcContextValues(ctx, rpcContext), cancel
 }
 
 // ContextWithTimeout creates a Go context.Context with a timeout based on RemainingTime
@@ -80,17 +119,5 @@ func ContextWithTimeout(rpcContext *Context) (context.Context, context.CancelFun
 		cancel = func() {}
 	}
 
-	// Add session ID to context
-	sessionId := rpcContext.SessionId()
-	if sessionId != "" {
-		ctx = WithSessionId(ctx, sessionId)
-	}
-
-	// Add metadata to context
-	metadata := rpcContext.Metadata()
-	if len(metadata) > 0 {
-		ctx = WithMetadata(ctx, metadata)
-	}
-
-	return ctx, cancel
+	return withRpcContextValues(ctx, rpcContext), cancel
 }
