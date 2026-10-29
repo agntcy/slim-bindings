@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace Agntcy.Slim.SlimRpc;
 
 /// <summary>
-/// Context passed to slimrpc server handlers, providing metadata, deadline, and session information.
+/// Context passed to slimrpc server handlers, providing metadata, deadline, session, and verified peer identity information.
 /// </summary>
 public sealed class SlimRpcContext
 {
@@ -50,4 +50,17 @@ public sealed class SlimRpcContext
     /// Get the session ID.
     /// </summary>
     public string SessionId => _inner.SessionId();
+
+    /// <summary>
+    /// Get the verified subject (<c>sub</c>) of the peer that sent this request:
+    /// its MLS sender with MLS, otherwise the peer that set up the session.
+    /// Returns null when the peer identity is not known.
+    /// </summary>
+    public string? PeerSubject => _inner.PeerSubject();
+
+    /// <summary>
+    /// Get the verified issuer (<c>iss</c>) of the peer that sent this request.
+    /// Returns null when it is not known.
+    /// </summary>
+    public string? PeerIssuer => _inner.PeerIssuer();
 }

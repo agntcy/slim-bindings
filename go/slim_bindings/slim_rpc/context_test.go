@@ -65,3 +65,39 @@ func TestSessionIdFromContext_NotPresent(t *testing.T) {
 		t.Fatal("Expected session ID to not be present in context")
 	}
 }
+
+func TestWithPeerIdentity(t *testing.T) {
+	ctx := context.Background()
+	subject := "spiffe://example.org/ns/default/sa/client"
+	issuer := "https://issuer.example.org"
+
+	ctx = WithPeerSubject(ctx, subject)
+	ctx = WithPeerIssuer(ctx, issuer)
+
+	retrievedSubject, ok := PeerSubjectFromContext(ctx)
+	if !ok {
+		t.Fatal("Expected peer subject to be present in context")
+	}
+	if retrievedSubject != subject {
+		t.Errorf("Expected peer subject %s, got %s", subject, retrievedSubject)
+	}
+
+	retrievedIssuer, ok := PeerIssuerFromContext(ctx)
+	if !ok {
+		t.Fatal("Expected peer issuer to be present in context")
+	}
+	if retrievedIssuer != issuer {
+		t.Errorf("Expected peer issuer %s, got %s", issuer, retrievedIssuer)
+	}
+}
+
+func TestPeerIdentityFromContext_NotPresent(t *testing.T) {
+	ctx := context.Background()
+
+	if _, ok := PeerSubjectFromContext(ctx); ok {
+		t.Fatal("Expected peer subject to not be present in context")
+	}
+	if _, ok := PeerIssuerFromContext(ctx); ok {
+		t.Fatal("Expected peer issuer to not be present in context")
+	}
+}
