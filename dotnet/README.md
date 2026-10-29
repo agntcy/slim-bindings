@@ -132,7 +132,7 @@ covering TLS material, backoff, and every authentication mode (`basic`, `static_
 }
 ```
 
-The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+The schema matches `crates/config/src/schema/client-config.schema.json` in the
 [slim](https://github.com/agntcy/slim) repo.
 
 ## Examples
@@ -145,6 +145,13 @@ The SDK includes complete working examples demonstrating real-world usage:
 
 **Quick Start:**
 
+The examples reference the `Slim` project, whose generated bindings (`Slim/generated/`) and
+native libraries (`runtimes/`) are not checked in. Build them once first, from `dotnet/`:
+
+```bash
+task build   # runs task generate (Rust library + C# bindings + runtimes), then dotnet build
+```
+
 ```bash
 # Run receiver
 dotnet run --project Slim.Examples.PointToPoint -- --local org/alice/v1
@@ -156,7 +163,7 @@ dotnet run --project Slim.Examples.PointToPoint -- \
 
 **slimrpc Example:**
 
-Requires a running SLIM server. See the [SLIM repository](https://github.com/agntcy/slim) for instructions on running a server (for example, from the slim repo: `cd data-plane && cargo run --bin slim -- --config ./config/base/server-config.yaml`).
+Requires a running SLIM server. See the [SLIM repository](https://github.com/agntcy/slim) for instructions on running a server (for example, from the root of the slim repo: `cargo run --bin slim -- --config ./config/base/server-config.yaml`).
 
 ```bash
 # Generate proto code (requires buf and protoc-gen-slimrpc-csharp)
@@ -195,9 +202,9 @@ task                  # List all available tasks
 task ci               # Run complete CI pipeline: generate, copy runtimes, build, test, pack
 task format           # Format the C# code using dotnet format
 task lint             # Check code formatting without applying changes
-task generate         # Generate C# bindings from artifacts (requires ARTIFACTS_DIR)
+task generate         # Generate C# bindings (from ARTIFACTS_DIR if set, else a local Rust build)
 task copy:runtimes    # Copy runtime libraries from artifacts to runtimes directory
-task build            # Build .NET solution (expects bindings already generated)
+task build            # Build .NET solution (runs generate and slimrpc:generate-proto first)
 task test             # Run smoke tests (no server required)
 task pack             # Create NuGet package (expects runtimes already copied)
 task clean            # Clean all build artifacts
@@ -247,7 +254,7 @@ The NuGet package is automatically published when a release tag is pushed (e.g.,
 
 ## License
 
-Apache-2.0 - See [LICENSE](../../../../LICENSE.md) for details.
+Apache-2.0 - See [LICENSE](../LICENSE) for details.
 
 ## Related Projects
 

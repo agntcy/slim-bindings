@@ -25,7 +25,8 @@ If you change `.proto` or the slimrpc plugin, regenerate types:
 task python:generate-proto
 ```
 
-(Requires `protoc-gen-slimrpc-python` at `data-plane/target/release/`; the task builds it.)
+(The task installs `protoc-gen-slimrpc-python` from [`slimrpc-compiler`](../../../../slimrpc-compiler)
+with `cargo install`, so it ends up on your `PATH` where `buf.gen.yaml` expects it.)
 
 ## Run
 
@@ -37,6 +38,18 @@ uv run slim-bindings-simple-rpc-server
 
 ```bash
 uv run slim-bindings-simple-rpc-client
+```
+
+Both accept `--server <endpoint>` (default: `SLIM_ADDR` or `http://localhost:46357`). The same
+can be run with `task examples:rpc:server` and `task python:examples:rpc:client`.
+
+To try the multicast (group) client, start two servers and call both at once (each command
+in its own terminal):
+
+```bash
+uv run slim-bindings-simple-rpc-server --instance server1
+uv run slim-bindings-simple-rpc-server --instance server2
+uv run slim-bindings-simple-rpc-client-group --servers server1,server2
 ```
 
 ## See also

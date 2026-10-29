@@ -6,17 +6,44 @@ Java bindings for SLIM generated via [uniffi-bindgen-java](https://github.com/Ir
 
 - **Native Java Interface**: Idiomatic Java API with sync methods; async variants via `CompletableFuture` available
 - **Java 21**: Built for modern Java with records and latest language features
-- **JNA Integration**: Seamless native library loading via Java Native Access (JNA)
+- **Panama FFM**: Native calls go through the Foreign Function & Memory API (`java.lang.foreign`), compiled as a Java 21 preview feature
 - **Complete Examples**: Server, Point-to-Point, and Group messaging examples
 - **slimrpc Support**: Protocol Buffers RPC over SLIM - see [SLIMRPC.md](SLIMRPC.md) for details
 - **Task Automation**: Integrated with Taskfile for easy builds and testing
 
 ## Requirements
 
-- **Java 21** or higher
+- **JDK 21** — the classes are compiled with `--enable-preview` for release 21, so they run only on a
+  Java 21 JVM started with `--enable-preview` (preview class files are rejected by other JDK versions).
+  Code that uses them must also be compiled with `--enable-preview` (e.g. maven-compiler-plugin
+  `<compilerArgs><arg>--enable-preview</arg></compilerArgs>`, as in [`examples/pom.xml`](examples/pom.xml))
 - **Maven 3.8+**
 - **Rust toolchain** (for building native library)
 - **uniffi-bindgen-java** (auto-installed via Taskfile)
+
+### Running an application that uses the JAR
+
+The generated code calls `System.loadLibrary("slim_bindings")` and does not extract the
+native libraries bundled in the JAR (they sit at `<platform>/libslim_bindings.*`, e.g.
+`darwin-aarch64/libslim_bindings.dylib`). Start the JVM with preview features enabled and
+point it at the native library:
+
+```bash
+java --enable-preview \
+  -Djava.library.path=/path/to/dir/containing/libslim_bindings \
+  -cp app.jar:slim-bindings-java.jar com.example.Main
+
+# or give the absolute path of the library file instead (slimrpc loads it under its
+# own component name, so set both):
+#   -Duniffi.component.slim_bindings.libraryOverride=/abs/path/libslim_bindings.so
+#   -Duniffi.component.slim_rpc.libraryOverride=/abs/path/libslim_bindings.so
+```
+
+`java.library.path` is read once at JVM startup, so it must be passed on the command line
+(or in `JAVA_TOOL_OPTIONS` / `.mvn/jvm.config`); setting it at runtime with
+`System.setProperty` has no effect. The examples take `--enable-preview` and the
+`--add-opens` flags for `java.base/java.lang` and `java.lang.reflect` from
+[`examples/.mvn/jvm.config`](examples/.mvn/jvm.config).
 
 ## Quick Start
 
@@ -57,7 +84,7 @@ task examples:server
 
 # Point-to-point (in separate terminals)
 task examples:p2p:alice
-task examples:p2p:bob
+task examples:p2p:no-mls:bob   # or examples:p2p:mls:bob for MLS encryption
 
 # Group messaging (in separate terminals)
 task examples:group:moderator
@@ -80,7 +107,7 @@ task examples:group:client-2
 │  (uniffi-bindgen-java)  │
 └───────────┬─────────────┘
             │
-            │ JNA
+            │ Panama FFM (java.lang.foreign)
             ▼
 ┌─────────────────────────┐
 │  Native Library         │
@@ -98,16 +125,15 @@ java/
 ├── uniffi.toml             # UniFFI Java bindings config
 ├── README.md               # This file
 ├── generated/              # Generated code (gitignored)
-│   ├── uniffi/slim_bindings/  # Java source files
-│   └── native/             # Native libraries by platform (JNA format)
+│   ├── uniffi/io/agntcy/slim/bindings/  # Java source files
+│   └── native/             # Native libraries by platform
 │       ├── darwin-x86-64/
 │       ├── darwin-aarch64/
 │       ├── linux-x86-64/
 │       ├── linux-aarch64/
 │       ├── win32-x86-64/
 │       └── win32-aarch64/
-└── examples/               # Java examples
-    ├── Taskfile.yaml
+└── examples/               # Java examples (run via `task examples:*` from java/)
     ├── pom.xml
     └── src/main/java/io/agntcy/slim/examples/
         ├── common/         # Shared utilities
@@ -126,8 +152,13 @@ import io.agntcy.slim.bindings.*;
 // Initialize with defaults
 SlimBindings.initializeWithDefaults();
 
-// Or with OpenTelemetry tracing
-SlimBindings.initializeWithTracing("my-app", "localhost:4317");
+// Or with explicit runtime, tracing and service configs
+TracingConfig tracing = SlimBindings.newTracingConfig();
+tracing.setLogLevel("debug");
+SlimBindings.initializeWithConfigs(
+    SlimBindings.newRuntimeConfig(),
+    tracing,
+    List.of(SlimBindings.newServiceConfig()));
 ```
 
 ### Creating an App
@@ -218,7 +249,7 @@ document from `SLIM_CLIENT_CONFIG`:
 }
 ```
 
-The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+The schema matches `crates/config/src/schema/client-config.schema.json` in the
 [slim](https://github.com/agntcy/slim) repo.
 
 ### Creating Sessions
@@ -232,7 +263,7 @@ SessionConfig sessionConfig = new SessionConfig(
     null,  // maxRetries
     null,  // interval
     Map.of(),  // metadata
-    new MlsSettings(100) // mlsSettings (null to disable)
+    new MlsSettings(100, null) // mlsSettings: headerIntegrityValidationPercent, maxSeenControlMessageIdsSize (null to disable MLS)
 );
 
 Session session = app.createSessionAndWait(sessionConfig, remoteName);
@@ -278,8 +309,9 @@ task install              # Install JAR to local Maven repository
 task clean                # Clean build artifacts and generated code
 task examples:server      # Run server example
 task examples:p2p:alice   # Run P2P receiver
-task examples:p2p:bob     # Run P2P sender
+task examples:p2p:no-mls:bob  # Run P2P sender (examples:p2p:mls:bob with MLS)
 task examples:group:*     # Run group examples
+task examples:rpc:*       # Run slimrpc examples (server, client, group-client)
 ```
 
 ## Examples
@@ -300,7 +332,7 @@ See [examples/README.md](examples/README.md) for detailed example documentation.
 
 - [UniFFI Book](https://mozilla.github.io/uniffi-rs/)
 - [uniffi-bindgen-java GitHub](https://github.com/IronCoreLabs/uniffi-bindgen-java)
-- [JNA Documentation](https://github.com/java-native-access/jna)
+- [Foreign Function & Memory API (JEP 442)](https://openjdk.org/jeps/442)
 - [SLIM Project](https://github.com/agntcy/slim)
 
 ## License

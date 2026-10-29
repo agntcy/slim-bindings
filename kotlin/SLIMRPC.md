@@ -214,7 +214,7 @@ TestSlimrpc.registerTestServer(rpcServer, object : TestSlimrpc.UnimplementedTest
 })
 
 println("SLIM_RPC_SERVER_READY")
-rpcServer.serve()
+rpcServer.serveBlocking()
 ```
 
 The SLIM-specific server setup (inside `runBlocking`):
@@ -239,7 +239,7 @@ app.subscribeAsync(app.name(), connId)
 // Create the RPC server, register the service, and serve
 val rpcServer = Server.newWithConnection(app, localName, connId)
 TestSlimrpc.registerTestServer(rpcServer, MyTestServer())
-rpcServer.serve()
+rpcServer.serveBlocking()
 ```
 
 Key steps:
@@ -250,7 +250,7 @@ Key steps:
 4. Connect to the SLIM node and subscribe to the local name
 5. Create a `Server` from the app with `Server.newWithConnection`
 6. Register the service implementation with `registerTestServer`
-7. Start the server with `serve()`
+7. Start the server with `serveBlocking()` (or the suspending `serveAsync()`)
 
 ## Client Implementation
 
@@ -335,10 +335,17 @@ A complete working example is available in
 [examples/slimrpc/simple](examples/slimrpc/simple/). To run it:
 
 1. Start a SLIM instance (from `kotlin/`): `task examples:server`
-2. Generate proto code: `buf generate` (from `examples/slimrpc/simple/`)
-3. Run the server: `./gradlew server`
-4. Run the client (in another terminal): `./gradlew client`
-5. (Optional) Run the multicast group client against two servers: `./gradlew groupClient`
+2. Generate proto code (from `kotlin/`): `task slimrpc:generate-proto` — installs
+   `protoc-gen-slimrpc-kotlin` and runs `buf generate`
+3. `cd examples/slimrpc/simple`
+4. Run the server: `./gradlew server`
+5. Run the client (in another terminal): `./gradlew client`
+6. (Optional) Run the multicast group client against two servers. Start them as
+   `./gradlew server -Pargs="--instance server1"` and `./gradlew server -Pargs="--instance server2"`,
+   then run `./gradlew groupClient`
+
+Or use the Taskfile shortcuts from `kotlin/`: `task examples:rpc:server` (`INSTANCE=server1`
+for a named instance), `task examples:rpc:client`, `task examples:rpc:group-client`.
 
 ## slimrpc Under the Hood
 

@@ -25,45 +25,36 @@ Python interface that wraps the high-performance Rust implementation.
 
 ## Architecture
 
-The Python bindings are built using Maturin, which automatically generates
-Python bindings from the Rust UniFFI adapter:
+The Python bindings are built using Maturin, which compiles the Rust FFI crate
+and generates the Python bindings from its UniFFI metadata:
 
 ```
 slim-bindings/
-├── rust/          # Rust UniFFI bindings (shared by Go, Python, etc.)
-│   ├── src/
-│   │   ├── app.rs
-│   │   ├── build_info.rs
-│   │   ├── client_config.rs
-│   │   ├── common_config.rs
-│   │   ├── completion_handle.rs
-│   │   ├── config.rs
-│   │   ├── errors.rs
-│   │   ├── identity.rs
-│   │   ├── identity_config.rs
-│   │   ├── init_config.rs
-│   │   ├── lib.rs
-│   │   ├── message_context.rs
-│   │   ├── name.rs
-│   │   ├── server_config.rs
-│   │   ├── service.rs
-│   │   └── session.rs
-│   └── Cargo.toml
-├── go/               # Go-specific bindings and examples
-└── python/           # Python-specific bindings and examples (this directory)
+├── rust/          # agntcy-slim-bindings-ffi: cdylib that re-exports the UniFFI
+│   ├── src/lib.rs #   scaffolding of agntcy-slim-bindings and agntcy-slim-rpc
+│   └── Cargo.toml #   (the FFI surface itself lives in agntcy/slim, crates/slim-bindings and crates/rpc)
+└── python/        # Python-specific bindings and examples (this directory)
+    ├── slim_bindings/         # Python package (generated module + helpers)
     ├── examples/              # Example applications
-    ├── tests/                 # Unit and integration tests
+    ├── tests/                 # Pytest test suite
+    ├── pyproject.toml         # Package configuration (Maturin build system)
     └── Taskfile.yaml          # Build and development tasks
 ```
 
 ## Prerequisites
 
-- **Rust toolchain** (1.70+)
+- **Rust toolchain** (recent stable, 1.88+; the SLIM crates use edition 2024 and let-chains)
 - **Python** (3.10+)
 - **uv** (Python package manager): https://docs.astral.sh/uv/
 - **Task** (optional, for convenient build commands)
 
 ## Installation
+
+### From PyPI
+
+```bash
+pip install slim-bindings
+```
 
 ### Development Build
 
@@ -80,9 +71,9 @@ This will:
 
 ## Creating Distribution Packages
 
-### Build Wheels for Multiple Python Versions
+### Build Wheels
 
-To create distributable wheel packages for Python 3.10, 3.11, 3.12, 3.13 and 3.14:
+To create distributable wheel packages (Python 3.10, 3.11, 3.12, 3.13 and 3.14):
 
 ```bash
 task python:bindings:packaging
@@ -91,16 +82,16 @@ task python:bindings:packaging
 Or directly with Maturin:
 
 ```bash
-uv run maturin build --release -i 3.10 3.11 3.12 3.13
+uv run maturin build --release
 ```
 
 Maturin automatically:
 1. Compiles the Rust UniFFI adapter library
 2. Generates Python bindings from UniFFI scaffolding
-3. Bundles the native library into platform-specific wheels
-4. Creates wheels for each specified Python version
+3. Bundles the native library into a platform-specific wheel
 
-The resulting wheels are self-contained and ready for distribution.
+UniFFI wheels do not link against the Python C API, so a single `py3-none-<platform>`
+wheel works on every supported Python version.
 
 #### Custom Build Options
 
@@ -119,115 +110,129 @@ task python:bindings:packaging TARGET=x86_64-unknown-linux-gnu
 
 #### Output Structure
 
-After running the packaging task, you'll find:
+After running the packaging task, you'll find one wheel per platform:
 
 ```
 dist/
-├── slim_uniffi_bindings-0.7.0-cp310-*.whl  # Python 3.10 wheel
-├── slim_uniffi_bindings-0.7.0-cp311-*.whl  # Python 3.11 wheel
-├── slim_uniffi_bindings-0.7.0-cp312-*.whl  # Python 3.12 wheel
-└── slim_uniffi_bindings-0.7.0-cp313-*.whl  # Python 3.13 wheel
+└── slim_bindings-<version>-py3-none-<platform>.whl   # e.g. ...-py3-none-macosx_11_0_arm64.whl
 ```
 
-Note: The native library is automatically bundled inside each wheel.
+Note: The native library is automatically bundled inside the wheel.
 
 #### Installing from Wheel
 
 Users can install the wheel package directly:
 
 ```bash
-pip install slim_uniffi_bindings-0.7.0-cp310-*.whl
+pip install dist/slim_bindings-<version>-py3-none-<platform>.whl
 ```
 
 The native library is automatically included in the wheel and will be loaded at runtime.
 
-## Examples
-
-Examples are a **separate project** in the `examples/` directory.
-
-See [examples/README.md](examples/README.md) for detailed instructions.
-
-### Quick Start with Examples
-
-```bash
-cd examples
-
-# View available examples
-task
-
-# Run simple example
-task simple
-
-# Run point-to-point examples
-task p2p:alice    # Terminal 1
-task p2p:bob      # Terminal 2
-```
-
 ## Quick Start
 
-### Simple Example
+The bindings expose both blocking methods and asyncio `*_async` variants. The examples use
+the async API:
 
 ```python
-import slim_uniffi_bindings as slim
+import asyncio
+import datetime
 
-# Initialize crypto provider
-slim.initialize_crypto_provider()
+import slim_bindings
 
-# Get version
-print(f"SLIM Version: {slim.get_version()}")
 
-# Create an app with shared secret authentication
-app_name = {
-    'components': ['org', 'example', 'app'],
-    'id': None
-}
-app = slim.create_app_with_secret(app_name, "my-secret")
+async def main():
+    # Initialize the runtime, tracing and the global service
+    slim_bindings.initialize_with_defaults()
+    print(f"SLIM Version: {slim_bindings.get_version()}")
 
-print(f"App ID: {app.id()}")
-print(f"App Name: {'/'.join(app.name().components)}")
+    service = slim_bindings.get_global_service()
+
+    # Connect to a SLIM node
+    client_config = slim_bindings.new_insecure_client_config("http://127.0.0.1:46357")
+    conn_id = await service.connect_async(client_config)
+
+    # Create an app with shared secret authentication (secret must be >= 32 bytes)
+    local_name = slim_bindings.Name("org", "example", "alice")
+    app = service.create_app_with_secret(
+        local_name, "my_shared_secret_for_testing_purposes_only"
+    )
+    await app.subscribe_async(local_name, conn_id)
+
+    print(f"App ID: {app.id()}")
+    print(f"App Name: {app.name()}")
+
+
+asyncio.run(main())
 ```
 
-Run the simple example:
+## Examples
+
+The examples live in the [`examples/`](https://github.com/agntcy/slim-bindings/tree/main/python/examples) package and are installed as console scripts
+(`slim-bindings-server`, `slim-bindings-p2p`, `slim-bindings-group`, and the slimrpc ones; see
+`[project.scripts]` in [pyproject.toml](https://github.com/agntcy/slim-bindings/blob/main/python/pyproject.toml)). Install them with:
+
 ```bash
-cd examples
-task simple
+cd python
+task python:build    # builds the bindings and installs the [examples] extras
+```
+
+```
+examples/
+├── common.py           # Shared helpers (service setup, app creation, CLI options)
+├── config.py           # Configuration models (CLI / env / config file)
+├── slim.py             # SLIM node (server) example
+├── point_to_point.py   # P2P messaging
+├── group.py            # Group/multicast messaging
+└── slimrpc/simple/     # slimrpc example, see its README.md
+```
+
+### Running Examples
+
+All examples require a running SLIM node. Start one with:
+
+```bash
+cd python
+task examples:server
 ```
 
 ### Point-to-Point Communication
 
 **Terminal 1 - Receiver (Alice):**
 ```bash
-cd examples
-task p2p:alice
+task examples:p2p:alice
 ```
 
 **Terminal 2 - Sender (Bob):**
 ```bash
-cd examples
-task p2p:bob
+task examples:p2p:no-mls:bob   # or examples:p2p:mls:bob for MLS-encrypted messages
 ```
 
 ### Group Communication
 
-**Terminal 1 - Participant (Alice):**
+**Terminal 1 - Participant 1:**
 ```bash
-cd examples
-task group:participant:alice
+task examples:group:client-1
 ```
 
-**Terminal 2 - Participant (Bob):**
+**Terminal 2 - Participant 2:**
 ```bash
-cd examples
-task group:participant:bob
+task examples:group:client-2
 ```
 
 **Terminal 3 - Moderator:**
 ```bash
-cd examples
-task group:moderator
+task examples:group:moderator
 ```
 
-For more details, see [examples/README.md](examples/README.md).
+### slimrpc
+
+```bash
+task examples:rpc:server          # Terminal 1
+task python:examples:rpc:client   # Terminal 2
+```
+
+See [examples/slimrpc/simple/README.md](https://github.com/agntcy/slim-bindings/blob/main/python/examples/slimrpc/simple/README.md) for details.
 
 ## Transport Authentication (gRPC connection)
 
@@ -314,77 +319,84 @@ which covers every auth mode plus TLS material and backoff without any code chan
 }
 ```
 
-The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
-[slim](https://github.com/agntcy/slim) repo. To load one yourself, call
+The client configuration format is described by
+[`crates/config/src/schema/client-config.schema.json`](https://github.com/agntcy/slim/blob/main/crates/config/src/schema/client-config.schema.json)
+in the [slim](https://github.com/agntcy/slim) repo. To load one yourself, call
 `slim_bindings.new_config_from_json(json_text)`.
 
 ## API Overview
 
+Most blocking methods below have an `*_async` counterpart (e.g. `connect` / `connect_async`);
+`disconnect` and simple accessors such as `app.id()` / `app.name()` are blocking only.
+Timeouts are `datetime.timedelta` values; `None` waits forever.
+
+### Initialization and Service
+
+```python
+slim_bindings.initialize_with_defaults()     # or initialize_with_configs(...) / initialize_from_config(path)
+service = slim_bindings.get_global_service()
+
+# Connect to a SLIM node
+conn_id = service.connect(slim_bindings.new_insecure_client_config("http://localhost:46357"))
+
+# Host a SLIM endpoint in-process
+service.run_server(slim_bindings.new_insecure_server_config("127.0.0.1:46357"))
+
+# Disconnect
+service.disconnect(conn_id)
+```
+
 ### Application Creation
 
 ```python
-# Create app with shared secret
-app = slim.create_app_with_secret(app_name, shared_secret)
+name = slim_bindings.Name("org", "example", "app")    # or Name.from_string("org/example/app")
 
-# Get app information
+# Shared secret identity (secret must be at least 32 bytes)
+app = service.create_app_with_secret(name, shared_secret)
+
+# JWT / SPIRE identity
+app = service.create_app(name, provider_config, verifier_config)
+
 app_id = app.id()
 app_name = app.name()
-```
-
-### Server Operations
-
-```python
-# Connect to server
-client_config = {
-    'endpoint': 'http://localhost:46357',
-    'tls': {'insecure': True, ...}
-}
-conn_id = app.connect(client_config)
-
-# Run server
-server_config = {
-    'endpoint': '127.0.0.1:46357',
-    'tls': {'insecure': True, ...}
-}
-app.run_server(server_config)
-
-# Disconnect
-app.disconnect(conn_id)
+app.subscribe(name, conn_id)
+app.set_route(remote_name, conn_id)
 ```
 
 ### Session Management
 
 ```python
-# Create session
-session_config = {
-    'session_type': 'PointToPoint',  # or 'Group'
-    'enable_mls': False,
-    'max_retries': 3,
-    'interval_ms': 100,
-    'initiator': True,
-    'metadata': {}
-}
-session = app.create_session(session_config, destination_name)
+session_config = slim_bindings.SessionConfig(
+    session_type=slim_bindings.SessionType.POINT_TO_POINT,  # or SessionType.GROUP
+    max_retries=5,
+    interval=datetime.timedelta(seconds=5),
+    metadata={},
+    mls_settings=None,  # or slim_bindings.MlsSettings(...) to enable MLS
+)
 
-# Listen for incoming session
-session = app.listen_for_session(timeout_ms=30000)
+# Create session: returns a SessionWithCompletion
+session_context = app.create_session(session_config, remote_name)
+session_context.completion.wait()       # wait until the session is established
+session = session_context.session
+# or: session = app.create_session_and_wait(session_config, remote_name)
+
+# Listen for an incoming session
+session = app.listen_for_session(timeout=datetime.timedelta(seconds=30))
 
 # Delete session
-app.delete_session(session)
+app.delete_session(session).wait()
 ```
 
 ### Messaging
 
 ```python
-# Send message (fire-and-forget)
-session.publish(data, "text/plain", metadata)
-
-# Send with delivery confirmation
-completion = session.publish_with_completion(data, "text/plain", metadata)
-completion.wait()  # Block until delivered
+# Send message: returns a CompletionHandle
+completion = session.publish(data, "text/plain", metadata)
+completion.wait()  # Block until delivered (optional)
+# or: session.publish_and_wait(data, "text/plain", metadata)
 
 # Receive message
-msg = session.get_message(timeout_ms=5000)
+msg = session.get_message(timeout=datetime.timedelta(seconds=5))
 print(f"Payload: {msg.payload}")
 print(f"From: {msg.context.source_name}")
 print(f"Type: {msg.context.payload_type}")
@@ -397,73 +409,22 @@ session.publish_to(msg.context, reply_data, "text/plain", None)
 
 ```python
 # Invite participant to group
-session.invite(participant_name)
+session.invite(participant_name).wait()
 
 # Remove participant
-session.remove(participant_name)
-```
-
-## Examples
-
-### Examples Directory Structure
-
-```
-examples/
-├── common/
-│   └── common.py          # Shared utilities
-├── simple/
-│   └── main.py            # Basic functionality demo
-├── point_to_point/
-│   └── main.py            # P2P messaging
-└── group/
-    └── main.py            # Group/multicast messaging
-```
-
-### Running Examples
-
-All examples require a running SLIM server. Start the Go server:
-
-```bash
-cd go
-task example:server
-```
-
-Then run Python examples:
-
-```bash
-# Simple example
-task example
-
-# Point-to-point
-task example:p2p:alice      # Terminal 1
-task example:p2p:bob        # Terminal 2
-
-# Group messaging
-task example:group:participant:alice    # Terminal 1
-task example:group:participant:bob      # Terminal 2
-task example:group:moderator            # Terminal 3
+session.remove(participant_name).wait()
 ```
 
 ## Testing
 
-### Unit Tests
+The test suite starts its own in-process SLIM endpoints, so no external server is needed:
 
 ```bash
 task test
-# or
-python -m pytest tests/unit_test.py -v
-```
-
-### Integration Tests
-
-Integration tests require a running SLIM server:
-
-```bash
-# Terminal 1: Start server
-cd ../go && task example:server
-
-# Terminal 2: Run integration tests
-SLIM_INTEGRATION_TEST=1 python -m pytest tests/integration_test.py -v -s
+# or a single file
+task test TESTS=tests/test_point_to_point.py
+# or directly
+uv run pytest -s tests/
 ```
 
 ## Development
@@ -471,18 +432,21 @@ SLIM_INTEGRATION_TEST=1 python -m pytest tests/integration_test.py -v -s
 ### Available Tasks
 
 ```bash
-task                           # Show help
-task build                     # Build package with Maturin
+task                           # List tasks
+task python:bindings:build     # Build and install in development mode (alias: generate)
+task python:build              # Build and install the examples extras
 task test                      # Run tests
-task python:bindings:packaging # Build wheels for multiple Python versions
+task lint                      # Lint (ruff, mypy)
+task python:bindings:packaging # Build wheels with Maturin (alias: build)
+task python:generate-proto     # Regenerate the slimrpc example code
 task clean                     # Clean build artifacts
 ```
 
 ### Project Structure
 
-- `slim_uniffi_bindings/` - Python package (bindings generated by Maturin)
+- `slim_bindings/` - Python package (bindings generated by Maturin plus `uniffi_set_event_loop` helper)
 - `examples/` - Example applications
-- `tests/` - Unit and integration tests
+- `tests/` - Pytest test suite
 - `Taskfile.yaml` - Build automation
 - `pyproject.toml` - Package configuration (Maturin build system)
 
@@ -492,10 +456,10 @@ Both Python and Go bindings use the same UniFFI adapter, ensuring API consistenc
 
 | Feature | Python | Go |
 |---------|--------|-----|
-| Binding Generation | uniffi-bindgen | uniffi-bindgen-go |
+| Binding Generation | maturin + uniffi-bindgen | uniffi-bindgen-go |
 | API Style | Pythonic (snake_case) | Idiomatic Go (PascalCase) |
 | Error Handling | Exceptions | Error returns |
-| Async Support | Sync wrapper over async Rust | Sync wrapper over async Rust |
+| Async Support | Blocking methods plus asyncio `*_async` methods | Blocking methods plus `*Async` variants |
 | Examples | ✅ | ✅ |
 | Tests | ✅ | ✅ |
 
@@ -503,9 +467,10 @@ Both Python and Go bindings use the same UniFFI adapter, ensuring API consistenc
 
 ### Core Types
 
-- **`Name`**: Application/service identifier with components and optional ID
+- **`Name`**: Application/service identifier (three components, optional ID)
 - **`SessionConfig`**: Configuration for creating sessions
-- **`TlsConfig`**: TLS settings for secure connections
+- **`MlsSettings`**: MLS options for a session
+- **`TlsClientConfig`** / **`TlsServerConfig`**: TLS settings for secure connections
 - **`ServerConfig`**: Server endpoint and TLS configuration
 - **`ClientConfig`**: Client endpoint and TLS configuration
 - **`MessageContext`**: Message metadata (source, destination, type, metadata)
@@ -513,31 +478,33 @@ Both Python and Go bindings use the same UniFFI adapter, ensuring API consistenc
 
 ### Main Classes
 
-- **`BindingsAdapter`**: Main app interface for session management
-- **`BindingsSessionContext`**: Session interface for messaging
-- **`FfiCompletionHandle`**: Completion handle for delivery confirmation
+- **`Service`**: Connections, servers and app creation
+- **`App`**: Main app interface for session management
+- **`Session`**: Session interface for messaging
+- **`CompletionHandle`**: Completion handle for delivery confirmation
+- **`SessionWithCompletion`**: A new session plus its establishment `CompletionHandle`
 
 ### Session Types
 
-- **`PointToPoint`**: Direct one-to-one communication
-- **`Group`**: One-to-many multicast communication
+- **`SessionType.POINT_TO_POINT`**: Direct one-to-one communication
+- **`SessionType.GROUP`**: One-to-many multicast communication
 
 ## Troubleshooting
 
-### ImportError: Cannot find slim_uniffi_bindings
+### ImportError: Cannot find slim_bindings
 
-Make sure you've built the package:
+Make sure you've built and installed the package:
 ```bash
-task build
+task python:bindings:build
 # or
-uv run maturin develop
+uv run maturin develop --uv
 ```
 
 ### Connection Refused
 
-Ensure the SLIM server is running:
+Ensure the SLIM node is running:
 ```bash
-cd ../go && task example:server
+task examples:server
 ```
 
 ### Build Errors
@@ -545,7 +512,7 @@ cd ../go && task example:server
 If you encounter build errors, try cleaning and rebuilding:
 ```bash
 task clean
-uv run maturin develop
+task python:bindings:build
 ```
 
 ## Contributing
@@ -560,11 +527,10 @@ When contributing to the Python bindings:
 
 ## License
 
-Apache-2.0 - See [LICENSE.md](../../../LICENSE.md) for details
+Apache-2.0 - See [LICENSE](https://github.com/agntcy/slim-bindings/blob/main/LICENSE) for details
 
 ## See Also
 
 - [slimrpc Documentation](SLIMRPC.md) - Protocol Buffers RPC over SLIM
-- [Go Bindings](../go/README.md)
-- [UniFFI Adapter](../adapter/src/)
-- [SLIM Documentation](../../../README.md)
+- [Go Bindings](https://github.com/agntcy/slim-bindings/blob/main/go/slim_bindings/README.md)
+- [SLIM Documentation](https://docs.agntcy.org/slim/overview)
