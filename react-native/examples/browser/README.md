@@ -20,7 +20,7 @@ Node.js examples under `slim-bindings/node/examples/`.
 - Node.js 18 or newer
 - Rust with the `wasm32-unknown-unknown` target
 - `task`
-- `wasm-bindgen-cli` 0.2.106
+- `wasm-bindgen-cli` 0.2.128
 - a running WebSocket SLIM node for live messaging (see below)
 
 ## Build and start

@@ -12,17 +12,16 @@ This example demonstrates all slimrpc RPC patterns in Kotlin with comprehensive 
 
 ## Generate Code
 
-First build the Kotlin protoc plugin:
+From the `kotlin/` directory, install the Kotlin protoc plugin and run `buf generate`
+for this example in one step:
 
 ```bash
-cargo build --release -p agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-kotlin
+task slimrpc:generate-proto
 ```
 
-Then generate the code:
-
-```bash
-buf generate
-```
+The task runs `cargo install --path ../slimrpc-compiler --bin protoc-gen-slimrpc-kotlin`
+(putting the plugin on your `PATH`) and installs `buf` if needed. If you already have both
+on your `PATH`, running `buf generate` in this directory is equivalent.
 
 This generates:
 - `types/` - Standard protobuf Java types (usable from Kotlin)
@@ -51,7 +50,15 @@ In the third terminal, run the rpc client:
 
 ### Group (Multicast) Client
 
-To run the group client, start two server instances (server1 and server2) and then:
+To run the group client, start two server instances (server1 and server2), each in its own
+terminal:
+
+```bash
+./gradlew server -Pargs="--instance server1"
+./gradlew server -Pargs="--instance server2"
+```
+
+and then:
 
 ```bash
 ./gradlew groupClient

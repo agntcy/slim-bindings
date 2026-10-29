@@ -117,12 +117,13 @@ material, backoff, and every authentication mode. The examples read the same doc
 }
 ```
 
-The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
-[slim](https://github.com/agntcy/slim) repo.
+The client config schema is `crates/config/src/schema/client-config.schema.json` in the
+[slim](https://github.com/agntcy/slim) repo. It does not list the `oidc` auth type yet, but the
+config parser accepts it.
 
 ## Examples
 
-Runnable scripts live under `examples/` (from repo root, use the `Taskfile` targets `example:server`, `example:alice`, `example:bob`, `example:group`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)). `example:group` demonstrates multicast (group) sessions — a moderator creates a channel and invites participants; see [README_dev.md](./README_dev.md#3-run-the-group-multicast-example) for usage.
+Runnable scripts live under `examples/` (from `node/`, start a SLIM node with `task example:server`, then use the `Taskfile` targets `example:alice`, `example:bob`, `example:group`, or run them via npm from `examples/` as documented in [README_dev.md](./README_dev.md)). `example:group` demonstrates multicast (group) sessions — a moderator creates a channel and invites participants; see [README_dev.md](./README_dev.md#3-run-the-group-multicast-example) for usage.
 
 ## Type notes
 
@@ -135,4 +136,4 @@ Generator setup, Task commands, and publishing are documented for maintainers in
 ## Links
 
 - [SLIM repository](https://github.com/agntcy/slim)
-- [React Native bindings](../react-native/README.md) (mobile / JSI)
+- [React Native bindings](../react-native/README.md) (mobile / JSI and browser / WebAssembly)

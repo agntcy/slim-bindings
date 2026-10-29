@@ -4,7 +4,7 @@ Get started with SLIM Go bindings in just a few minutes.
 
 ## Prerequisites
 
-- [Go](https://go.dev/doc/install) 1.22 or later
+- [Go](https://go.dev/doc/install) 1.23 or later
 - Internet connection to download dependencies
 
 ## Quick Start
@@ -48,9 +48,10 @@ func main() {
 	fmt.Println("🚀 SLIM Go Bindings Example")
 	fmt.Println("============================")
 
-	// Initialize crypto provider (required before any operations)
-	slim.InitializeCryptoProvider()
-	fmt.Println("✅ Crypto initialized")
+	// Initialize runtime, tracing, crypto provider and the global service
+	// (required before any other call)
+	slim.InitializeWithDefaults()
+	fmt.Println("✅ SLIM initialized")
 
 	// Your SLIM code here...
 }
@@ -67,7 +68,7 @@ You should see:
 ```
 🚀 SLIM Go Bindings Example
 ============================
-✅ Crypto initialized
+✅ SLIM initialized
 ```
 
 ## Transport Authentication (gRPC connection)
@@ -143,12 +144,12 @@ document from `SLIM_CLIENT_CONFIG`:
 }
 ```
 
-The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+The schema lives at `crates/config/src/schema/client-config.schema.json` in the
 [slim](https://github.com/agntcy/slim) repo.
 
 ## Important Notes
 
-- **Setup is one-time**: You only need to run `slim-bindings-setup` once
+- **Setup is per version**: Run `slim-bindings-setup` once for each bindings version you use; libraries are cached under `$GOPATH/.cgo-cache/slim-bindings/<version>`
 - **Native dependencies**: The bindings use native libraries under the hood via [CGO](https://go.dev/wiki/cgo), so a C compiler is required
 
 ## slimrpc (SLIM Remote Procedure Call)

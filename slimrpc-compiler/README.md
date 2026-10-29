@@ -24,13 +24,34 @@ slimrpc framework.
 
 ## Installation
 
+### Install from crates.io
+
+The plugins are published as the `agntcy-protoc-slimrpc-plugin` crate. This
+installs all of them into Cargo's bin directory (usually `~/.cargo/bin`, which
+should be on your `PATH`):
+
+```bash
+cargo install agntcy-protoc-slimrpc-plugin
+```
+
+To install a single plugin, add `--bin`, e.g.
+`cargo install agntcy-protoc-slimrpc-plugin --bin protoc-gen-slimrpc-go`.
+
+### Download a Prebuilt Binary
+
+Prebuilt binaries of the Python, Go, and C# plugins for Linux, macOS, and
+Windows (x86_64 and arm64) are attached to the `protoc-slimrpc-plugin-v*`
+[releases](https://github.com/agntcy/slim-bindings/releases) of this
+repository. For the Java, Kotlin, and Node plugins, use `cargo install` or
+build from source.
+
 ### Compile from Source
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/agntcy/slim.git
-cd slim/data-plane
+git clone https://github.com/agntcy/slim-bindings.git
+cd slim-bindings/slimrpc-compiler
 ```
 
 2. Build the plugins:
@@ -251,41 +272,43 @@ For a service definition, the generated `*_pb2_slimrpc.py` contains:
 ```python
 class TestStub:
     """Client stub for Test."""
-    
-    def __init__(self, channel: slim_bindings.Channel):
-        self._channel = channel
-    
+
+    def __init__(self, channel):
+        self._channel = channel  # a slim_bindings.Channel
+
     async def ExampleUnaryUnary(
-        self, 
-        request: pb2.ExampleRequest, 
-        timeout: slim_bindings.Duration | None = None
+        self,
+        request: pb2.ExampleRequest,
+        timeout: Optional[timedelta] = None,
+        metadata: Optional[dict[str, str]] = None,
     ) -> pb2.ExampleResponse:
         """Call ExampleUnaryUnary method."""
         # Implementation handles serialization and channel communication
 ```
 
-#### Server Handler Protocol
+A `TestGroupStub` with the same methods is generated for multicast calls over a
+channel created with `Channel.new_group*`; its methods are async generators
+that yield one `(context, response)` pair per responding server.
+
+#### Servicer
+
+Subclass the servicer and override its methods with `async def`
+implementations. Methods you don't override raise
+`slim_bindings.RpcError.Rpc(code=slim_bindings.RpcCode.UNIMPLEMENTED, ...)`.
 
 ```python
-class TestServer(Protocol):
-    """Server protocol for Test service."""
-    
-    async def ExampleUnaryUnary(
-        self,
-        request: pb2.ExampleRequest,
-        context: slim_bindings.ServerContext,
-    ) -> pb2.ExampleResponse:
-        """Handle ExampleUnaryUnary."""
+class TestServicer:
+    """Server servicer for Test. Implement this class to provide your service logic."""
+
+    def ExampleUnaryUnary(self, request, context):
+        # `context` is a slim_bindings.Context
         ...
 ```
 
 #### Registration Function
 
 ```python
-def register_test_server(
-    server: slim_bindings.Server,
-    handler: TestServer,
-) -> None:
+def add_TestServicer_to_server(servicer, server: slim_bindings.Server):
     """Register Test service handlers with the server."""
     # Registers all service methods
 ```
@@ -299,27 +322,35 @@ For a service definition, the generated `*_slimrpc.pb.go` contains:
 ```go
 type TestClient interface {
     ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
-    ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (ResponseStream[*ExampleResponse], error)
-    ExampleStreamUnary(ctx context.Context) (RequestStream[*ExampleRequest, *ExampleResponse], error)
-    ExampleStreamStream(ctx context.Context) (BidiStream[*ExampleRequest, *ExampleResponse], error)
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+    ExampleStreamUnary(ctx context.Context) (slim_rpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error)
+    ExampleStreamStream(ctx context.Context) (slim_rpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error)
 }
+
+func NewTestClient(channel slim_rpc.ChannelInterface) TestClient
 ```
+
+A `TestGroupClient` (created with `NewTestGroupClient`) is also generated for
+multicast calls; its methods return `slim_rpc.MulticastResponseStream` or
+`slim_rpc.MulticastClientBidiStream`.
 
 #### Server Interface
 
 ```go
 type TestServer interface {
     ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
-    ExampleUnaryStream(req *ExampleRequest, stream ResponseStream[*ExampleResponse]) error
-    ExampleStreamUnary(stream RequestStream[*ExampleRequest, *ExampleResponse]) error
-    ExampleStreamStream(stream BidiStream[*ExampleRequest, *ExampleResponse]) error
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+    ExampleStreamUnary(ctx context.Context, stream slim_rpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error)
+    ExampleStreamStream(ctx context.Context, stream slim_rpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error
 }
 ```
+
+Embed `UnimplementedTestServer` in your implementation for forward compatibility.
 
 #### Registration Function
 
 ```go
-func RegisterTestServer(server slim_bindings.ServerInterface, handler TestServer) {
+func RegisterTestServer(server slim_rpc.ServerInterface, impl TestServer) {
     // Registers all service methods with type-safe handlers
 }
 ```
@@ -452,7 +483,8 @@ All slimrpc examples require a **running SLIM server** (default: `localhost:4635
 Start it before running any example:
 
 ```bash
-cd data-plane && cargo run --bin slim -- --config ./config/base/server-config.yaml
+# from a checkout of https://github.com/agntcy/slim
+cargo run --bin slim -- --config ./config/base/server-config.yaml
 ```
 
 ## Plugin Parameters
@@ -488,8 +520,6 @@ cd data-plane && cargo run --bin slim -- --config ./config/base/server-config.ya
 - `types_namespace`: C# namespace for resolving protobuf types (when different from base).
   - Example: `types_namespace=MyApp.Types`
   - Default: same as base_namespace
-
-- `file_extension`: Output file suffix (default: `_slimrpc.cs`)
 
 ### TypeScript / Node Plugin
 
@@ -534,9 +564,9 @@ If the plugin fails to build:
 ## Contributing
 
 Please see the main repository's contributing guidelines at
-[CONTRIBUTING.md](../../CONTRIBUTING.md).
+[CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## License
 
 This project is licensed under the Apache 2.0 License - see the
-[LICENSE.md](../../LICENSE.md) file for details.
+[LICENSE](../LICENSE) file for details.

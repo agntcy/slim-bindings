@@ -10,8 +10,8 @@ This directory contains comprehensive integration tests for the SLIM Kotlin bind
 # Run all tests
 task test
 
-# Run all tests with verbose output
-task test:verbose
+# Run all tests with verbose output (no Task shortcut; uses Gradle directly)
+./gradlew testVerbose
 
 # Run a specific test class
 task test:class TEST_CLASS=BindingsTest

@@ -221,7 +221,7 @@ From within GitHub, opening a new Pull Request will present you with a
 [template] that should be filled out. Please try to do your best at filling out
 the details, but feel free to skip parts if you're not sure what to put.
 
-[template]: .github/PULL_REQUEST_TEMPLATE.md
+[template]: .github/pull_request_template.md
 
 ### Discuss and update
 
@@ -325,4 +325,5 @@ the commit log, or by using an `Author: ` meta-data tag in the commit.
 
 _Adapted from the [Tokio.rs contributing guide][tokio]_.
 
-[node]: https://github.com/tokio-rs/tokio/blob/master/CONTRIBUTING.md
+[tokio]: https://github.com/tokio-rs/tokio/blob/master/CONTRIBUTING.md
+[hiding-a-comment]: https://docs.github.com/en/communities/moderating-comments-and-conversations/managing-disruptive-comments#hiding-a-comment

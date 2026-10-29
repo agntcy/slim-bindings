@@ -4,15 +4,23 @@ This example demonstrates all slimrpc RPC patterns in Go with comprehensive clie
 
 ## Prerequisites
 
-- Go 1.21+
-- Running SLIM server on `localhost:46357`
-- `buf` CLI tool installed
+- Go 1.25+ (see `go.mod`)
+- Go bindings generated locally: this module uses a `replace` directive pointing at
+  `../../../slim_bindings`, so run `task generate` from the `go/` directory first
+- Running SLIM server on `localhost:46357` (`task examples:server` from `go/`)
 
 ## Generate Code
 
+The generated files in `types/` are committed, so this step is only needed after
+changing `example.proto`. From the `go/` directory:
+
 ```bash
-buf generate
+task generate-proto
 ```
+
+This installs `protoc-gen-slimrpc-go` from the in-repo slimrpc compiler with
+`cargo install`, then runs `buf generate`. To run `buf generate` yourself,
+`protoc-gen-slimrpc-go` must be on your `PATH`.
 
 This generates:
 - `types/example.pb.go` - Standard protobuf types
@@ -32,11 +40,26 @@ In another terminal, run the client:
 go run cmd/client/client.go
 ```
 
+The same steps are available as `task examples:rpc:server` and
+`task examples:rpc:client` from the `go/` directory. Use `--server` (or
+`SLIM_ADDR`) to point at a different SLIM node.
+
+### Group (multicast) client
+
+Start two server instances, then run the group client, which calls both at once
+(each command in its own terminal):
+
+```bash
+go run cmd/server/server.go -instance=server1
+go run cmd/server/server.go -instance=server2
+go run cmd/client_group/client_group.go --servers=server1,server2
+```
+
 ## Code Structure
 
 ### Server (`cmd/server/server.go`)
 
-Implements all four RPC patterns:
+Implements the four RPC patterns (the proto has five methods; `ExampleUnaryStreamTwo` is a second unary-stream method):
 
 1. **UnaryUnary**: Simple request-response
 2. **UnaryStream**: Single request, multiple responses
@@ -101,9 +124,10 @@ The `buf generate` command produces type-safe interfaces for all RPC patterns:
 ```go
 type TestClient interface {
     ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
-    ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (Test_ExampleUnaryStreamClient, error)
-    ExampleStreamUnary(ctx context.Context) (Test_ExampleStreamUnaryClient, error)
-    ExampleStreamStream(ctx context.Context) (Test_ExampleStreamStreamClient, error)
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+    ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+    ExampleStreamUnary(ctx context.Context) (slim_rpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error)
+    ExampleStreamStream(ctx context.Context) (slim_rpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error)
 }
 ```
 
@@ -111,30 +135,43 @@ type TestClient interface {
 ```go
 type TestServer interface {
     ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
-    ExampleUnaryStream(req *ExampleRequest, stream Test_ExampleUnaryStreamServer) error
-    ExampleStreamUnary(stream Test_ExampleStreamUnaryServer) error
-    ExampleStreamStream(stream Test_ExampleStreamStreamServer) error
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+    ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+    ExampleStreamUnary(ctx context.Context, stream slim_rpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error)
+    ExampleStreamStream(ctx context.Context, stream slim_rpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error
+}
+```
+
+### Group Client Interface
+```go
+type TestGroupClient interface {
+    ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error)
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error)
+    ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.MulticastResponseStream[*ExampleResponse], error)
+    ExampleStreamUnary(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error)
+    ExampleStreamStream(ctx context.Context) (slim_rpc.MulticastClientBidiStream[*ExampleRequest, *ExampleResponse], error)
 }
 ```
 
 ### Stream Interfaces
-Each streaming method gets its own interface with `Send()` and/or `Recv()` methods:
+The stream types are generic interfaces from the `slim_rpc` package
+(`slim_bindings/slim_rpc/stream_interfaces.go`), shared by all services:
 
 ```go
-// Server streaming
-type Test_ExampleUnaryStreamServer interface {
-    Send(*ExampleResponse) error
+// Server streaming (server side)
+type ServerStream[T proto.Message] interface {
+    Send(T) error
 }
 
-// Client streaming
-type Test_ExampleStreamUnaryServer interface {
-    Recv() (*ExampleRequest, error)
+// Client streaming (server side) and server streaming (client side)
+type ResponseStream[T proto.Message] interface {
+    Recv() (T, error)
 }
 
-// Bidirectional streaming
-type Test_ExampleStreamStreamServer interface {
-    Send(*ExampleResponse) error
-    Recv() (*ExampleRequest, error)
+// Bidirectional streaming (server side)
+type ServerBidiStream[TReq proto.Message, TResp proto.Message] interface {
+    Send(TResp) error
+    Recv() (TReq, error)
 }
 ```
 

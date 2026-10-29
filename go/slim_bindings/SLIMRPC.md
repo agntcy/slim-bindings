@@ -16,14 +16,19 @@ protocol.
 This README provides a guide to understanding how slimrpc functions and how you can
 implement it in your applications. For detailed instructions on compiling a
 protobuf file to obtain the necessary slimrpc stub code, please refer to the
-dedicated [README file of the slimrpc compiler](https://github.com/agntcy/slim/blob/main/data-plane/slimrpc-compiler/README.md).
+dedicated [README file of the slimrpc compiler](https://github.com/agntcy/slim-bindings/blob/main/slimrpc-compiler/README.md).
+
+The slimrpc runtime lives in the `slim_rpc` sub-package
+(`github.com/agntcy/slim-bindings-go/slim_rpc`), next to the core
+`slim_bindings` package used to create apps and connections.
 
 ## SLIM naming in slimrpc
 
-In slimrpc, each service and its individual RPC handlers are assigned a SLIM name,
-facilitating efficient message routing and processing. Consider the [example
-protobuf](https://github.com/agntcy/slim-bindings/tree/main/go/examples/slimrpc/simple/example.proto) definition, which defines four
-distinct services:
+A slimrpc server subscribes once to its SLIM name; every request carries the
+service and method it targets, and the server dispatches it to the matching
+handler. Consider the [example
+protobuf](https://github.com/agntcy/slim-bindings/tree/main/go/examples/slimrpc/simple/example.proto) definition, which defines one
+service, `Test`, with five methods:
 
 ```protobuf
 syntax = "proto3";
@@ -33,6 +38,7 @@ package example_service;
 service Test {
   rpc ExampleUnaryUnary(ExampleRequest) returns (ExampleResponse);
   rpc ExampleUnaryStream(ExampleRequest) returns (stream ExampleResponse);
+  rpc ExampleUnaryStreamTwo(ExampleRequest) returns (stream ExampleResponse);
   rpc ExampleStreamUnary(stream ExampleRequest) returns (ExampleResponse);
   rpc ExampleStreamStream(stream ExampleRequest) returns (stream ExampleResponse);
 }
@@ -52,6 +58,7 @@ Based on the example_service.Test definition, the method names would be:
 ```
 example_service.Test/ExampleUnaryUnary
 example_service.Test/ExampleUnaryStream
+example_service.Test/ExampleUnaryStreamTwo
 example_service.Test/ExampleStreamUnary
 example_service.Test/ExampleStreamStream
 ```
@@ -70,7 +77,7 @@ interaction, leveraging the simple example provided in the
 
 The foundation of this example is the `example.proto` file, which is a
 standard Protocol Buffers definition file. This file is compiled using the slimrpc
-compiler (refer to the [slimrpc Compiler README](../../slimrpc-compiler/README.md)
+compiler (refer to the [slimrpc Compiler README](https://github.com/agntcy/slim-bindings/blob/main/slimrpc-compiler/README.md)
 for installation and usage instructions) to generate the necessary Go stub
 code. The generated code is available in `example_slimrpc.pb.go`, which contains
 the slimrpc-specific stubs for both client and server implementations.
@@ -81,10 +88,11 @@ The client interface provides methods for calling each RPC defined in the proto 
 
 ```go
 type TestClient interface {
-    ExampleUnaryUnary(ctx context.Context, in *ExampleRequest, opts ...CallOption) (*ExampleResponse, error)
-    ExampleUnaryStream(ctx context.Context, in *ExampleRequest, opts ...CallOption) (ResponseStream[*ExampleResponse], error)
-    ExampleStreamUnary(ctx context.Context, opts ...CallOption) (RequestStream[*ExampleRequest, *ExampleResponse], error)
-    ExampleStreamStream(ctx context.Context, opts ...CallOption) (BidiStream[*ExampleRequest, *ExampleResponse], error)
+    ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+    ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest) (slim_rpc.ResponseStream[*ExampleResponse], error)
+    ExampleStreamUnary(ctx context.Context) (slim_rpc.ClientRequestStream[*ExampleRequest, *ExampleResponse], error)
+    ExampleStreamStream(ctx context.Context) (slim_rpc.ClientBidiStream[*ExampleRequest, *ExampleResponse], error)
 }
 ```
 
@@ -95,7 +103,8 @@ client := NewTestClient(channel)
 ```
 
 Key features of the client:
-- Context-based cancellation and timeouts via `context.Context`
+- The `ctx` deadline becomes the RPC timeout
+- Metadata is attached with `slim_rpc.WithMetadata(ctx, map[string]string{...})`
 - Unary methods return responses directly or an error
 - Streaming methods return typed stream interfaces
 - All methods follow standard Go error handling patterns
@@ -107,38 +116,59 @@ this interface to provide the actual business logic for each RPC method:
 
 ```go
 type TestServer interface {
-    ExampleUnaryUnary(context.Context, *ExampleRequest) (*ExampleResponse, error)
-    ExampleUnaryStream(*ExampleRequest, ResponseStream[*ExampleResponse]) error
-    ExampleStreamUnary(RequestStream[*ExampleRequest, *ExampleResponse]) error
-    ExampleStreamStream(BidiStream[*ExampleRequest, *ExampleResponse]) error
+    ExampleUnaryUnary(ctx context.Context, req *ExampleRequest) (*ExampleResponse, error)
+    ExampleUnaryStream(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+    ExampleUnaryStreamTwo(ctx context.Context, req *ExampleRequest, stream slim_rpc.ServerStream[*ExampleResponse]) error
+    ExampleStreamUnary(ctx context.Context, stream slim_rpc.ResponseStream[*ExampleRequest]) (*ExampleResponse, error)
+    ExampleStreamStream(ctx context.Context, stream slim_rpc.ServerBidiStream[*ExampleRequest, *ExampleResponse]) error
 }
 ```
 
+Embed `UnimplementedTestServer` in your implementation to get default
+handlers for the methods you don't implement.
+
 #### Stream Interfaces
 
-The generated code uses generic stream interfaces for type safety:
+The generated code uses generic stream interfaces from the `slim_rpc` package
+for type safety. All type parameters are constrained to `proto.Message`.
+`Recv()` returns `(nil, nil)` when the stream ends; it does not return `io.EOF`.
 
-**ResponseStream[T]** - For receiving responses (client-side unary-stream):
+**ResponseStream[T]** - For receiving a stream (client-side unary-stream, server-side stream-unary):
 ```go
-type ResponseStream[T any] interface {
+type ResponseStream[T proto.Message] interface {
     Recv() (T, error)  // Returns nil when stream ends
 }
 ```
 
-**RequestStream[Req, Resp]** - For sending requests and receiving a final response (client-side stream-unary):
+**ServerStream[T]** - For sending a stream of responses (server-side unary-stream):
 ```go
-type RequestStream[Req, Resp any] interface {
-    Send(Req) error
-    CloseAndRecv() (Resp, error)
+type ServerStream[T proto.Message] interface {
+    Send(T) error
 }
 ```
 
-**BidiStream[Req, Resp]** - For bidirectional streaming (client-side stream-stream):
+**ClientRequestStream[TReq, TResp]** - For sending requests and receiving a final response (client-side stream-unary):
 ```go
-type BidiStream[Req, Resp any] interface {
-    Send(Req) error
-    Recv() (Resp, error)  // Returns nil when stream ends
+type ClientRequestStream[TReq proto.Message, TResp proto.Message] interface {
+    Send(TReq) error
+    CloseAndRecv() (TResp, error)
+}
+```
+
+**ClientBidiStream[TReq, TResp]** - For bidirectional streaming (client-side stream-stream):
+```go
+type ClientBidiStream[TReq proto.Message, TResp proto.Message] interface {
+    Send(TReq) error
+    Recv() (TResp, error)  // Returns nil when stream ends
     CloseSend() error
+}
+```
+
+**ServerBidiStream[TReq, TResp]** - For bidirectional streaming (server-side stream-stream):
+```go
+type ServerBidiStream[TReq proto.Message, TResp proto.Message] interface {
+    Send(TResp) error
+    Recv() (TReq, error)  // Returns nil when stream ends
 }
 ```
 
@@ -147,7 +177,7 @@ type BidiStream[Req, Resp any] interface {
 Register a service implementation with a server:
 
 ```go
-func RegisterTestServer(s ServerInterface, srv TestServer)
+func RegisterTestServer(server slim_rpc.ServerInterface, impl TestServer)
 ```
 
 This function registers all the RPC handlers with the SLIM server.
@@ -155,7 +185,7 @@ This function registers all the RPC handlers with the SLIM server.
 ### Server Implementation
 
 The server-side logic is defined in
-[server.go](../examples/slimrpc/simple/cmd/server/server.go). The service
+[server.go](https://github.com/agntcy/slim-bindings/tree/main/go/examples/slimrpc/simple/cmd/server/server.go). The service
 implementation provides the core functionality:
 
 ```go
@@ -171,7 +201,7 @@ func (s *TestServiceImpl) ExampleUnaryUnary(ctx context.Context, req *pb.Example
     }, nil
 }
 
-func (s *TestServiceImpl) ExampleUnaryStream(req *pb.ExampleRequest, stream slimrpc.ResponseStream[*pb.ExampleResponse]) error {
+func (s *TestServiceImpl) ExampleUnaryStream(ctx context.Context, req *pb.ExampleRequest, stream slim_rpc.ServerStream[*pb.ExampleResponse]) error {
     log.Printf("Received unary-stream request: %+v", req)
 
     // Generate response stream
@@ -187,9 +217,21 @@ func (s *TestServiceImpl) ExampleUnaryStream(req *pb.ExampleRequest, stream slim
 }
 ```
 
+To return a specific status code, return
+`slim_rpc.NewRpcErrorRpc(slim_rpc.RpcCodeInvalidArgument, "message", nil)`;
+any other error is reported to the caller as `INTERNAL`.
+
 The SLIM-specific server setup:
 
 ```go
+import (
+    "log"
+
+    slim_bindings "github.com/agntcy/slim-bindings-go"
+    slim_rpc "github.com/agntcy/slim-bindings-go/slim_rpc"
+    // plus your generated package, imported as pb
+)
+
 func main() {
     // Initialize SLIM with defaults
     slim_bindings.InitializeWithDefaults()
@@ -218,14 +260,14 @@ func main() {
     }
 
     // Create server
-    server := slim_bindings.ServerNewWithConnection(app, localName, &connId)
+    server := slim_rpc.ServerNewWithConnection(app, localName, &connId)
 
     // Register service
     pb.RegisterTestServer(server, &TestServiceImpl{})
 
-    // Start server
+    // Start server (blocks until the server stops)
     log.Println("Server starting...")
-    if err := server.Serve(); err != nil {
+    if err := server.ServeBlocking(); err != nil {
         log.Printf("Server error: %v", err)
     }
 }
@@ -237,14 +279,14 @@ Key steps:
 3. Create an app with authentication (shared secret in this example)
 4. Connect to the SLIM node
 5. Subscribe to receive messages at the local name
-6. Create a `slim_bindings.Server` from the app
+6. Create a `slim_rpc.Server` from the app
 7. Register the service implementation
-8. Start the server with `Serve()`
+8. Start the server with `ServeBlocking()` (or `ServeAsync()`)
 
 ### Client Implementation
 
 The client-side implementation, found in
-[client.go](../examples/slimrpc/simple/cmd/client/client.go), creates a channel and uses
+[client.go](https://github.com/agntcy/slim-bindings/tree/main/go/examples/slimrpc/simple/cmd/client/client.go), creates a channel and uses
 the generated client methods:
 
 ```go
@@ -277,7 +319,8 @@ func main() {
     }
 
     // Create channel
-    channel := slim_bindings.ChannelNewWithConnection(app, remoteName, &connId)
+    channel := slim_rpc.ChannelNewWithConnection(app, remoteName, &connId)
+    defer channel.CloseBlocking(nil)
 
     // Create client
     client := pb.NewTestClient(channel)
@@ -319,11 +362,33 @@ func main() {
 Key points:
 - Similar setup as the server (initialize service, create app, subscribe)
 - Create both local and remote `slim_bindings.Name` objects
-- Create a `slim_bindings.Channel` with the app and remote name
+- Create a `slim_rpc.Channel` with the app and remote name
 - Use `context.Context` for cancellation and timeouts
 - Standard Go error handling with explicit error checks
 - Streaming methods return typed stream interfaces
 - `Recv()` returns `nil` to indicate stream end
+
+### Group (multicast) client
+
+The compiler also generates a `TestGroupClient`, which sends each call to every
+member of a group channel and returns the responses as a
+`slim_rpc.MulticastResponseStream[T]` (or `MulticastClientBidiStream` for
+client-streaming methods). Each `Recv()` yields a `*slim_rpc.MulticastItem[T]`
+with the response in `Value` and the responding server in `Context`; it returns
+`(nil, nil)` at the end. See
+[client_group.go](https://github.com/agntcy/slim-bindings/tree/main/go/examples/slimrpc/simple/cmd/client_group/client_group.go):
+
+```go
+members := []*slim_bindings.Name{
+    slim_bindings.NewName("agntcy", "grpc", "server1"),
+    slim_bindings.NewName("agntcy", "grpc", "server2"),
+}
+channel, err := slim_rpc.ChannelNewGroupWithConnection(app, members, &connId)
+if err != nil {
+    log.Fatalf("Failed to create group channel: %v", err)
+}
+client := pb.NewTestGroupClient(channel)
+```
 
 ## slimrpc Under the Hood
 
@@ -335,9 +400,8 @@ The underlying transport uses SLIM sessions with configurable reliability and
 timeout settings. Since sessions in SLIM can be sticky, all messages in a
 streaming communication will be forwarded to the same application instance.
 
-The `slim_bindings` API provides:
+The `slim_rpc` API provides:
 - **Context support**: Standard Go `context.Context` for cancellation and timeouts
 - **Type safety**: Generic stream interfaces ensure compile-time type checking
 - **Error handling**: Follows Go conventions with explicit error returns
 - **Stream interfaces**: Clean abstractions for different streaming patterns
-- **Zero allocation deserialization**: Efficient protobuf handling

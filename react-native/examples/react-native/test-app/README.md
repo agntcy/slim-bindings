@@ -4,9 +4,9 @@ React Native test application for end-to-end testing of the SLIM JavaScript bind
 
 ## Purpose
 
-This app tests that the generated JSI bindings work correctly on iOS and Android devices/simulators. It runs smoke tests that verify:
+This app tests that the generated JSI bindings work correctly on the iOS simulator (Android is not supported yet). It runs smoke tests that verify:
 
-- Crypto provider initialization
+- Runtime initialization (`initializeWithDefaults()`)
 - Version retrieval
 - Name object creation
 - App creation with shared secrets
@@ -18,10 +18,8 @@ This app tests that the generated JSI bindings work correctly on iOS and Android
 - CocoaPods: `sudo gem install cocoapods`
 - iOS Simulator
 
-### Android
-- Android Studio with SDK installed
-- Android Emulator configured
-- Java 17+
+### Node.js
+- Node.js 20+
 
 ### Testing Tool
 - Maestro: `curl -Ls "https://get.maestro.mobile.dev" | bash`
@@ -38,18 +36,15 @@ task prepare:ios
 task test:e2e:setup
 ```
 
-This will:
-1. Build the iOS XCFramework (device + simulator)
-2. Install npm dependencies
-3. Install iOS pods
-4. Link the local SLIM bindings
+`task prepare:ios` builds the iOS XCFramework (device + simulator).
+`task test:e2e:setup` installs the test app's npm dependencies and iOS pods.
 
 ## Running Tests
 
 ### iOS
 
 ```bash
-# From project root
+# From the React Native bindings root (react-native)
 task test:e2e:ios
 ```
 
@@ -59,27 +54,6 @@ cd examples/react-native/test-app
 
 # Build and run
 npx react-native run-ios
-
-# In another terminal, run Maestro tests
-maestro test maestro/smoke-tests.yaml
-```
-
-### Android
-
-```bash
-# From project root
-task test:e2e:android
-```
-
-Or manually:
-```bash
-cd examples/react-native/test-app
-
-# Start emulator first
-emulator -avd Pixel_8_API_34 &
-
-# Build and run
-npx react-native run-android
 
 # In another terminal, run Maestro tests
 maestro test maestro/smoke-tests.yaml
@@ -122,23 +96,12 @@ cd ..
 npx react-native run-ios --clean
 ```
 
-### Android build fails
-```bash
-cd android
-./gradlew clean
-cd ..
-npx react-native run-android
-```
-
 ### Maestro can't find app
-Make sure the app is running on the simulator/emulator before running Maestro tests.
+Make sure the app is running on the simulator before running Maestro tests.
 
 ## CI Integration
 
-This test app is used in GitHub Actions CI:
-- `.github/workflows/test-javascript-bindings.yml`
-- Runs on both iOS (macOS runners) and Android (Ubuntu + emulator)
-- Tests are executed automatically on PR and push to main
+These E2E tests are not run in CI yet; run them locally with `task test:e2e:ios`.
 
 ## Development
 
@@ -146,8 +109,7 @@ To add new tests:
 
 1. Add test logic to `App.tsx` in the `runTests()` function
 2. Update `maestro/smoke-tests.yaml` to verify the new test
-3. Test locally on both platforms
-4. Verify in CI
+3. Run `task test:e2e:ios` locally
 
 ## Architecture
 
@@ -167,4 +129,4 @@ Rust library (libslim_bindings.a)
 
 - [Maestro Documentation](https://maestro.mobile.dev/)
 - [React Native Testing](https://reactnative.dev/docs/testing-overview)
-- [SLIM JavaScript Bindings](../../README.md)
+- [SLIM React Native Bindings](../../../README.md)

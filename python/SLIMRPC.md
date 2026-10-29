@@ -16,14 +16,16 @@ protocol.
 This README provides a guide to understanding how slimrpc functions and how you can
 implement it in your applications. For detailed instructions on compiling a
 protobuf file to obtain the necessary slimrpc stub code, please refer to the
-dedicated [README file of the slimrpc compiler](../../slimrpc-compiler/README.md).
+dedicated [README file of the slimrpc compiler](../slimrpc-compiler/README.md).
 
 ## SLIM naming in slimrpc
 
-In slimrpc, each service and its individual RPC handlers are assigned a SLIM name,
-facilitating efficient message routing and processing. Consider the [example
-protobuf](examples/slimrpc/simple/example.proto) definition, which defines four
-distinct services:
+In slimrpc, a server subscribes to a single SLIM name (the app name it is created
+with) and all the services and methods it hosts are reached through that name. Each
+request carries the target service and method in its metadata, and the server uses
+them to dispatch the call to the right handler. Consider the [example
+protobuf](examples/slimrpc/simple/example.proto) definition, which defines one
+service with four methods:
 
 ```protobuf
 syntax = "proto3";
@@ -41,7 +43,7 @@ service Test {
 This example showcases the four primary communication patterns supported by
 gRPC: Unary-Unary, Unary-Stream, Stream-Unary, and Stream-Stream.
 
-For slimrpc, service methods are invoked using the format:
+For slimrpc, service methods are identified using the format:
 
 ```
 {package-name}.{service-name}/{method-name}
@@ -70,7 +72,7 @@ interaction, leveraging the simple example provided in the
 
 The foundation of this example is the `example.proto` file, which is a
 standard Protocol Buffers definition file. This file is compiled using the slimrpc
-compiler (refer to the [slimrpc Compiler README](../../slimrpc-compiler/README.md)
+compiler (refer to the [slimrpc Compiler README](../slimrpc-compiler/README.md)
 for installation and usage instructions) to generate the necessary Python stub
 code. The generated code is available in two files: `example_pb2.py` and
 `example_pb2_slimrpc.py`. Specifically, `example_pb2_slimrpc.py` contains the
@@ -95,23 +97,25 @@ class TestStub:
         """
         self._channel = channel
 
-    async def ExampleUnaryUnary(self, request: pb2.ExampleRequest, timeout=None) -> pb2.ExampleResponse:
+    async def ExampleUnaryUnary(self, request: pb2.ExampleRequest, timeout: Optional[timedelta] = None, metadata: Optional[dict[str, str]] = None) -> pb2.ExampleResponse:
         """Call ExampleUnaryUnary method."""
         response_bytes = await self._channel.call_unary_async(
             "example_service.Test",
             "ExampleUnaryUnary",
             pb2.ExampleRequest.SerializeToString(request),
             timeout,
+            metadata,
         )
         return pb2.ExampleResponse.FromString(response_bytes)
 
-    async def ExampleUnaryStream(self, request: pb2.ExampleRequest, timeout=None):
+    async def ExampleUnaryStream(self, request: pb2.ExampleRequest, timeout: Optional[timedelta] = None, metadata: Optional[dict[str, str]] = None):
         """Call ExampleUnaryStream method."""
         response_stream = await self._channel.call_unary_stream_async(
             "example_service.Test",
             "ExampleUnaryStream",
             pb2.ExampleRequest.SerializeToString(request),
             timeout,
+            metadata,
         )
         while True:
             stream_msg = await response_stream.next_async()
@@ -122,24 +126,26 @@ class TestStub:
             if stream_msg.is_data():
                 yield pb2.ExampleResponse.FromString(stream_msg[0])
 
-    async def ExampleStreamUnary(self, request_iterator, timeout=None) -> pb2.ExampleResponse:
+    async def ExampleStreamUnary(self, request_iterator, timeout: Optional[timedelta] = None, metadata: Optional[dict[str, str]] = None) -> pb2.ExampleResponse:
         """Call ExampleStreamUnary method."""
         request_stream = self._channel.call_stream_unary(
             "example_service.Test",
             "ExampleStreamUnary",
             timeout,
+            metadata,
         )
         async for request in request_iterator:
             await request_stream.send_async(pb2.ExampleRequest.SerializeToString(request))
         response_bytes = await request_stream.finalize_stream_async()
         return pb2.ExampleResponse.FromString(response_bytes)
 
-    async def ExampleStreamStream(self, request_iterator, timeout=None):
+    async def ExampleStreamStream(self, request_iterator, timeout: Optional[timedelta] = None, metadata: Optional[dict[str, str]] = None):
         """Call ExampleStreamStream method."""
         bidi_stream = self._channel.call_stream_stream(
             "example_service.Test",
             "ExampleStreamStream",
             timeout,
+            metadata,
         )
 
         async def send_requests():
@@ -170,6 +176,8 @@ class TestStub:
 
 Key features of the client stub:
 - All methods are `async` and use `await` for the channel operations
+- Every method takes an optional `timeout` (`datetime.timedelta`) and optional
+  `metadata` (`dict[str, str]`) sent along with the request
 - Unary methods serialize requests and deserialize responses
 - Streaming methods handle `StreamMessage` objects with proper error checking
 - Bidirectional streaming supports concurrent send/receive operations
@@ -183,29 +191,56 @@ this class to provide the actual business logic for each RPC method.
 class TestServicer:
     """Server servicer for Test. Implement this class to provide your service logic."""
 
-    def ExampleUnaryUnary(self, request, msg_context, session_context):
+    def ExampleUnaryUnary(self, request, context):
         """Method for ExampleUnaryUnary. Implement your service logic here."""
-        raise slim_bindings.SRPCResponseError(
-            code=code__pb2.UNIMPLEMENTED, message="Method not implemented!"
+        raise slim_bindings.RpcError.Rpc(
+            code=slim_bindings.RpcCode.UNIMPLEMENTED,
+            message="Method not implemented!",
+            details=None
         )
 
-    def ExampleUnaryStream(self, request, msg_context, session_context):
+    def ExampleUnaryStream(self, request, context):
         """Method for ExampleUnaryStream. Implement your service logic here."""
-        raise slim_bindings.SRPCResponseError(
-            code=code__pb2.UNIMPLEMENTED, message="Method not implemented!"
+        raise slim_bindings.RpcError.Rpc(
+            code=slim_bindings.RpcCode.UNIMPLEMENTED,
+            message="Method not implemented!",
+            details=None
         )
 
-    def ExampleStreamUnary(self, request_iterator, session_context):
+    def ExampleStreamUnary(self, request_iterator, context):
         """Method for ExampleStreamUnary. Implement your service logic here."""
-        raise slim_bindings.SRPCResponseError(
-            code=code__pb2.UNIMPLEMENTED, message="Method not implemented!"
+        raise slim_bindings.RpcError.Rpc(
+            code=slim_bindings.RpcCode.UNIMPLEMENTED,
+            message="Method not implemented!",
+            details=None
         )
 
-    def ExampleStreamStream(self, request_iterator, session_context):
+    def ExampleStreamStream(self, request_iterator, context):
         """Method for ExampleStreamStream. Implement your service logic here."""
-        raise slim_bindings.SRPCResponseError(
-            code=code__pb2.UNIMPLEMENTED, message="Method not implemented!"
+        raise slim_bindings.RpcError.Rpc(
+            code=slim_bindings.RpcCode.UNIMPLEMENTED,
+            message="Method not implemented!",
+            details=None
         )
+```
+
+Your implementations must be `async`: the generated handlers `await` unary
+methods and iterate streaming ones with `async for`, so implement unary-response
+methods with `async def ... -> Response` and streaming-response methods as async
+generators (`async def` + `yield`). Every method receives a `slim_bindings.Context`
+with the request `metadata()`, `deadline()`, `remaining_time()`, `session_id()` and
+the caller's verified `peer_subject()` / `peer_issuer()`. To return an error with a
+specific status, raise `slim_bindings.RpcError.Rpc(code=slim_bindings.RpcCode..., message=..., details=None)`;
+any other exception is returned as `INTERNAL`:
+
+```python
+class TestService(TestServicer):
+    async def ExampleUnaryUnary(self, request, context: slim_bindings.Context):
+        return ExampleResponse(example_integer=1, example_string="Hello, World!")
+
+    async def ExampleUnaryStream(self, request, context: slim_bindings.Context):
+        for i in range(5):
+            yield ExampleResponse(example_integer=i, example_string=f"Response {i}")
 ```
 
 #### Server Registration Function (add_TestServicer_to_server)
@@ -252,6 +287,9 @@ The SLIM-specific code is handled within the `amain()` asynchronous function:
 
 ```python
 async def amain() -> None:
+    # Let the bindings drive async server handlers on this event loop
+    slim_bindings.uniffi_set_event_loop(asyncio.get_running_loop())
+
     # Initialize service
     tracing_config = slim_bindings.new_tracing_config()
     runtime_config = slim_bindings.new_runtime_config()
@@ -283,25 +321,27 @@ async def amain() -> None:
     await local_app.subscribe_async(local_name, conn_id)
 
     # Create server
-    server = slim_bindings.Server(local_app)
+    server = slim_bindings.Server.new_with_connection(local_app, local_name, conn_id)
 
     # Add servicer
     add_TestServicer_to_server(TestService(), server)
 
     # Run server
     logger.info("Server starting...")
-    await server.run()
+    await server.serve_async()
 ```
 
 Key steps:
-1. Initialize the SLIM service with configs
-2. Create a `slim_bindings.Name` for the server identity
-3. Connect to the SLIM node
-4. Create an app with authentication (shared secret in this example)
-5. Subscribe to receive messages at the local name
-6. Create a `slim_bindings.Server` from the app
-7. Register the service implementation
-8. Run the server
+1. Register the running asyncio event loop with `slim_bindings.uniffi_set_event_loop`
+   (without it, server handlers fail with `RuntimeError: no running event loop`)
+2. Initialize the SLIM service with configs
+3. Create a `slim_bindings.Name` for the server identity
+4. Connect to the SLIM node
+5. Create an app with authentication (shared secret in this example)
+6. Subscribe to receive messages at the local name
+7. Create a `slim_bindings.Server` from the app, its name and the connection
+8. Register the service implementation
+9. Run the server with `serve_async()` (or `serve_blocking()`)
 
 ### Client Implementation
 
@@ -345,7 +385,7 @@ async def amain() -> None:
     await local_app.subscribe_async(local_name, conn_id)
 
     # Create channel
-    channel = slim_bindings.Channel(local_app, remote_name)
+    channel = slim_bindings.Channel.new_with_connection(local_app, remote_name, conn_id)
 
     # Create stubs
     stubs = TestStub(channel)
@@ -362,12 +402,15 @@ async def amain() -> None:
         request, timeout=timedelta(seconds=2)
     ):
         logger.info(f"Stream Response: {resp}")
+
+    # Close the channel
+    await channel.close_async(timeout=None)
 ```
 
 Key points:
 - Similar setup as the server (initialize service, create app, subscribe)
 - Create both local and remote `slim_bindings.Name` objects
-- Create a `slim_bindings.Channel` with the app and remote name
+- Create a `slim_bindings.Channel` with the app, remote name and connection
 - Use `timedelta` for timeout parameters
 - All stub methods are async and must be awaited
 - Streaming methods can be iterated with `async for`

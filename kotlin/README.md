@@ -26,19 +26,21 @@ This package provides Kotlin bindings for SLIM, enabling secure messaging with:
 kotlin/
 ├── Taskfile.yaml           # Build automation tasks
 ├── uniffi.toml             # UniFFI configuration (package name)
-├── patch-bindings.sh       # Post-generation patches
+├── patch-bindings.py       # Post-generation patches
 ├── build.gradle.kts        # Gradle build configuration
 ├── settings.gradle.kts     # Gradle settings
 ├── gradle.properties       # Build properties
 ├── detekt.yml              # Detekt linter rules (used by `task lint`)
 ├── examples/
-│   ├── common/             # Shared utilities
-│   │   ├── Config.kt       # Configuration data classes
-│   │   ├── Common.kt       # Helper functions
-│   │   └── Colors.kt       # Terminal formatting
-│   ├── PointToPoint.kt     # P2P messaging example
-│   ├── Group.kt            # Group messaging example
-│   └── Server.kt           # SLIM server example
+│   ├── kotlin/
+│   │   ├── common/         # Shared utilities
+│   │   │   ├── Config.kt   # Configuration data classes
+│   │   │   ├── Common.kt   # Helper functions
+│   │   │   └── Colors.kt   # Terminal formatting
+│   │   ├── PointToPoint.kt # P2P messaging example
+│   │   ├── Group.kt        # Group messaging example
+│   │   └── Server.kt       # SLIM server example
+│   └── slimrpc/simple/     # slimrpc example (see SLIMRPC.md)
 └── generated/              # UniFFI-generated code (gitignored)
     └── io/agntcy/slim/bindings/
         └── slim_bindings.kt
@@ -77,13 +79,13 @@ task build
 Start a SLIM server:
 
 ```bash
-task example:server
+task examples:server
 ```
 
 Or with custom address:
 
 ```bash
-task example:server CLI_ARGS="--slim 127.0.0.1:8080"
+task examples:server CLI_ARGS='--args="--slim 127.0.0.1:8080"'
 ```
 
 #### Point-to-Point Messaging
@@ -91,19 +93,19 @@ task example:server CLI_ARGS="--slim 127.0.0.1:8080"
 Run Alice (receiver) in one terminal:
 
 ```bash
-task example:p2p:alice
+task examples:p2p:alice
 ```
 
 Run Bob (sender) in another terminal:
 
 ```bash
-task example:p2p:bob
+task examples:p2p:no-mls:bob
 ```
 
 With MLS encryption:
 
 ```bash
-task example:p2p:mls:bob
+task examples:p2p:mls:bob
 ```
 
 #### Group Messaging
@@ -111,14 +113,14 @@ task example:p2p:mls:bob
 Run the moderator in one terminal:
 
 ```bash
-task example:group:moderator
+task examples:group:moderator
 ```
 
 Run clients in separate terminals:
 
 ```bash
-task example:group:client-1
-task example:group:client-2
+task examples:group:client-1
+task examples:group:client-2
 ```
 
 ## Examples
@@ -148,10 +150,10 @@ suspend fun main() = coroutineScope {
     
     val sessionConfig = SessionConfig(
         sessionType = SessionType.POINT_TO_POINT,
-        enableMls = config.enableMls,
         maxRetries = 5u,
         interval = Duration.ofSeconds(5),
-        metadata = emptyMap()
+        metadata = emptyMap(),
+        mlsSettings = if (config.enableMls) MlsSettings(100u, null) else null
     )
     
     val sessionContext = app.createSessionAsync(sessionConfig, remoteName)
@@ -204,10 +206,10 @@ suspend fun main() = coroutineScope {
     
     val sessionConfig = SessionConfig(
         sessionType = SessionType.GROUP,
-        enableMls = config.enableMls,
         maxRetries = 5u,
         interval = Duration.ofSeconds(5),
-        metadata = emptyMap()
+        metadata = emptyMap(),
+        mlsSettings = if (config.enableMls) MlsSettings(100u, null) else null
     )
     
     val sessionContext = app.createSession(sessionConfig, channelName)
@@ -291,13 +293,14 @@ All examples support the following common arguments:
 
 ### Environment Variables
 
-Configuration can also be provided via environment variables with the `SLIM_` prefix:
+Some defaults can also be provided via environment variables with the `SLIM_` prefix
+(`--local` and `--enable-mls` have no environment equivalent):
 
-- `SLIM_LOCAL` - Local identity
 - `SLIM_ENDPOINT` - Server endpoint
 - `SLIM_SHARED_SECRET` - Shared secret
 - `SLIM_ENABLE_OPENTELEMETRY` - Enable OpenTelemetry (true/false)
-- `SLIM_ENABLE_MLS` - Enable MLS encryption (true/false)
+- `SLIM_JWT`, `SLIM_SPIRE_TRUST_BUNDLE`, `SLIM_AUDIENCE` - JWT identity settings
+- `SLIM_SPIRE_SOCKET_PATH`, `SLIM_SPIRE_TARGET_SPIFFE_ID`, `SLIM_SPIRE_JWT_AUDIENCE` - SPIRE identity settings
 - `SLIM_CLIENT_CONFIG` - Path to a JSON file holding the full gRPC client config (see
   [Transport Authentication](#transport-authentication-grpc-connection)); overrides `SLIM_ENDPOINT`
 
@@ -314,7 +317,7 @@ The bindings support three authentication modes:
    ```kotlin
    val config = BaseConfig(
        local = "org/alice/app",
-       sharedSecret = "my-secret-key-32-chars-min"
+       sharedSecret = "my-shared-secret-at-least-32-bytes-long"
    )
    ```
 
@@ -417,7 +420,7 @@ which covers every auth mode plus TLS material and backoff without any code chan
 }
 ```
 
-The schema matches `data-plane/core/config/src/grpc/schema/client-config.schema.json` in the
+The schema matches `crates/config/src/schema/client-config.schema.json` in the
 [slim](https://github.com/agntcy/slim) repo. To load one yourself, call `newConfigFromJson(json)`.
 
 ## Building
@@ -429,13 +432,13 @@ The project uses [Task](https://taskfile.dev/) for build automation:
 - `task generate` - Generate Kotlin bindings from Rust library
 - `task build` - Build Kotlin code and create JARs
 - `task clean` - Remove build artifacts and generated code
-- `task example:server` - Run the server example
-- `task example:p2p:alice` - Run Alice (P2P receiver)
-- `task example:p2p:no-mls:bob` - Run Bob (P2P sender, without encryption)
-- `task example:p2p:mls:bob` - Run Bob with MLS encryption
-- `task example:group:moderator` - Run group moderator
-- `task example:group:client-1` - Run group participant 1
-- `task example:group:client-2` - Run group participant 2
+- `task examples:server` - Run the server example
+- `task examples:p2p:alice` - Run Alice (P2P receiver)
+- `task examples:p2p:no-mls:bob` - Run Bob (P2P sender, without encryption)
+- `task examples:p2p:mls:bob` - Run Bob with MLS encryption
+- `task examples:group:moderator` - Run group moderator
+- `task examples:group:client-1` - Run group participant 1
+- `task examples:group:client-2` - Run group participant 2
 
 ## Dependencies
 
@@ -476,9 +479,11 @@ Rust `Result<T, E>` types are converted to Kotlin exceptions:
 ```rust
 // Rust
 pub enum SlimError {
-    ConnectionFailed(String),
-    SessionClosed(String),
-    // ...
+    ServiceError { message: String },
+    SessionError { message: String },
+    SendError { message: String },
+    Timeout,
+    // ... ReceiveError, AuthError, ConfigError, RpcError, InvalidArgument, InternalError
 }
 ```
 
@@ -486,8 +491,10 @@ pub enum SlimError {
 // Kotlin
 try {
     session.publishAsync(data, null, null)
-} catch (e: SlimException.SessionClosed) {
-    println("Session closed: ${e.message}")
+} catch (e: SlimException.SessionException) {
+    println("Session error: ${e.message}")
+} catch (e: SlimException.Timeout) {
+    println("Timed out")
 }
 ```
 
@@ -495,8 +502,9 @@ try {
 
 ### Project Layout
 
-- `examples/common/` - Shared utilities and configuration
-- `examples/*.kt` - Example applications
+- `examples/kotlin/common/` - Shared utilities and configuration
+- `examples/kotlin/*.kt` - Example applications
+- `examples/slimrpc/simple/` - slimrpc example
 - `generated/` - UniFFI-generated Kotlin code (not in git)
 - `build.gradle.kts` - Gradle build configuration
 - `detekt.yml` — Static analysis rules (`task lint` in this directory)
@@ -504,11 +512,11 @@ try {
 
 ## License
 
-Apache 2.0 - See LICENSE.md for details
+Apache 2.0 - See [LICENSE](../LICENSE) for details
 
 ## Contributing
 
-See CONTRIBUTING.md for contribution guidelines
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines
 
 ## Links
 

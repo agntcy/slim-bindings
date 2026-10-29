@@ -14,7 +14,7 @@ from the inherent security features and efficiency provided by the SLIM
 protocol.
 
 For detailed instructions on compiling a protobuf file to obtain the necessary
-slimrpc stub code, see the [slimrpc compiler README](../../slimrpc-compiler/README.md).
+slimrpc stub code, see the [slimrpc compiler README](https://github.com/agntcy/slim-bindings/blob/main/slimrpc-compiler/README.md).
 
 ## SLIM naming in slimrpc
 
@@ -39,7 +39,7 @@ when a message arrives for a defined RPC method.
 
 - .NET 8.0 or higher
 - [buf](https://buf.build/docs/installation) CLI
-- [protoc-gen-slimrpc-csharp](../../slimrpc-compiler/README.md) plugin (build from source)
+- [protoc-gen-slimrpc-csharp](https://github.com/agntcy/slim-bindings/blob/main/slimrpc-compiler/README.md) plugin (build from source)
 
 ### Code Generation
 
@@ -123,7 +123,8 @@ All client methods accept optional `timeout`, `metadata`, and `cancellationToken
 
 A complete working example is available in `Slim.Examples.SlimRpc`. To run it:
 
-1. Start a SLIM server (from the [slim repo](https://github.com/agntcy/slim)): `cd data-plane && cargo run --bin slim -- --config ./config/base/server-config.yaml`
-2. Generate proto code: `task slimrpc:generate-proto`
+1. Start a SLIM server (from the root of the [slim repo](https://github.com/agntcy/slim)): `cargo run --bin slim -- --config ./config/base/server-config.yaml`
+2. Build the bindings and the example (from `dotnet/`): `task build` — this generates the C# bindings
+   and native runtimes (not checked in) and runs `task slimrpc:generate-proto`
 3. Run the server: `dotnet run --project Slim.Examples.SlimRpc -- --mode server`
 4. Run the client (in another terminal): `dotnet run --project Slim.Examples.SlimRpc -- --mode client`

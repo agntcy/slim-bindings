@@ -218,7 +218,7 @@ TestSlimrpc.registerTestServer(rpcServer, new TestSlimrpc.UnimplementedTestServe
 });
 
 System.out.println("SLIM_RPC_SERVER_READY");
-rpcServer.serve();
+rpcServer.serveBlocking();
 ```
 
 The SLIM-specific server setup:
@@ -243,7 +243,7 @@ app.subscribe(app.name(), connId);
 // Create the RPC server, register the service, and serve
 Server rpcServer = Server.newWithConnection(app, localName, connId);
 TestSlimrpc.registerTestServer(rpcServer, new MyTestServer());
-rpcServer.serve();
+rpcServer.serveBlocking();
 ```
 
 Key steps:
@@ -254,7 +254,7 @@ Key steps:
 4. Connect to the SLIM node and subscribe to the local name
 5. Create a `Server` from the app with `Server.newWithConnection`
 6. Register the service implementation with `registerTestServer`
-7. Start the server with `serve()`
+7. Start the server with `serveBlocking()` (or `serveAsync()` for a `CompletableFuture`)
 
 ## Client Implementation
 
@@ -288,7 +288,13 @@ ExampleResponse response = client.ExampleUnaryUnary(request, Duration.ofSeconds(
 // Unary-Stream
 ResponseStreamReader reader = client.ExampleUnaryStream(request, Duration.ofSeconds(10), null);
 ClientResponseStream<ExampleResponse> stream =
-        ClientResponseStream.create(reader, ExampleResponse::parseFrom);
+        ClientResponseStream.create(reader, bytes -> {
+            try {
+                return ExampleResponse.parseFrom(bytes);
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
+            }
+        });
 ExampleResponse streamResp;
 while ((streamResp = stream.recv()) != null) {
     System.out.println("Stream Response: " + streamResp);

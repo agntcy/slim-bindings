@@ -13,7 +13,7 @@ For **using the package** (install, quick start, main API patterns), see the roo
 - **Primary JS/TS entry point** — Install `@agntcy/slim-bindings` for Node; optional `@agntcy/slim-bindings-*` packages supply the correct native binary per OS/arch.
 - **Rust-backed core** — Same SLIM logic as other language bindings; native code ships per platform.
 - **TypeScript** — Typed surface and editor support (with known type-shape notes documented below).
-- **Authentication** — Shared secret, JWT, and SPIRE-oriented flows exposed through the generated API.
+- **Authentication** — Shared secret, JWT, SPIRE, and OIDC flows exposed through the generated API.
 - **Async-first** — Promise-based calls aligned with Node conventions.
 - **RPC server support** — Server-side handlers can be implemented as plain JS objects (`{ async handle(...) { ... } }`), unlike the previous toolchain.
 - **UniFFI** — Generated from Mozilla's [UniFFI](https://mozilla.github.io/uniffi-rs/) bindings.
@@ -85,6 +85,12 @@ task example:server   # Run server
 task example:alice    # Run Alice receiver
 task example:bob      # Run Bob sender
 task example:group    # Run group (multicast) example (moderator or participant)
+task generate-proto   # Generate slimrpc + protobuf-es TypeScript for the examples
+task example:slimrpc:server        # Run the SlimRPC example server (--instance server1/server2 for group)
+task example:slimrpc:client        # Run the SlimRPC example client
+task example:slimrpc:client-group  # Run the SlimRPC multicast (group) example client
+task test:integration # Run integration tests
+task pack:platform    # Pack the platform-specific npm package (TARGET=, VERSION= optional)
 ```
 
 ## Build process

@@ -11,12 +11,16 @@ This directory contains Java examples demonstrating the SLIM Java bindings using
 ## Building
 
 ```bash
-# From examples/ directory
-task compile
+# From the java/ directory (the examples tasks live in java/Taskfile.yaml)
+task examples:compile
 
-# Or using Maven directly
-mvn clean compile
+# Or using the Maven wrapper directly, from java/examples/
+# (after `task examples:install:bindings` has installed the bindings JAR into ~/.m2)
+../mvnw clean compile
 ```
+
+All `task examples:*` commands below run from the `java/` directory and build and install
+the bindings first.
 
 ## Examples
 
@@ -26,13 +30,13 @@ Starts a SLIM server that relays messages between clients.
 
 **Run:**
 ```bash
-task server
+task examples:server
 
 # With custom address
-task server CLI_ARGS="--slim 0.0.0.0:46357"
+task examples:server CLI_ARGS="--slim 0.0.0.0:46357"
 
 # With OpenTelemetry tracing
-task server CLI_ARGS="--enable-opentelemetry"
+task examples:server CLI_ARGS="--enable-opentelemetry"
 ```
 
 **Options:**
@@ -52,18 +56,18 @@ Demonstrates direct messaging between two peers.
 
 **Run Receiver (Alice):**
 ```bash
-task p2p:alice
+task examples:p2p:alice
 ```
 
 **Run Sender (Bob) in another terminal:**
 ```bash
-task p2p:bob
+task examples:p2p:no-mls:bob
 
 # With MLS encryption
-task p2p:mls:bob
+task examples:p2p:mls:bob
 
 # With custom iterations
-task p2p:bob EXTRA_ARGS="--iterations 20"
+task examples:p2p:no-mls:bob EXTRA_ARGS="--iterations 20"
 ```
 
 **Options:**
@@ -92,13 +96,13 @@ Demonstrates group messaging with a moderator and participants.
 
 **Run Moderator:**
 ```bash
-task group:moderator
+task examples:group:moderator
 ```
 
 **Run Participants in separate terminals:**
 ```bash
-task group:client-1
-task group:client-2
+task examples:group:client-1
+task examples:group:client-2
 ```
 
 **Options:**
