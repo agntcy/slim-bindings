@@ -186,7 +186,7 @@ jobs:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Setup Rust
@@ -258,7 +258,7 @@ jobs:
           echo "✅ $release_dir/$expected ($(du -h "$release_dir/$expected" | cut -f1))"
       - name: Upload libs
         if: matrix.platform.os != 'ios' && matrix.platform.os != 'wasm'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bindings-${{ matrix.platform.target }}
           path: ./rust/target/${{ matrix.platform.target }}/release/*slim_bindings*
@@ -266,7 +266,7 @@ jobs:
       # artifact, and these static libraries are only for react-native-package.
       - name: Upload iOS library
         if: matrix.platform.os == 'ios'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rn-ios-${{ matrix.platform.target }}
           path: ./rust/target/${{ matrix.platform.target }}/release/libslim_bindings.a
@@ -277,7 +277,7 @@ jobs:
       # jobs and the release zip pick up every bindings-* artifact.
       - name: Setup Node.js (WASM build)
         if: matrix.platform.os == 'wasm'
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '20'
           package-manager-cache: false
@@ -300,7 +300,7 @@ jobs:
           npm pack --dry-run 2>&1 | grep -q index_bg.wasm
       - name: Upload browser/WASM bindings
         if: matrix.platform.os == 'wasm'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rn-web
           path: react-native/generated/web
@@ -319,7 +319,7 @@ jobs:
         run: task python:bindings:packaging TARGET="$PLATFORM_TARGET" PROFILE=release
       - name: Upload wheels
         if: "!contains(matrix.platform.target, 'windows-gnu') && matrix.platform.os != 'ios' && matrix.platform.os != 'wasm'"
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-${{ matrix.platform.target }}
           path: ./python/dist
@@ -330,7 +330,7 @@ jobs:
       # dependency, the same one the package job uses.
       - name: Setup Node (ubrn build)
         if: ${{ matrix.platform.target == 'aarch64-apple-ios' }}
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '24'
           package-manager-cache: false
@@ -362,7 +362,7 @@ jobs:
           ls -lah "$RUNNER_TEMP/ubrn"
       - name: Upload uniffi-bindgen-react-native
         if: ${{ matrix.platform.target == 'aarch64-apple-ios' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rn-ubrn
           path: ${{ runner.temp }}/ubrn/uniffi-bindgen-react-native
@@ -382,7 +382,7 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
@@ -399,7 +399,7 @@ jobs:
 
       # Download all library artifacts and restore to target folder structure
       - name: Download libraries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           # Everything except the iOS libraries. Not bindings-*: download-artifact extracts a single
           # match without a subdirectory, which the restore step below relies on.
@@ -458,7 +458,7 @@ jobs:
           task test PROFILE=release VERSION="$VERSION"
 
       - name: Upload Generated Go code
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: go-bindings-generated-code
           path: |
@@ -484,24 +484,24 @@ jobs:
         shell: bash
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
       - name: Setup QEMU for ARM64 emulation
         if: matrix.platform.use_qemu == true
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         with:
           platforms: arm64
 
       - name: Setup Python (Windows/macOS only)
         if: matrix.platform.os != 'linux'
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Download Python wheels
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: wheels-${{ matrix.platform.target }}
           path: ./wheels/
@@ -624,7 +624,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
@@ -648,13 +648,13 @@ jobs:
         uses: ./.github/actions/setup-task
 
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '24'
           package-manager-cache: false
 
       - name: Download iOS libraries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: rn-ios-*
           path: ${{ github.workspace }}/rn-ios/
@@ -670,7 +670,7 @@ jobs:
           done
 
       - name: Download browser/WASM bindings
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: rn-web
           path: ${{ github.workspace }}/react-native/generated/web
@@ -682,7 +682,7 @@ jobs:
           task xcframework:ios
 
       - name: Download prebuilt uniffi-bindgen-react-native
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: rn-ubrn
           path: ${{ github.workspace }}/ubrn-prebuilt
@@ -721,7 +721,7 @@ jobs:
           ls -lah ../rn-package
 
       - name: Upload React Native package
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: react-native-package
           path: rn-package/*.tgz
@@ -739,7 +739,7 @@ jobs:
         working-directory: ./node
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
@@ -751,13 +751,13 @@ jobs:
           cache-target: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '20'
           package-manager-cache: false
 
       - name: Download libraries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: bindings-x86_64-unknown-linux-gnu
           path: ./rust/target/x86_64-unknown-linux-gnu/release/
