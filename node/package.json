@@ -38,8 +38,8 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@ubjs/core": "0.31.0-3",
-    "@ubjs/node": "0.31.0-3"
+    "@ubjs/core": "0.31.0-6",
+    "@ubjs/node": "0.31.0-6"
   },
   "optionalDependencies": {
     "@agntcy/slim-bindings-darwin-arm64": "0.7.0",
@@ -54,6 +54,6 @@
   "devDependencies": {
     "@types/node": "^24.19.1",
     "typescript": "^5.0.0",
-    "uniffi-bindgen-react-native": "0.31.0-3"
+    "uniffi-bindgen-react-native": "0.31.0-6"
   }
 }
