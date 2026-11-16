@@ -95,7 +95,12 @@ runs:
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task
 
+    # apt.llvm.org only publishes a versioned (-19) repository for some releases: a new Ubuntu
+    # release (e.g. 26.04 "resolute", which ubuntu-latest moved to) gets only the unversioned
+    # snapshot at first. Those releases ship clang-19 & co. in their own archive, so add the
+    # apt.llvm.org repository only when it has a -19 repository for this codename.
     - name: Configure LLVM apt repository
+      id: llvm-apt
       if: runner.os == 'Linux'
       shell: bash
       run: |
@@ -105,14 +110,28 @@ runs:
           echo "::error::Unable to determine the Linux distribution codename"
           exit 1
         fi
+        echo "codename=${codename}" >> "${GITHUB_OUTPUT}"
 
-        curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
-          | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
-        echo "deb https://apt.llvm.org/${codename}/ llvm-toolchain-${codename}-19 main" \
-          | sudo tee /etc/apt/sources.list.d/apt.llvm.org.list > /dev/null
+        repo="llvm-toolchain-${codename}-19"
+        if curl -fsIL --retry 3 -o /dev/null \
+            "https://apt.llvm.org/${codename}/dists/${repo}/Release"; then
+          curl -fsSL --retry 3 https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
+          echo "deb https://apt.llvm.org/${codename}/ ${repo} main" \
+            | sudo tee /etc/apt/sources.list.d/apt.llvm.org.list > /dev/null
+        else
+          echo "::notice::apt.llvm.org has no ${repo} repository; using the ${codename} archive packages"
+        fi
         sudo apt-get update
 
+        if ! apt-cache show clang-19 > /dev/null 2>&1; then
+          echo "::error::clang-19 is not available from apt.llvm.org or the ${codename} archive"
+          exit 1
+        fi
+
     # The package list is cached (and restored without downloading); bump `version` when it changes.
+    # The cache key does not include the OS release, so the codename is part of `version`: otherwise
+    # ubuntu-24.04 and ubuntu-latest (26.04) jobs would restore each other's binaries.
     - name: Install cached C/C++ toolchain
       if: runner.os == 'Linux'
       uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
@@ -128,5 +147,5 @@ runs:
           g++-aarch64-linux-gnu
           gcc-x86-64-linux-gnu
           g++-x86-64-linux-gnu
-        version: llvm19-v1
+        version: llvm19-${{ steps.llvm-apt.outputs.codename }}-v1
         execute_install_scripts: "true"
