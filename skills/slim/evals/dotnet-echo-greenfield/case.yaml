@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: dotnet-echo-greenfield
+expected_outcome: |
+  A .NET solution using the Agntcy.SlimA2A package with an echo server and client, run against the node, echoed reply shown, processes cleaned up.

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: go-fanout-orchestrator
+expected_outcome: |
+  Two Go A2A agents served over SLIM under distinct names and an orchestrator that queries both concurrently with one client per agent (goroutines), since slim-a2a-go has no multicast client; both replies shown from a real run.

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: go-echo-greenfield
+expected_outcome: |
+  A Go module with an A2A echo server and client using slim-a2a-go over SLIM, run against the node, with the echoed reply shown and processes cleaned up.

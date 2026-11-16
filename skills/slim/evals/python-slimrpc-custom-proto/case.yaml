@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: python-slimrpc-custom-proto
+expected_outcome: |
+  Installs or locates protoc-gen-slimrpc-python (cargo install agntcy-protoc-slimrpc-plugin or prebuilt release), generates both protobuf messages and slimrpc stubs (buf or protoc), implements the server with slim_bindings Server and the generated registration function, calls Add from a client over a SLIM node, and shows the result.
+context:
+  scaffold_script: place-files.sh

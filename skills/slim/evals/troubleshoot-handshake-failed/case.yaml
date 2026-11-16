@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: troubleshoot-handshake-failed
+expected_outcome: |
+  Identifies the likely causes in order: no server subscribed under the exact name the client calls (server not running, wrong/mismatched org/ns/service name, client and server sharing a name) and mismatched identity/shared secret between client and server; suggests concrete checks (start server first, print both names, compare secrets, debug logs).

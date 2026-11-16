@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: node-echo-greenfield
+expected_outcome: |
+  A Node/TypeScript project using @agntcy/slim-a2a with an echo server and client, run against the node, echoed reply shown, processes cleaned up.

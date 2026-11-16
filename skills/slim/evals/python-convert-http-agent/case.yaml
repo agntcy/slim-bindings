@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: python-convert-http-agent
+expected_outcome: |
+  agent.py now serves the same executor via slima2a (setup_slim_client with the given node URL and secret from the env, slimrpc Server, SRPCHandler, add_A2AServiceServicer_to_server); dependencies updated; checked by import/compile/type-check only, no services launched.
+context:
+  scaffold_script: place-files.sh

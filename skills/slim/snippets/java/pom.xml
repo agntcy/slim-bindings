@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal A2A echo agent over SLIM (slim-a2a-java 0.4.x, A2A v1.0).
+     JDK 21 required. Run:
+       mvn -q compile exec:java -Dexec.mainClass=example.EchoServer
+       mvn -q compile exec:java -Dexec.mainClass=example.EchoClient -Dexec.args="hello"
+     .mvn/jvm.config passes the preview / native-access flags to Maven's JVM. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>example</groupId>
+    <artifactId>slim-a2a-echo</artifactId>
+    <version>0.1.0</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+    </properties>
+
+    <dependencies>
+        <!-- Pulls compatible slim-bindings-java and a2a-java-sdk (server-common, spec-grpc). -->
+        <dependency>
+            <groupId>io.agntcy.slim</groupId>
+            <artifactId>slim-a2a-java</artifactId>
+            <version>0.4.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <!-- slim-bindings-java uses the FFM API, a preview feature on Java 21 -->
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
