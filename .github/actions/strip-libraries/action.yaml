@@ -31,9 +31,10 @@ runs:
           echo "strip-libraries action only supports Linux runners (got $(uname -s))" >&2
           exit 1
         fi
-        curl -fsSL https://apt.llvm.org/llvm.sh -o /tmp/llvm.sh
-        chmod +x /tmp/llvm.sh
-        sudo /tmp/llvm.sh 19
+        # llvm-19 (which provides llvm-strip-19) is in the Ubuntu archive of every runner we use
+        # (24.04 noble-updates, 26.04 resolute).
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends llvm-19
 
     - name: Strip libraries
       shell: bash

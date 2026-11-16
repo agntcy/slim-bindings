@@ -95,11 +95,10 @@ runs:
     - name: Setup Taskfile
       uses: ./.github/actions/setup-task
 
-    # apt.llvm.org only publishes a versioned (-19) repository for some releases: a new Ubuntu
-    # release (e.g. 26.04 "resolute", which ubuntu-latest moved to) gets only the unversioned
-    # snapshot at first. Those releases ship clang-19 & co. in their own archive, so add the
-    # apt.llvm.org repository only when it has a -19 repository for this codename.
-    - name: Configure LLVM apt repository
+    # LLVM 19 comes from the Ubuntu archive: ubuntu-24.04 (noble-updates) and ubuntu-latest
+    # (26.04 resolute) both ship clang-19, lld-19, lldb-19 and clangd-19. A future release may
+    # drop LLVM 19, so fail here with a clear message instead of in the install step.
+    - name: Check LLVM packages
       id: llvm-apt
       if: runner.os == 'Linux'
       shell: bash
@@ -112,20 +111,10 @@ runs:
         fi
         echo "codename=${codename}" >> "${GITHUB_OUTPUT}"
 
-        repo="llvm-toolchain-${codename}-19"
-        if curl -fsIL --retry 3 -o /dev/null \
-            "https://apt.llvm.org/${codename}/dists/${repo}/Release"; then
-          curl -fsSL --retry 3 https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
-          echo "deb https://apt.llvm.org/${codename}/ ${repo} main" \
-            | sudo tee /etc/apt/sources.list.d/apt.llvm.org.list > /dev/null
-        else
-          echo "::notice::apt.llvm.org has no ${repo} repository; using the ${codename} archive packages"
-        fi
         sudo apt-get update
 
         if ! apt-cache show clang-19 > /dev/null 2>&1; then
-          echo "::error::clang-19 is not available from apt.llvm.org or the ${codename} archive"
+          echo "::error::clang-19 is not available from the ${codename} archive"
           exit 1
         fi
 
@@ -147,5 +136,5 @@ runs:
           g++-aarch64-linux-gnu
           gcc-x86-64-linux-gnu
           g++-x86-64-linux-gnu
-        version: llvm19-${{ steps.llvm-apt.outputs.codename }}-v1
+        version: llvm19-${{ steps.llvm-apt.outputs.codename }}-v2
         execute_install_scripts: "true"
