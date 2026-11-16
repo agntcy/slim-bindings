@@ -96,8 +96,10 @@ class ToyVerifier(slim_bindings.IdentityVerifier):
         self.verified.append(self._parse(token)[0])
 
     def get_claims(self, token):
-        subject, public_key = self._parse(token)
-        return json.dumps({"sub": subject, "pubkey": public_key})
+        return json.dumps({"sub": self._parse(token)[0]})
+
+    def get_public_key(self, token):
+        return base64.b64decode(self._parse(token)[1])
 
     def get_subject(self, token):
         return self._parse(token)[0]

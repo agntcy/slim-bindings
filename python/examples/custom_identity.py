@@ -11,10 +11,10 @@ SLIM does not have to authenticate with one of its built-in mechanisms: subclass
 Two things a custom identity has to get right:
 
   * SLIM signs the control messages of every session with the provider's key pair, and
-    peers check the signature against the `pubkey` claim of the sender's token. So the
-    provider holds a key pair (`generate_signature_keys()` makes one), puts the public
-    key in its tokens, and swaps the pair when SLIM calls `set_signature_keys`. The
-    verifier returns that claim from `get_claims`.
+    the peer checks the signature with the key its verifier returns from
+    `get_public_key`. So the provider holds a key pair (`generate_signature_keys()`
+    makes one), puts the public key in its tokens, and swaps the pair when SLIM calls
+    `set_signature_keys`.
   * SLIM awaits the async methods (`initialize`, `verify_async`) from its own threads,
     so register the event loop with `uniffi_set_event_loop` and use the async
     constructor (the blocking one would wait on the loop it is blocking).
@@ -109,8 +109,10 @@ class ExampleVerifier(slim_bindings.IdentityVerifier):
         self._parse(token)
 
     def get_claims(self, token):
-        subject, public_key = self._parse(token)
-        return json.dumps({"sub": subject, "pubkey": public_key})
+        return json.dumps({"sub": self._parse(token)[0]})
+
+    def get_public_key(self, token):
+        return base64.b64decode(self._parse(token)[1])
 
     def get_subject(self, token):
         return self._parse(token)[0]

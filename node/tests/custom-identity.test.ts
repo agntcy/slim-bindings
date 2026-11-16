@@ -104,8 +104,12 @@ class ToyVerifier {
   }
 
   getClaims(token: string): string {
-    const [sub, pubkey] = this.parse(token);
-    return JSON.stringify({ sub, pubkey });
+    return JSON.stringify({ sub: this.parse(token)[0] });
+  }
+
+  getPublicKey(token: string): ArrayBuffer {
+    const key = Buffer.from(this.parse(token)[1], 'base64');
+    return key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer;
   }
 
   getSubject(token: string): string {

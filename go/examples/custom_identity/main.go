@@ -10,10 +10,10 @@
 // Two things a custom identity has to get right:
 //
 //   - SLIM signs the control messages of every session with the provider's key pair,
-//     and peers check the signature against the "pubkey" claim of the sender's token.
-//     So the provider holds a key pair (slim.GenerateSignatureKeys makes one), puts the
-//     public key in its tokens, and swaps the pair when SLIM calls SetSignatureKeys. The
-//     verifier returns that claim from GetClaims.
+//     and the peer checks the signature with the key its verifier returns from
+//     GetPublicKey. So the provider holds a key pair (slim.GenerateSignatureKeys makes
+//     one), puts the public key in its tokens, and swaps the pair when SLIM calls
+//     SetSignatureKeys.
 //   - Both interfaces must be safe for concurrent use: SLIM calls them from its own
 //     threads.
 //
@@ -119,12 +119,20 @@ func (v *exampleVerifier) Verify(token string) error {
 }
 
 func (v *exampleVerifier) GetClaims(token string) (string, error) {
-	subject, publicKey, err := v.parse(token)
+	subject, _, err := v.parse(token)
 	if err != nil {
 		return "", err
 	}
-	claims, err := json.Marshal(map[string]string{"sub": subject, "pubkey": publicKey})
+	claims, err := json.Marshal(map[string]string{"sub": subject})
 	return string(claims), err
+}
+
+func (v *exampleVerifier) GetPublicKey(token string) ([]byte, error) {
+	_, publicKey, err := v.parse(token)
+	if err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(publicKey)
 }
 
 func (v *exampleVerifier) GetSubject(token string) (string, error) {

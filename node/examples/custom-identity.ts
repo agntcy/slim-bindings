@@ -9,11 +9,10 @@
  * is), and pass them to `App.newWithCustomIdentityAsync`.
  *
  * A custom identity has to get one thing right: SLIM signs the control messages of every
- * session with the provider's key pair, and peers check the signature against the
- * `pubkey` claim of the sender's token. So the provider holds a key pair
+ * session with the provider's key pair, and the peer checks the signature with the key
+ * its verifier returns from `getPublicKey`. So the provider holds a key pair
  * (`generateSignatureKeys()` makes one), puts the public key in its tokens, and swaps the
- * pair when SLIM calls `setSignatureKeys`. The verifier returns that claim from
- * `getClaims`.
+ * pair when SLIM calls `setSignatureKeys`.
  *
  * The token scheme below, `<subject>.<base64 public key>.<secret>`, is a toy that keeps
  * the example short. A real provider issues a signed token (JWT, DPoP, ...) and a real
@@ -100,8 +99,12 @@ class ExampleVerifier {
   }
 
   getClaims(token: string): string {
-    const [sub, pubkey] = this.parse(token);
-    return JSON.stringify({ sub, pubkey });
+    return JSON.stringify({ sub: this.parse(token)[0] });
+  }
+
+  getPublicKey(token: string): ArrayBuffer {
+    const key = Buffer.from(this.parse(token)[1], 'base64');
+    return key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer;
   }
 
   getSubject(token: string): string {

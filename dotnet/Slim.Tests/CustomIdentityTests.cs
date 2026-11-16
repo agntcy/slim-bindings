@@ -136,9 +136,10 @@ internal sealed class ToyVerifier : IdentityVerifier
 
     public string GetClaims(string token)
     {
-        var (subject, publicKey) = Parse(token);
-        return JsonSerializer.Serialize(new Dictionary<string, string> { ["sub"] = subject, ["pubkey"] = publicKey });
+        return JsonSerializer.Serialize(new Dictionary<string, string> { ["sub"] = Parse(token).Subject });
     }
+
+    public byte[] GetPublicKey(string token) => Convert.FromBase64String(Parse(token).PublicKey);
 
     public string GetSubject(string token) => Parse(token).Subject;
 

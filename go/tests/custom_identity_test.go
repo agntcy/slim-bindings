@@ -122,12 +122,20 @@ func (v *toyVerifier) Verify(token string) error {
 }
 
 func (v *toyVerifier) GetClaims(token string) (string, error) {
-	subject, publicKey, err := v.parse(token)
+	subject, _, err := v.parse(token)
 	if err != nil {
 		return "", err
 	}
-	claims, err := json.Marshal(map[string]string{"sub": subject, "pubkey": publicKey})
+	claims, err := json.Marshal(map[string]string{"sub": subject})
 	return string(claims), err
+}
+
+func (v *toyVerifier) GetPublicKey(token string) ([]byte, error) {
+	_, publicKey, err := v.parse(token)
+	if err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(publicKey)
 }
 
 func (v *toyVerifier) GetSubject(token string) (string, error) {

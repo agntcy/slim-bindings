@@ -8,11 +8,10 @@
 // and pass them to App.NewWithCustomIdentityAsync.
 //
 // A custom identity has to get one thing right: SLIM signs the control messages of every
-// session with the provider's key pair, and peers check the signature against the "pubkey"
-// claim of the sender's token. So the provider holds a key pair
+// session with the provider's key pair, and the peer checks the signature with the key its
+// verifier returns from GetPublicKey. So the provider holds a key pair
 // (SlimBindingsMethods.GenerateSignatureKeys makes one), puts the public key in its
-// tokens, and swaps the pair when SLIM calls SetSignatureKeys. The verifier returns that
-// claim from GetClaims.
+// tokens, and swaps the pair when SLIM calls SetSignatureKeys.
 //
 // The token scheme below, "<subject>.<base64 public key>.<secret>", is a toy that keeps the
 // example short. A real provider issues a signed token (JWT, DPoP, ...) and a real verifier
@@ -154,9 +153,10 @@ internal sealed class ExampleVerifier : IdentityVerifier
 
     public string GetClaims(string token)
     {
-        var (subject, publicKey) = Parse(token);
-        return JsonSerializer.Serialize(new Dictionary<string, string> { ["sub"] = subject, ["pubkey"] = publicKey });
+        return JsonSerializer.Serialize(new Dictionary<string, string> { ["sub"] = Parse(token).Subject });
     }
+
+    public byte[] GetPublicKey(string token) => Convert.FromBase64String(Parse(token).PublicKey);
 
     public string GetSubject(string token) => Parse(token).Subject;
 
