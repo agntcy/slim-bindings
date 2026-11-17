@@ -338,6 +338,35 @@ tasks:
         file_size=$(stat -f%z "$LIB_PATH" 2>/dev/null || stat -c%s "$LIB_PATH" 2>/dev/null)
         echo "   $TARGET → $DEST_NAME ($((file_size / 1024 / 1024))MB)"
         cp "$LIB_PATH" "$DEST_DIR/$DEST_NAME"
+
+        # Rust's precompiled standard library objects carry embedded LLVM bitcode, which ends up in
+        # the static library. Since Go 1.26.11 cmd/go refuses to link a cgo input under the module,
+        # GOMODCACHE or the temp dir that has LTO sections ("disallowed LTO section \".llvmbc\""),
+        # so strip them. Nothing links against the bitcode (no cross-language LTO).
+        case "$OS" in
+          darwin) BITCODE_SECTIONS="__LLVM,__bitcode __LLVM,__cmdline" ;;
+          *)      BITCODE_SECTIONS=".llvmbc .llvmcmd" ;;
+        esac
+        OBJCOPY=""
+        RUST_OBJCOPY="$(rustc --print sysroot 2>/dev/null)/lib/rustlib/$(rustc -vV 2>/dev/null | sed -n 's/^host: //p')/bin/rust-objcopy"
+        for candidate in llvm-objcopy-19 llvm-objcopy "$RUST_OBJCOPY"; do
+          if command -v "$candidate" > /dev/null 2>&1; then
+            OBJCOPY="$candidate"
+            break
+          fi
+        done
+        if [ -n "$OBJCOPY" ]; then
+          REMOVE_ARGS=""
+          for section in $BITCODE_SECTIONS; do
+            REMOVE_ARGS="$REMOVE_ARGS --remove-section=$section"
+          done
+          # shellcheck disable=SC2086
+          "$OBJCOPY" $REMOVE_ARGS "$DEST_DIR/$DEST_NAME"
+          echo "   Stripped embedded LLVM bitcode with $(basename "$OBJCOPY")"
+        else
+          echo "   WARNING: llvm-objcopy not found; embedded LLVM bitcode left in $DEST_NAME"
+          echo "   Go >= 1.26.11 rejects it; install LLVM (llvm-objcopy) or rustup component llvm-tools"
+        fi
       - echo "Libraries in slim_bindings/:"
       - ls -lah "slim_bindings/"*{{.LIB_NAME}}*.a
         "slim_bindings/"*{{.LIB_NAME}}*.lib 2>/dev/null || echo "  (no library
