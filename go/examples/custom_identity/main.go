@@ -1,109 +1,204 @@
-// Copyright AGNTCY Contributors (https://github.com/agntcy)
-// SPDX-License-Identifier: Apache-2.0
-
-// Custom identity provider and verifier implemented in Go.
+// Custom identity provider and verifier implemented in Go, backed by X.509 certificates.
 //
 // SLIM does not have to authenticate with one of its built-in mechanisms: implement
 // slim.IdentityProvider (proves who this app is) and slim.IdentityVerifier (checks who a
 // peer is), and pass them to slim.AppNewWithCustomIdentity.
 //
-// Two things a custom identity has to get right:
+// Three things a custom identity has to get right:
 //
-//   - SLIM signs the control messages of every session with the provider's key pair,
-//     and the peer checks the signature with the key its verifier returns from
-//     GetPublicKey. So the provider holds a key pair (slim.GenerateSignatureKeys makes
-//     one), puts the public key in its tokens, and swaps the pair when SLIM calls
-//     SetSignatureKeys.
+//   - SLIM signs the control messages of every session with the provider's key pair, and
+//     the peer checks the signature with the key its verifier returns from GetPublicKey.
+//     Here the key pair is the certificate's own: the token is the certificate, so the
+//     key the verifier returns is the one in the certificate.
+//   - SLIM can ask a provider to install a new key pair (SetSignatureKeys), unless the
+//     provider says its keys are installed (MlsSignatureKeysInstalled). A certificate
+//     identity has a fixed key, so it reports them installed and refuses a replacement.
 //   - Both interfaces must be safe for concurrent use: SLIM calls them from its own
 //     threads.
 //
-// The token scheme below, "<subject>.<base64 public key>.<secret>", is a toy that keeps
-// the example short. A real provider issues a signed token (JWT, DPoP, ...) and a real
-// verifier checks that signature.
+// The identities are X.509 certificates. Each app holds a certificate issued by a CA
+// (fixtures in testdata/x509) and its private key, and its token is the certificate in
+// PEM form. The signing keys are the certificate's key (ECDSA P-256, the MLS ciphersuite
+// of SLIM): the secret key as the raw 32-byte scalar, the public key as an uncompressed
+// SEC1 point. The verifier trusts one CA: it checks the certificate was issued by it, is
+// within its validity period and is not a CA certificate, and its subject is the common
+// name. It is a trust-anchor check only: there is no revocation checking (CRL / OCSP).
 //
-// Run with: go run ./examples/custom_identity
+// The certificates come from testdata/x509 at the root of the repository (override the
+// directory with SLIM_X509_DIR). Run with: go run ./examples/custom_identity
 package main
 
 import (
-	"encoding/base64"
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
-	"strings"
-	"sync"
+	"os"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	slim "github.com/agntcy/slim-bindings-go"
 )
 
-const sharedSecret = "an-example-shared-secret"
-
-// exampleProvider issues "<subject>.<base64 public key>.<secret>" tokens.
-type exampleProvider struct {
-	mu        sync.Mutex
-	subject   string
-	secret    string
-	keys      slim.SignatureKeys
-	installed bool
+// fixturesDir returns the directory with the CA, alice and bob certificates and keys.
+func fixturesDir() string {
+	if dir := os.Getenv("SLIM_X509_DIR"); dir != "" {
+		return dir
+	}
+	_, file, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(file), "..", "..", "..", "testdata", "x509")
 }
 
-func newExampleProvider(subject, secret string) (*exampleProvider, error) {
-	keys, err := slim.GenerateSignatureKeys()
+// parseCertificate parses a PEM text holding exactly one certificate.
+func parseCertificate(text string) (*x509.Certificate, error) {
+	block, rest := pem.Decode([]byte(text))
+	if block == nil || block.Type != "CERTIFICATE" {
+		return nil, errors.New("no PEM certificate")
+	}
+	if len(bytes.TrimSpace(rest)) != 0 {
+		return nil, errors.New("trailing data after the certificate")
+	}
+	return x509.ParseCertificate(block.Bytes)
+}
+
+// publicKeySEC1 is the public key of an ECDSA P-256 certificate as an uncompressed SEC1
+// point (0x04 || X || Y), the encoding SLIM expects.
+func publicKeySEC1(cert *x509.Certificate) ([]byte, error) {
+	key, ok := cert.PublicKey.(*ecdsa.PublicKey)
+	if !ok || key.Curve != elliptic.P256() {
+		return nil, errors.New("certificate key is not ECDSA P-256")
+	}
+	ecdhKey, err := key.ECDH()
 	if err != nil {
 		return nil, err
 	}
-	return &exampleProvider{subject: subject, secret: secret, keys: keys}, nil
+	return ecdhKey.Bytes(), nil
+}
+
+// exampleProvider uses an X.509 certificate as the token and its key pair as the signing keys.
+type exampleProvider struct {
+	certPEM string
+	cn      string
+	keys    slim.SignatureKeys
+}
+
+func newExampleProvider(dir, user string) (*exampleProvider, error) {
+	certPEM, err := os.ReadFile(filepath.Join(dir, user+".pem"))
+	if err != nil {
+		return nil, err
+	}
+	cert, err := parseCertificate(string(certPEM))
+	if err != nil {
+		return nil, err
+	}
+	public, err := publicKeySEC1(cert)
+	if err != nil {
+		return nil, err
+	}
+	keyPEM, err := os.ReadFile(filepath.Join(dir, user+".key"))
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(keyPEM)
+	if block == nil {
+		return nil, errors.New("no PEM private key")
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	key, ok := parsed.(*ecdsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("private key is not ECDSA")
+	}
+	// The raw 32-byte big-endian scalar.
+	secret := key.D.FillBytes(make([]byte, 32))
+	return &exampleProvider{
+		certPEM: string(certPEM),
+		cn:      cert.Subject.CommonName,
+		keys:    slim.SignatureKeys{SecretKey: secret, PublicKey: public},
+	}, nil
 }
 
 // One-time setup (load credentials, call an identity service, ...).
 func (p *exampleProvider) Initialize() error { return nil }
 
-func (p *exampleProvider) GetId() (string, error) { return p.subject, nil }
+func (p *exampleProvider) GetId() (string, error) { return p.cn, nil }
 
-func (p *exampleProvider) GetToken() (string, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	// Always bind the *current* public key: it changes if SLIM installs a new pair.
-	return fmt.Sprintf("%s.%s.%s", p.subject, base64.StdEncoding.EncodeToString(p.keys.PublicKey), p.secret), nil
-}
+func (p *exampleProvider) GetToken() (string, error) { return p.certPEM, nil }
 
-func (p *exampleProvider) GetSignatureKeys() (slim.SignatureKeys, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.keys, nil
-}
+func (p *exampleProvider) GetSignatureKeys() (slim.SignatureKeys, error) { return p.keys, nil }
 
-func (p *exampleProvider) MlsSignatureKeysInstalled() (bool, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.installed, nil
-}
+// The keys are the certificate's: SLIM must not generate its own.
+func (p *exampleProvider) MlsSignatureKeysInstalled() (bool, error) { return true, nil }
 
-// Called when MLS is used. Keep the bytes exactly as given.
 func (p *exampleProvider) SetSignatureKeys(privateKey []byte, publicKey []byte) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.keys = slim.SignatureKeys{SecretKey: privateKey, PublicKey: publicKey}
-	p.installed = true
-	return nil
+	return slim.NewIdentityCallbackErrorFailed("the signing key is the certificate's key and cannot be replaced")
 }
 
 // No persistence: this identity cannot be exported and restored.
-func (p *exampleProvider) ExportIdentity() (*slim.IdentityExport, error)      { return nil, nil }
-func (p *exampleProvider) HoldsLongTermSigningKey() (bool, error)             { return false, nil }
+func (p *exampleProvider) ExportIdentity() (*slim.IdentityExport, error) { return nil, nil }
+
+// The certificate's key is long-term.
+func (p *exampleProvider) HoldsLongTermSigningKey() (bool, error)             { return true, nil }
 func (p *exampleProvider) RestoreIdentity(identity slim.IdentityExport) error { return nil }
 
-// exampleVerifier accepts tokens carrying the shared secret and exposes their claims.
+// exampleVerifier accepts tokens whose certificate was issued by the trusted CA.
+// Trust-anchor check only: no revocation (CRL / OCSP) is performed.
 type exampleVerifier struct {
-	secret string
+	roots *x509.CertPool
 }
 
-func (v *exampleVerifier) parse(token string) (subject, publicKey string, err error) {
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 || parts[2] != v.secret {
-		return "", "", slim.NewIdentityCallbackErrorFailed("invalid token")
+func newExampleVerifier(ca *x509.Certificate) *exampleVerifier {
+	roots := x509.NewCertPool()
+	roots.AddCert(ca)
+	return &exampleVerifier{roots: roots}
+}
+
+// parse validates the token, a PEM certificate, and returns the certificate.
+func (v *exampleVerifier) parse(token string) (*x509.Certificate, error) {
+	fail := func(format string, args ...any) (*x509.Certificate, error) {
+		return nil, slim.NewIdentityCallbackErrorFailed(fmt.Sprintf(format, args...))
 	}
-	return parts[0], parts[1], nil
+	cert, err := parseCertificate(token)
+	if err != nil {
+		return fail("malformed token: %v", err)
+	}
+	// Issued by the trust anchor and within its validity dates.
+	if _, err := cert.Verify(x509.VerifyOptions{
+		Roots:       v.roots,
+		CurrentTime: time.Now(),
+		KeyUsages:   []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}); err != nil {
+		return fail("certificate not trusted: %v", err)
+	}
+	if cert.IsCA {
+		return fail("a CA certificate cannot be used as an identity")
+	}
+	if _, err := publicKeySEC1(cert); err != nil {
+		return fail("unsupported certificate key: %v", err)
+	}
+	if commonNames(cert) != 1 {
+		return fail("the certificate subject must have exactly one common name")
+	}
+	return cert, nil
+}
+
+// commonNames counts the common names (OID 2.5.4.3) in the certificate subject.
+func commonNames(cert *x509.Certificate) int {
+	n := 0
+	for _, name := range cert.Subject.Names {
+		if name.Type.String() == "2.5.4.3" {
+			n++
+		}
+	}
+	return n
 }
 
 // One-time setup (fetch trust bundles, keys, ...).
@@ -114,63 +209,83 @@ func (v *exampleVerifier) VerifyAsync(token string) error { return v.Verify(toke
 
 // Synchronous contexts: must not block for long.
 func (v *exampleVerifier) Verify(token string) error {
-	_, _, err := v.parse(token)
+	_, err := v.parse(token)
 	return err
 }
 
 func (v *exampleVerifier) GetClaims(token string) (string, error) {
-	subject, _, err := v.parse(token)
+	cert, err := v.parse(token)
 	if err != nil {
 		return "", err
 	}
-	claims, err := json.Marshal(map[string]string{"sub": subject})
+	claims, err := json.Marshal(map[string]string{"sub": cert.Subject.CommonName})
 	return string(claims), err
 }
 
 func (v *exampleVerifier) GetPublicKey(token string) ([]byte, error) {
-	_, publicKey, err := v.parse(token)
+	cert, err := v.parse(token)
 	if err != nil {
 		return nil, err
 	}
-	return base64.StdEncoding.DecodeString(publicKey)
+	return publicKeySEC1(cert)
 }
 
 func (v *exampleVerifier) GetSubject(token string) (string, error) {
-	subject, _, err := v.parse(token)
-	return subject, err
+	cert, err := v.parse(token)
+	if err != nil {
+		return "", err
+	}
+	return cert.Subject.CommonName, nil
 }
 
 func (v *exampleVerifier) VerifyKeyBinding(token string, publicKey []byte) error {
-	_, bound, err := v.parse(token)
+	cert, err := v.parse(token)
 	if err != nil {
 		return err
 	}
-	if bound != base64.StdEncoding.EncodeToString(publicKey) {
+	bound, err := publicKeySEC1(cert)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(bound, publicKey) {
 		return slim.NewIdentityCallbackErrorPublicKeyMismatch("token bound to another key")
 	}
 	return nil
 }
 
-func createApp(name *slim.Name) (*slim.App, error) {
-	provider, err := newExampleProvider(name.String(), sharedSecret)
+func loadCA(dir string) (*x509.Certificate, error) {
+	data, err := os.ReadFile(filepath.Join(dir, "ca.pem"))
 	if err != nil {
 		return nil, err
 	}
-	return slim.AppNewWithCustomIdentity(name, provider, &exampleVerifier{secret: sharedSecret}, slim.DirectionBidirectional)
+	return parseCertificate(string(data))
+}
+
+func createApp(name *slim.Name, dir, user string) (*slim.App, error) {
+	ca, err := loadCA(dir)
+	if err != nil {
+		return nil, err
+	}
+	provider, err := newExampleProvider(dir, user)
+	if err != nil {
+		return nil, err
+	}
+	return slim.AppNewWithCustomIdentity(name, provider, newExampleVerifier(ca), slim.DirectionBidirectional)
 }
 
 func main() {
 	slim.InitializeWithDefaults()
+	dir := fixturesDir()
 
 	aliceName := slim.NewName("org", "example", "alice")
 	bobName := slim.NewName("org", "example", "bob")
 
-	alice, err := createApp(aliceName)
+	alice, err := createApp(aliceName, dir, "alice")
 	if err != nil {
 		log.Fatalf("create alice: %v", err)
 	}
 	defer alice.Destroy()
-	bob, err := createApp(bobName)
+	bob, err := createApp(bobName, dir, "bob")
 	if err != nil {
 		log.Fatalf("create bob: %v", err)
 	}

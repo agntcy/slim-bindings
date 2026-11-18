@@ -1,38 +1,56 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Custom identity provider and verifier implemented in C#.
+// Custom identity provider and verifier implemented in C#, based on X.509 certificates.
 //
 // SLIM does not have to authenticate with one of its built-in mechanisms: implement
 // IdentityProvider (proves who this app is) and IdentityVerifier (checks who a peer is),
 // and pass them to App.NewWithCustomIdentityAsync.
 //
-// A custom identity has to get one thing right: SLIM signs the control messages of every
-// session with the provider's key pair, and the peer checks the signature with the key its
-// verifier returns from GetPublicKey. So the provider holds a key pair
-// (SlimBindingsMethods.GenerateSignatureKeys makes one), puts the public key in its
-// tokens, and swaps the pair when SLIM calls SetSignatureKeys.
+// Three things a custom identity has to get right:
 //
-// The token scheme below, "<subject>.<base64 public key>.<secret>", is a toy that keeps the
-// example short. A real provider issues a signed token (JWT, DPoP, ...) and a real verifier
-// checks that signature.
+//   * SLIM signs the control messages of every session with the provider's key pair, and
+//     the peer checks the signature with the key its verifier returns from GetPublicKey.
+//     Here the key pair is the certificate's own: the token is the certificate, so the key
+//     the verifier returns is the one in the certificate.
+//   * SLIM can ask a provider to install a new key pair (SetSignatureKeys), unless the
+//     provider says its keys are installed (MlsSignatureKeysInstalled). A certificate
+//     identity has a fixed key, so it reports them installed and refuses a replacement.
+//   * The callbacks are invoked from SLIM's own threads: keep them thread-safe.
+//
+// The identities are X.509 certificates. Each app holds a certificate issued by a CA
+// (fixtures in testdata/x509) and its private key, and its token is the certificate in PEM
+// form. The signing keys are the certificate's key (ECDSA P-256, the MLS ciphersuite of
+// SLIM): the secret key as the raw 32-byte scalar, the public key as an uncompressed SEC1
+// point. The verifier trusts one CA: it checks the certificate was issued by it, is within
+// its validity period and is not a CA certificate, and its subject is the common name. It
+// is a trust-anchor check only: there is no revocation checking (CRL / OCSP) and no
+// certificate is downloaded.
+//
+// Persistence is not supported (ExportIdentity returns null).
+//
+// The certificates and keys are the test fixtures in testdata/x509 (copied next to the
+// binary): public test keys, never use them for anything else.
 //
 // Run with: dotnet run --project Slim.Examples.CustomIdentity
 
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Agntcy.Slim;
 using uniffi.slim_bindings;
-
-const string SharedSecret = "an-example-shared-secret";
 
 Slim.Initialize();
 
 var aliceName = new Name("org", "example", "alice");
 var bobName = new Name("org", "example", "bob");
 
-var alice = await CreateApp("org/example/alice", aliceName);
-var bob = await CreateApp("org/example/bob", bobName);
+var certs = Path.Combine(AppContext.BaseDirectory, "x509");
+var ca = X509Certificate2.CreateFromPem(File.ReadAllText(Path.Combine(certs, "ca.pem")));
+
+var alice = await CreateApp("alice", aliceName);
+var bob = await CreateApp("bob", bobName);
 
 var timeout = TimeSpan.FromSeconds(10);
 var serving = Task.Run(async () =>
@@ -51,91 +69,170 @@ var reply = await created.GetMessageAsync(timeout);
 Console.WriteLine($"alice received: {Encoding.UTF8.GetString(reply.Payload)}");
 await serving;
 
-static Task<App> CreateApp(string subject, Name name) =>
+Task<App> CreateApp(string fixture, Name name) =>
     App.NewWithCustomIdentityAsync(
         name,
-        new ExampleProvider(subject, SharedSecret),
-        new ExampleVerifier(SharedSecret),
+        new CertificateProvider(
+            File.ReadAllText(Path.Combine(certs, fixture + ".pem")),
+            File.ReadAllText(Path.Combine(certs, fixture + ".key"))),
+        new CertificateVerifier(ca),
         Direction.Bidirectional);
 
-/// <summary>Issues "&lt;subject&gt;.&lt;base64 public key&gt;.&lt;secret&gt;" tokens.</summary>
-internal sealed class ExampleProvider : IdentityProvider
+internal static class Certs
 {
-    private readonly object _lock = new();
-    private readonly string _subject;
-    private readonly string _secret;
-    private SignatureKeys _keys = SlimBindingsMethods.GenerateSignatureKeys();
-    private bool _installed;
+    private const string P256Oid = "1.2.840.10045.3.1.7";
+    private const string CommonNameOid = "2.5.4.3";
 
-    public ExampleProvider(string subject, string secret)
+    /// <summary>The subject's common name; the certificate must have exactly one.</summary>
+    public static string CommonName(X509Certificate2 cert)
     {
-        _subject = subject;
-        _secret = secret;
+        var names = cert.SubjectName.EnumerateRelativeDistinguishedNames()
+            .Where(rdn => rdn.HasMultipleElements == false && rdn.GetSingleElementType().Value == CommonNameOid)
+            .Select(rdn => rdn.GetSingleElementValue())
+            .ToList();
+        if (names.Count != 1 || string.IsNullOrEmpty(names[0]))
+        {
+            throw new CryptographicException("the certificate needs exactly one common name");
+        }
+        return names[0]!;
     }
+
+    public static bool IsP256(ECParameters parameters) =>
+        parameters.Curve.Oid.Value == P256Oid || parameters.Curve.Oid.FriendlyName == "nistP256";
+
+    /// <summary>The certificate's public key as SLIM takes it: an uncompressed SEC1 point.</summary>
+    public static byte[] PublicKey(X509Certificate2 cert)
+    {
+        using var ecdsa = cert.GetECDsaPublicKey() ?? throw new CryptographicException("not an ECDSA certificate");
+        var parameters = ecdsa.ExportParameters(false);
+        if (!IsP256(parameters))
+        {
+            throw new CryptographicException("the certificate key is not ECDSA P-256");
+        }
+        return Sec1(parameters);
+    }
+
+    public static byte[] Sec1(ECParameters parameters)
+    {
+        var q = parameters.Q;
+        var point = new byte[65];
+        point[0] = 0x04;
+        q.X!.CopyTo(point, 1);
+        q.Y!.CopyTo(point, 33);
+        return point;
+    }
+}
+
+/// <summary>Uses an X.509 certificate as the token and its key pair as the signing keys.</summary>
+internal sealed class CertificateProvider : IdentityProvider, IDisposable
+{
+    private readonly string _certPem;
+    private readonly X509Certificate2 _cert;
+    private readonly SignatureKeys _keys;
+
+    public CertificateProvider(string certPem, string keyPem)
+    {
+        _certPem = certPem;
+        _cert = X509Certificate2.CreateFromPem(certPem);
+        using var key = ECDsa.Create();
+        key.ImportFromPem(keyPem);
+        var parameters = key.ExportParameters(true);
+        if (!Certs.IsP256(parameters) || parameters.D is not { Length: 32 })
+        {
+            throw new CryptographicException("the private key is not ECDSA P-256");
+        }
+        // The certificate's key pair: raw secret scalar, SEC1 public key.
+        _keys = new SignatureKeys(parameters.D, Certs.PublicKey(_cert));
+    }
+
+    public void Dispose() => _cert.Dispose();
 
     // One-time async setup (load credentials, call an identity service, ...).
     public Task Initialize() => Task.CompletedTask;
 
-    public string GetId() => _subject;
+    public string GetId() => Certs.CommonName(_cert);
 
-    public string GetToken()
-    {
-        lock (_lock)
-        {
-            // Always bind the *current* public key: it changes if SLIM installs a new pair.
-            return $"{_subject}.{Convert.ToBase64String(_keys.PublicKey)}.{_secret}";
-        }
-    }
+    public string GetToken() => _certPem;
 
-    public SignatureKeys GetSignatureKeys()
-    {
-        lock (_lock)
-        {
-            return _keys;
-        }
-    }
+    public SignatureKeys GetSignatureKeys() => _keys;
 
-    public bool MlsSignatureKeysInstalled()
-    {
-        lock (_lock)
-        {
-            return _installed;
-        }
-    }
+    // The keys are the certificate's: SLIM must not generate its own.
+    public bool MlsSignatureKeysInstalled() => true;
 
-    // Called when MLS is used. Keep the bytes exactly as given.
-    public void SetSignatureKeys(byte[] privateKey, byte[] publicKey)
-    {
-        lock (_lock)
-        {
-            _keys = new SignatureKeys(privateKey, publicKey);
-            _installed = true;
-        }
-    }
+    public void SetSignatureKeys(byte[] privateKey, byte[] publicKey) =>
+        throw new IdentityCallbackException.Failed("the signing key is the certificate's key and cannot be replaced");
 
     // No persistence: this identity cannot be exported and restored.
     public IdentityExport? ExportIdentity() => null;
 
-    public bool HoldsLongTermSigningKey() => false;
+    // The certificate's key is long-term.
+    public bool HoldsLongTermSigningKey() => true;
 
     public void RestoreIdentity(IdentityExport identity) { }
 }
 
-/// <summary>Accepts tokens carrying the shared secret and exposes their claims.</summary>
-internal sealed class ExampleVerifier : IdentityVerifier
+/// <summary>
+/// Accepts tokens whose certificate was issued by the trusted CA, and exposes their claims.
+/// Trust-anchor check only: no revocation (CRL / OCSP) is performed and nothing is downloaded.
+/// </summary>
+internal sealed class CertificateVerifier : IdentityVerifier
 {
-    private readonly string _secret;
+    private readonly X509Certificate2 _ca;
 
-    public ExampleVerifier(string secret) => _secret = secret;
+    public CertificateVerifier(X509Certificate2 ca) => _ca = ca;
 
-    private (string Subject, string PublicKey) Parse(string token)
+    /// <summary>Validates the token, a PEM certificate, and returns the certificate.</summary>
+    private X509Certificate2 Parse(string token)
     {
-        var parts = token.Split('.', 3);
-        if (parts.Length != 3 || parts[2] != _secret)
+        try
         {
-            throw new IdentityCallbackException.Failed("invalid token");
+            // Only a PEM certificate: no content around the PEM block.
+            var pem = PemEncoding.Find(token);
+            if (!string.IsNullOrWhiteSpace(token[..pem.Location.Start]) || !string.IsNullOrWhiteSpace(token[pem.Location.End..]))
+            {
+                throw new CryptographicException("unexpected content around the certificate");
+            }
+            var cert = X509Certificate2.CreateFromPem(token);
+            try
+            {
+                Validate(cert);
+                return cert;
+            }
+            catch
+            {
+                cert.Dispose();
+                throw;
+            }
         }
-        return (parts[0], parts[1]);
+        catch (Exception e) when (e is ArgumentException or CryptographicException)
+        {
+            throw new IdentityCallbackException.Failed($"invalid token: {e.Message}");
+        }
+    }
+
+    private void Validate(X509Certificate2 cert)
+    {
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.Add(_ca);
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        chain.ChainPolicy.DisableCertificateDownloads = true;
+        if (!chain.Build(cert))
+        {
+            var status = string.Join(", ", chain.ChainStatus.Select(s => s.Status));
+            throw new CryptographicException($"certificate not issued by the trusted CA ({status})");
+        }
+        // The leaf has to be issued directly by the CA.
+        if (chain.ChainElements.Count != 2)
+        {
+            throw new CryptographicException("certificate not issued directly by the trusted CA");
+        }
+        if (cert.Extensions.OfType<X509BasicConstraintsExtension>().Any(e => e.CertificateAuthority))
+        {
+            throw new CryptographicException("a CA certificate cannot be used as an identity");
+        }
+        Certs.PublicKey(cert);
+        Certs.CommonName(cert);
     }
 
     // One-time async setup (fetch trust bundles, keys, ...).
@@ -144,25 +241,35 @@ internal sealed class ExampleVerifier : IdentityVerifier
     // Where an async context is available: free to do I/O.
     public Task VerifyAsync(string token)
     {
-        Parse(token);
+        Parse(token).Dispose();
         return Task.CompletedTask;
     }
 
     // Synchronous contexts: must not block for long.
-    public void Verify(string token) => Parse(token);
+    public void Verify(string token) => Parse(token).Dispose();
 
     public string GetClaims(string token)
     {
-        return JsonSerializer.Serialize(new Dictionary<string, string> { ["sub"] = Parse(token).Subject });
+        using var cert = Parse(token);
+        return JsonSerializer.Serialize(new Dictionary<string, string> { ["sub"] = Certs.CommonName(cert) });
     }
 
-    public byte[] GetPublicKey(string token) => Convert.FromBase64String(Parse(token).PublicKey);
+    public byte[] GetPublicKey(string token)
+    {
+        using var cert = Parse(token);
+        return Certs.PublicKey(cert);
+    }
 
-    public string GetSubject(string token) => Parse(token).Subject;
+    public string GetSubject(string token)
+    {
+        using var cert = Parse(token);
+        return Certs.CommonName(cert);
+    }
 
     public void VerifyKeyBinding(string token, byte[] publicKey)
     {
-        if (Parse(token).PublicKey != Convert.ToBase64String(publicKey))
+        using var cert = Parse(token);
+        if (!Certs.PublicKey(cert).AsSpan().SequenceEqual(publicKey))
         {
             throw new IdentityCallbackException.PublicKeyMismatch("token bound to another key");
         }

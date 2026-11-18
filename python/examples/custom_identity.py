@@ -8,97 +8,157 @@ SLIM does not have to authenticate with one of its built-in mechanisms: subclass
 `slim_bindings.IdentityVerifier` (checks who a peer is), and pass instances to
 `App.new_with_custom_identity_async`.
 
-Two things a custom identity has to get right:
+Three things a custom identity has to get right:
 
   * SLIM signs the control messages of every session with the provider's key pair, and
     the peer checks the signature with the key its verifier returns from
-    `get_public_key`. So the provider holds a key pair (`generate_signature_keys()`
-    makes one), puts the public key in its tokens, and swaps the pair when SLIM calls
-    `set_signature_keys`.
+    `get_public_key`. Here the key pair is the certificate's own: the token is the
+    certificate, so the key the verifier returns is the one in the certificate.
+  * SLIM can ask a provider to install a new key pair (`set_signature_keys`), unless
+    the provider says its keys are installed (`mls_signature_keys_installed`). A
+    certificate identity has a fixed key, so it reports them installed and refuses a
+    replacement.
   * SLIM awaits the async methods (`initialize`, `verify_async`) from its own threads,
     so register the event loop with `uniffi_set_event_loop` and use the async
     constructor (the blocking one would wait on the loop it is blocking).
 
-The token scheme below, `<subject>.<base64 public key>.<secret>`, is a toy that keeps
-the example short. A real provider issues a signed token (JWT, DPoP, ...) and a real
-verifier checks that signature.
+The identities are X.509 certificates. Each app holds a certificate issued by a CA
+(fixtures in `testdata/x509`) and its private key, and its token is the certificate in
+PEM form. The signing keys are the certificate's key (ECDSA P-256, the MLS ciphersuite
+of SLIM): the secret key as the raw 32-byte scalar, the public key as an uncompressed
+SEC1 point. The verifier trusts one CA: it checks the certificate was issued by it, is
+within its validity period and is not a CA certificate, and its subject is the common
+name. It is a trust-anchor check only: there is no revocation checking (CRL / OCSP).
 
-Run with:  uv run python examples/custom_identity.py
+Run with:  uv run --extra examples python examples/custom_identity.py
 """
 
 import asyncio
-import base64
 import datetime
 import json
+from pathlib import Path
+
+from cryptography import x509
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
 import slim_bindings
 
-SECRET = "an-example-shared-secret"
+CERTS = Path(__file__).resolve().parents[2] / "testdata" / "x509"
 
 
-def b64(data: bytes) -> str:
-    return base64.b64encode(data).decode()
+def common_name(cert: x509.Certificate) -> str:
+    return cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value  # type: ignore[return-value]
+
+
+def signing_keys(
+    cert: x509.Certificate, key: ec.EllipticCurvePrivateKey | None
+) -> slim_bindings.SignatureKeys:
+    """The certificate's key pair, as SLIM takes it: raw secret scalar, SEC1 public key."""
+    public = cert.public_key()
+    assert isinstance(public, ec.EllipticCurvePublicKey)
+    secret = b""
+    if key is not None:
+        secret = key.private_numbers().private_value.to_bytes(32, "big")
+    return slim_bindings.SignatureKeys(
+        secret_key=secret,
+        public_key=public.public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+        ),
+    )
 
 
 class ExampleProvider(slim_bindings.IdentityProvider):
-    """Issues `<subject>.<base64 public key>.<secret>` tokens."""
+    """Uses an X.509 certificate as the token and its key pair as the signing keys."""
 
-    def __init__(self, subject: str, secret: str):
-        self.subject = subject
-        self.secret = secret
-        self.keys = slim_bindings.generate_signature_keys()
-        self.installed = False
+    def __init__(self, cert_pem: bytes, key_pem: bytes):
+        self.cert_pem = cert_pem.decode()
+        self.cert = x509.load_pem_x509_certificate(cert_pem)
+        key = serialization.load_pem_private_key(key_pem, password=None)
+        assert isinstance(key, ec.EllipticCurvePrivateKey)
+        self.keys = signing_keys(self.cert, key)
 
     async def initialize(self):
         # One-time async setup (load credentials, call an identity service, ...).
         pass
 
     def get_id(self):
-        return self.subject
+        return common_name(self.cert)
 
     def get_token(self):
-        # Always bind the *current* public key: it changes if SLIM installs a new pair.
-        return f"{self.subject}.{b64(self.keys.public_key)}.{self.secret}"
+        return self.cert_pem
 
     def get_signature_keys(self):
         return self.keys
 
     def mls_signature_keys_installed(self):
-        return self.installed
+        # The keys are the certificate's: SLIM must not generate its own.
+        return True
 
     def set_signature_keys(self, private_key, public_key):
-        # Called when MLS is used. Keep the bytes exactly as given.
-        self.keys = slim_bindings.SignatureKeys(
-            secret_key=private_key, public_key=public_key
+        raise slim_bindings.IdentityCallbackError.Failed(
+            "the signing key is the certificate's key and cannot be replaced"
         )
-        self.installed = True
 
     # No persistence: this identity cannot be exported and restored.
     def export_identity(self):
         return None
 
     def holds_long_term_signing_key(self):
-        return False
+        # The certificate's key is long-term.
+        return True
 
     def restore_identity(self, identity):
         pass
 
 
 class ExampleVerifier(slim_bindings.IdentityVerifier):
-    """Accepts tokens carrying the shared secret and exposes their claims."""
+    """Accepts tokens whose certificate was issued by the trusted CA.
 
-    def __init__(self, secret: str):
-        self.secret = secret
+    Trust-anchor check only: no revocation (CRL / OCSP) is performed.
+    """
+
+    def __init__(self, ca_pem: bytes):
+        self.ca = x509.load_pem_x509_certificate(ca_pem)
 
     async def initialize(self):
         # One-time async setup (fetch trust bundles, keys, ...).
         pass
 
-    def _parse(self, token: str) -> tuple[str, str]:
-        parts = token.split(".", 2)
-        if len(parts) != 3 or parts[2] != self.secret:
-            raise slim_bindings.IdentityCallbackError.Failed("invalid token")
-        return parts[0], parts[1]
+    def _parse(self, token: str) -> x509.Certificate:
+        """Validate the token, a PEM certificate; return the certificate."""
+        try:
+            cert = x509.load_pem_x509_certificate(token.encode())
+        except ValueError as e:
+            raise slim_bindings.IdentityCallbackError.Failed(
+                f"malformed token: {e}"
+            ) from e
+
+        try:
+            cert.verify_directly_issued_by(self.ca)
+        except (ValueError, TypeError, InvalidSignature) as e:
+            raise slim_bindings.IdentityCallbackError.Failed(
+                f"certificate not issued by the trusted CA: {e}"
+            ) from e
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
+            raise slim_bindings.IdentityCallbackError.Failed(
+                "certificate is not valid at this time"
+            )
+        try:
+            basic = cert.extensions.get_extension_for_class(x509.BasicConstraints)
+            if basic.value.ca:
+                raise slim_bindings.IdentityCallbackError.Failed(
+                    "a CA certificate cannot be used as an identity"
+                )
+        except x509.ExtensionNotFound:
+            pass
+        if not isinstance(cert.public_key(), ec.EllipticCurvePublicKey):
+            raise slim_bindings.IdentityCallbackError.Failed(
+                "unsupported certificate key type"
+            )
+        return cert
 
     async def verify_async(self, token):
         # Where an async context is available: free to do I/O.
@@ -109,26 +169,30 @@ class ExampleVerifier(slim_bindings.IdentityVerifier):
         self._parse(token)
 
     def get_claims(self, token):
-        return json.dumps({"sub": self._parse(token)[0]})
+        return json.dumps({"sub": common_name(self._parse(token))})
 
     def get_public_key(self, token):
-        return base64.b64decode(self._parse(token)[1])
+        return signing_keys(self._parse(token), None).public_key
 
     def get_subject(self, token):
-        return self._parse(token)[0]
+        return common_name(self._parse(token))
 
     def verify_key_binding(self, token, public_key):
-        if self._parse(token)[1] != b64(public_key):
+        if signing_keys(self._parse(token), None).public_key != public_key:
             raise slim_bindings.IdentityCallbackError.PublicKeyMismatch(
                 "token bound to another key"
             )
 
 
-async def create_app(name: slim_bindings.Name) -> slim_bindings.App:
+async def create_app(name: slim_bindings.Name, user: str) -> slim_bindings.App:
+    # The certificate subject (CN) is the app's name, e.g. "org/example/alice".
+    provider = ExampleProvider(
+        (CERTS / f"{user}.pem").read_bytes(), (CERTS / f"{user}.key").read_bytes()
+    )
     return await slim_bindings.App.new_with_custom_identity_async(
         name,
-        ExampleProvider(str(name), SECRET),
-        ExampleVerifier(SECRET),
+        provider,
+        ExampleVerifier((CERTS / "ca.pem").read_bytes()),
         slim_bindings.Direction.BIDIRECTIONAL,
     )
 
@@ -140,8 +204,8 @@ async def main():
 
     alice_name = slim_bindings.Name("org", "example", "alice")
     bob_name = slim_bindings.Name("org", "example", "bob")
-    alice = await create_app(alice_name)
-    bob = await create_app(bob_name)
+    alice = await create_app(alice_name, "alice")
+    bob = await create_app(bob_name, "bob")
 
     async def bob_serves():
         session = await bob.listen_for_session_async(None)
