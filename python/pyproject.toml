@@ -43,6 +43,7 @@ examples = [
     "tomli>=2.4.0",
     "protobuf>=6.33.4",
     "googleapis-common-protos>=1.72.0",
+    "cryptography>=43.0.0",
 ]
 
 [project.scripts]
@@ -63,6 +64,7 @@ building = [
 testing = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
+    "cryptography>=43.0.0",
 ]
 
 linting = [
