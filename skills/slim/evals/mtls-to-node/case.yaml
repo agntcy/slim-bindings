@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: mtls-to-node
+expected_outcome: |
+  Explains that mTLS covers the app-to-node hop (separate from MLS/app identity), points to the node mTLS config (agntcy/slim config/mtls or equivalent docs) rather than inventing a full node config from nothing, and shows the Python change: build a slim_bindings client config with TLS cert/key/CA and pass it as client_config instead of slim_url.

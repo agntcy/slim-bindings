@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: transport-question-no-slim
+expected_outcome: |
+  Presents several options with trade-offs (e.g. A2A over HTTP/gRPC with a mesh or gateway, a message broker like NATS/Kafka, and SLIM/A2A-over-SLIM with MLS E2E, group sessions and cross-cluster routing), is honest about SLIM's costs, and does not write SLIM implementation code unasked.

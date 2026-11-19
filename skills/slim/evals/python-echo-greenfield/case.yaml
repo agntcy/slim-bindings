@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: python-echo-greenfield
+expected_outcome: |
+  A Python project with an A2A echo server and client using slima2a over SLIM; a SLIM node is used or started; the client is run and receives the echoed text; processes the run started are stopped.

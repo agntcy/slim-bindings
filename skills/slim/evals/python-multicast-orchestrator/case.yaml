@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: python-multicast-orchestrator
+expected_outcome: |
+  Two Python A2A agents served over SLIM under distinct names and an orchestrator that sends one request to both (slima2a multicast / group channel factory, or equivalent concurrent calls) and prints both replies, demonstrated by an actual run.
