@@ -28,8 +28,11 @@ on:
         type: string
         default: ./go
     secrets:
-      gh-token:
-        description: GitHub token for pushing to target repository
+      PROJECT_APP_ID:
+        description: Client ID of the GitHub App that pushes to the target repository
+        required: true
+      PROJECT_APP_KEY:
+        description: Private key of the GitHub App that pushes to the target repository
         required: true
 
 env:
@@ -84,9 +87,25 @@ jobs:
           echo "📦 Downloaded artifacts:"
           find ./downloaded_slim_bindings -type f -ls
 
+      - name: Resolve target repository
+        id: target
+        run: |
+          echo "owner=${GO_BINDINGS_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${GO_BINDINGS_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate as the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+          owner: ${{ steps.target.outputs.owner }}
+          repositories: ${{ steps.target.outputs.name }}
+          permission-contents: write
+
       - name: Clone target repository
         env:
-          GH_TOKEN: ${{ secrets.gh-token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${GO_BINDINGS_REPO}.git" ./target-repo
 
@@ -404,9 +423,25 @@ jobs:
     needs: [release-go-bindings, test-go-bindings]
     if: startsWith(github.ref, 'refs/tags/slim-bindings-')
     steps:
+      - name: Resolve target repository
+        id: target
+        run: |
+          echo "owner=${GO_BINDINGS_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${GO_BINDINGS_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate as the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+          owner: ${{ steps.target.outputs.owner }}
+          repositories: ${{ steps.target.outputs.name }}
+          permission-contents: write
+
       - name: Clone target repository
         env:
-          GH_TOKEN: ${{ secrets.gh-token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${GO_BINDINGS_REPO}.git" ./target-repo
 
