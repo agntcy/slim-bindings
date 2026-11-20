@@ -11,7 +11,8 @@
  * ESM's `export * from '<pkg>'` cannot be used to surface named exports on the
  * main `@agntcy/slim-bindings` entry point. We enumerate the value exports here
  * so `import { Channel, RpcError, ... } from '@agntcy/slim-bindings'` resolves
- * at runtime (types come from index.d.ts re-exporting ./types/slim_bindings).
+ * at runtime (types come from index.d.ts re-exporting ./types/slim_bindings and
+ * ./types/slim_rpc — keep the two in sync).
  *
  * Usage: node scripts/gen-named-exports.mjs
  * Requires: generated/slim_bindings.ts (run `task generate` first).
