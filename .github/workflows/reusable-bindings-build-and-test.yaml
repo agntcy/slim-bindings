@@ -806,6 +806,16 @@ jobs:
         # CWD is ./node (job default working-directory), so the node dir is ".".
         run: node "${GITHUB_WORKSPACE}/.github/tests/node/check_named_exports.mjs" .
 
+      # Type-check a consumer of '@agntcy/slim-bindings' resolved to this
+      # directory, so the published type entry point (index.d.ts -> types/) is
+      # exercised. The slimrpc example below imports generated/index.js and
+      # would not notice a namespace missing from index.d.ts.
+      - name: Emit package types
+        run: task emit-types
+
+      - name: Check package type surface (index.d.ts)
+        run: node "${GITHUB_WORKSPACE}/.github/tests/node/check_package_types.mjs" .
+
       # Prove the slimrpc node target end-to-end: generate stubs from the
       # in-repo plugin, type-check the generated example, then run it against a
       # live in-process SLIM broker so a break in the generator, the runtime
