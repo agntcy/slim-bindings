@@ -11,7 +11,8 @@
  *
  * Checks:
  *   1. named-exports.js exists (was generated).
- *   2. Every VALUE export of generated/slim_bindings.ts is re-exported by it.
+ *   2. Every VALUE export of generated/slim_bindings.ts and generated/slim_rpc.ts
+ *      (the core and SLIMRPC UniFFI namespaces) is re-exported by it.
  *   3. package.json "files" ships binding.js and named-exports.js.
  *
  * Usage: node .github/tests/node/check_named_exports.mjs <node-dir>
@@ -33,10 +34,19 @@ if (!fs.existsSync(barrelPath)) {
 }
 const barrel = read('named-exports.js');
 
-// 2. completeness vs generated bindings surface
-const src = read('generated/slim_bindings.ts');
+// 2. completeness vs generated bindings surface (both UniFFI namespaces; both
+//    are required — a missing one must fail here, not silently shrink the check)
+const srcFiles = ['generated/slim_bindings.ts', 'generated/slim_rpc.ts'];
+for (const f of srcFiles) {
+  if (!fs.existsSync(path.join(nodeDir, f))) {
+    fail(`${f} missing — run \`task generate\`.`);
+    process.exit(1);
+  }
+}
 const re = /^export (?:abstract class|class|const|enum|function) ([A-Za-z0-9_$]+)/gm;
-const expected = [...new Set([...src.matchAll(re)].map((m) => m[1]))];
+const expected = [
+  ...new Set(srcFiles.flatMap((f) => [...read(f).matchAll(re)].map((m) => m[1]))),
+];
 const missing = expected.filter((n) => !new RegExp(`^export const ${n} = ns\\.${n};`, 'm').test(barrel));
 if (missing.length) {
   fail(`named-exports.js is stale — missing ${missing.length} export(s): ${missing.join(', ')}`);

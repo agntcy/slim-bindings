@@ -32,8 +32,11 @@ const srcPaths = [
 ];
 const outPath = path.join(nodeDir, 'named-exports.js');
 
-if (!fs.existsSync(srcPaths[0])) {
-  console.error(`❌ ${srcPaths[0]} not found. Run \`task generate\` first.`);
+// Both namespaces are required: index.d.ts re-exports both, so a missing file
+// would ship types for values that are not exported at runtime.
+const missingSrc = srcPaths.filter((p) => !fs.existsSync(p));
+if (missingSrc.length) {
+  console.error(`❌ ${missingSrc.join(', ')} not found. Run \`task generate\` first.`);
   process.exit(1);
 }
 
@@ -43,14 +46,13 @@ if (!fs.existsSync(srcPaths[0])) {
 const re = /^export (?:abstract class|class|const|enum|function) ([A-Za-z0-9_$]+)/gm;
 const names = [
   ...new Set(
-    srcPaths
-      .filter((p) => fs.existsSync(p))
-      .flatMap((p) => [...fs.readFileSync(p, 'utf8').matchAll(re)].map((m) => m[1])),
+    srcPaths.flatMap((p) => [...fs.readFileSync(p, 'utf8').matchAll(re)].map((m) => m[1])),
   ),
 ].sort();
 
 if (names.length === 0) {
-  console.error('❌ No value exports found in slim_bindings.ts — refusing to write an empty barrel.');
+  const files = srcPaths.map((p) => path.basename(p)).join(' or ');
+  console.error(`❌ No value exports found in ${files} — refusing to write an empty barrel.`);
   process.exit(1);
 }
 
