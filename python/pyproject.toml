@@ -61,7 +61,6 @@ building = [
 ]
 
 testing = [
-    "cryptography>=43.0.0",
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
 ]
