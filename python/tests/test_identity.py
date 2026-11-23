@@ -3,15 +3,38 @@
 
 import asyncio
 import datetime
-import pathlib
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
 import slim_bindings
 
-keys_folder = str(pathlib.Path(__file__).resolve().parents[2] / "testdata" / "jwt")
-
 test_audience = ["test.audience"]
+
+
+def generate_ec_key_pair(curve: ec.EllipticCurve) -> tuple[str, str]:
+    """Generate a throwaway EC key pair for the test run.
+
+    Returns:
+        (private_key_pem, public_key_pem): PKCS#8 private key and
+        SubjectPublicKeyInfo public key, both PEM-encoded.
+    """
+    private_key = ec.generate_private_key(curve)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode()
+    public_pem = (
+        private_key.public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode()
+    )
+    return private_pem, public_pem
 
 
 def create_slim(
@@ -26,9 +49,9 @@ def create_slim(
 
     Args:
         name: Name identifying this local app (used as JWT subject).
-        private_key: Path to PEM private key used for signing outbound tokens.
+        private_key: PEM private key used for signing outbound tokens.
         private_key_algorithm: Algorithm matching the private key type (e.g. ES256).
-        public_key: Path to PEM public key used to verify the peer's tokens.
+        public_key: PEM public key used to verify the peer's tokens.
         public_key_algorithm: Algorithm matching the peer public key type.
         wrong_audience: Optional override audience list to force verification failure.
                         If None, uses the shared test_audience (success path).
@@ -41,14 +64,14 @@ def create_slim(
     private_key_config = slim_bindings.JwtKeyConfig(
         algorithm=private_key_algorithm,
         format=slim_bindings.JwtKeyFormat.PEM,
-        key=slim_bindings.JwtKeyData.FILE(path=private_key),  # type: ignore
+        key=slim_bindings.JwtKeyData.DATA(value=private_key),  # type: ignore
     )
 
     # Build verification key config (public key for decoding)
     public_key_config = slim_bindings.JwtKeyConfig(
         algorithm=public_key_algorithm,
         format=slim_bindings.JwtKeyFormat.PEM,
-        key=slim_bindings.JwtKeyData.FILE(path=public_key),  # type: ignore
+        key=slim_bindings.JwtKeyData.DATA(value=public_key),  # type: ignore
     )
 
     # Create provider config (for signing outbound tokens)
@@ -103,20 +126,14 @@ async def test_identity_verification(server, audience):
     sender_name = slim_bindings.Name("org", "default", "id_sender")
     receiver_name = slim_bindings.Name("org", "default", "id_receiver")
 
-    # Keys used for signing JWTs of sender
-    private_key_sender = f"{keys_folder}/ec256.pem"  # Sender's signing key (ES256)
-    public_key_sender = (
-        f"{keys_folder}/ec256-public.pem"  # Public half used by receiver to verify
-    )
-    algorithm_sender = (
-        slim_bindings.JwtAlgorithm.ES256
-    )  # Curves/selections align with private key
+    # Keys used for signing JWTs of sender (P-256 / ES256); the receiver
+    # verifies with the public half
+    private_key_sender, public_key_sender = generate_ec_key_pair(ec.SECP256R1())
+    algorithm_sender = slim_bindings.JwtAlgorithm.ES256
 
-    # Keys used for signing JWTs of receiver
-    private_key_receiver = f"{keys_folder}/ec384.pem"  # Receiver's signing key (ES384)
-    public_key_receiver = (
-        f"{keys_folder}/ec384-public.pem"  # Public half used by sender to verify
-    )
+    # Keys used for signing JWTs of receiver (P-384 / ES384); the sender
+    # verifies with the public half
+    private_key_receiver, public_key_receiver = generate_ec_key_pair(ec.SECP384R1())
     algorithm_receiver = slim_bindings.JwtAlgorithm.ES384
 
     # create new app object. note that the verifier will use the public key of the receiver
