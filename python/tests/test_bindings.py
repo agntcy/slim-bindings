@@ -369,8 +369,10 @@ async def test_listen_for_session_timeout(server):
 
     elapsed_time = asyncio.get_event_loop().time() - start_time
 
-    # Verify the timeout was respected (allow some tolerance)
-    assert 0.08 <= elapsed_time <= 0.2, (
+    # Verify the timeout was respected. The upper bound is loose on purpose:
+    # slow CI runners (Intel macOS) routinely overshoot 0.1s by 2x, and the
+    # check only has to prove the timeout fired instead of hanging.
+    assert 0.08 <= elapsed_time <= 1.0, (
         f"Timeout took {elapsed_time:.3f}s, expected ~0.1s"
     )
     assert (
@@ -461,8 +463,10 @@ async def test_get_message_timeout(server):
 
     elapsed_time = asyncio.get_event_loop().time() - start_time
 
-    # Verify the timeout was respected (allow some tolerance)
-    assert 0.08 <= elapsed_time <= 0.2, (
+    # Verify the timeout was respected. The upper bound is loose on purpose:
+    # slow CI runners (Intel macOS) routinely overshoot 0.1s by 2x, and the
+    # check only has to prove the timeout fired instead of hanging.
+    assert 0.08 <= elapsed_time <= 1.0, (
         f"Timeout took {elapsed_time:.3f}s, expected ~0.1s"
     )
     assert (
