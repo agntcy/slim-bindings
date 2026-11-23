@@ -174,12 +174,14 @@ tasks:
 
   # Generate node/named-exports.js: the runtime named-export barrel for the main
   # package (so `import { Channel } from '@agntcy/slim-bindings'` resolves).
-  # Derived from generated/slim_bindings.ts; must run after generate.
+  # Derived from generated/slim_bindings.ts and generated/slim_rpc.ts (the core
+  # and SLIMRPC UniFFI namespaces); must run after generate.
   emit-named-exports:
-    desc: Generate the runtime named-export barrel (named-exports.js)
+    desc: Generate the runtime named-export barrel (named-exports.js) from generated/slim_bindings.ts and generated/slim_rpc.ts
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - test -f {{.TASKFILE_DIR}}/generated/slim_bindings.ts || (echo "Run task generate first"; exit 1)
+      - test -f {{.TASKFILE_DIR}}/generated/slim_bindings.ts || (echo "generated/slim_bindings.ts missing; run task generate first"; exit 1)
+      - test -f {{.TASKFILE_DIR}}/generated/slim_rpc.ts || (echo "generated/slim_rpc.ts missing; run task generate first"; exit 1)
       - node {{.TASKFILE_DIR}}/scripts/gen-named-exports.mjs
     silent: true
 

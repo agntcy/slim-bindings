@@ -29,7 +29,7 @@ const fail = (msg) => { console.error(`❌ ${msg}`); failed++; };
 // 1. barrel exists
 const barrelPath = path.join(nodeDir, 'named-exports.js');
 if (!fs.existsSync(barrelPath)) {
-  fail('named-exports.js missing — run `task emit-named-exports` (or `task generate`).');
+  console.error('❌ named-exports.js missing — run `task emit-named-exports` (or `task generate`).');
   process.exit(1);
 }
 const barrel = read('named-exports.js');
@@ -37,11 +37,10 @@ const barrel = read('named-exports.js');
 // 2. completeness vs generated bindings surface (both UniFFI namespaces; both
 //    are required — a missing one must fail here, not silently shrink the check)
 const srcFiles = ['generated/slim_bindings.ts', 'generated/slim_rpc.ts'];
-for (const f of srcFiles) {
-  if (!fs.existsSync(path.join(nodeDir, f))) {
-    fail(`${f} missing — run \`task generate\`.`);
-    process.exit(1);
-  }
+const missingSrc = srcFiles.filter((f) => !fs.existsSync(path.join(nodeDir, f)));
+if (missingSrc.length) {
+  console.error(`❌ ${missingSrc.join(', ')} missing — run \`task generate\`.`);
+  process.exit(1);
 }
 const re = /^export (?:abstract class|class|const|enum|function) ([A-Za-z0-9_$]+)/gm;
 const expected = [

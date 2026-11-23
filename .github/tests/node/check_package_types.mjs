@@ -67,6 +67,14 @@ const consumer = [
   '',
 ].join('\n');
 
+const tsc = path.join(nodeDir, 'node_modules', 'typescript', 'bin', 'tsc');
+if (!fs.existsSync(tsc)) {
+  console.error(`❌ ${tsc} not found — run \`npm install\` in ${nodeDir}.`);
+  process.exit(1);
+}
+
+// From here on, failures throw and set process.exitCode instead of calling
+// process.exit(), which would skip the finally block and leak the temp dir.
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'slim-package-types-'));
 try {
   fs.writeFileSync(path.join(tmp, 'consumer.ts'), consumer);
@@ -92,22 +100,27 @@ try {
     ),
   );
 
-  const tsc = path.join(nodeDir, 'node_modules', 'typescript', 'bin', 'tsc');
-  if (!fs.existsSync(tsc)) {
-    console.error(`❌ ${tsc} not found — run \`npm install\` in ${nodeDir}.`);
-    process.exit(1);
-  }
   const res = spawnSync(process.execPath, [tsc, '-p', tmp], { stdio: 'inherit' });
+  // Distinguish "tsc could not run / was killed" from "tsc found type errors",
+  // so an OOM kill or CI timeout is not misreported as a missing export.
+  if (res.error) {
+    throw new Error(`failed to run tsc: ${res.error.message}`);
+  }
+  if (res.signal) {
+    throw new Error(`tsc was terminated by ${res.signal} before finishing.`);
+  }
   if (res.status !== 0) {
-    console.error(
-      '\n❌ @agntcy/slim-bindings type surface is incomplete: the names above are exported by the ' +
+    throw new Error(
+      '@agntcy/slim-bindings type surface is incomplete: the names above are exported by the ' +
         'generated bindings but not reachable through index.d.ts.',
     );
-    process.exit(1);
   }
   console.log(
     `✅ index.d.ts exposes all ${values.length} value exports (named + default) and ${types.length} type exports.`,
   );
+} catch (err) {
+  console.error(`\n❌ ${err.message}`);
+  process.exitCode = 1;
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
