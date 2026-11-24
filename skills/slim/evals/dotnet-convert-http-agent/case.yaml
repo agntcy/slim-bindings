@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: dotnet-convert-http-agent
+expected_outcome: |
+  Program.cs serves the unchanged ShoutHandler through Agntcy.SlimA2A (SlimA2AConnection to http://slim.internal:46357, StartServerAsync with an A2AServer wrapping ShoutHandler, secret from SLIM_SHARED_SECRET); csproj references Agntcy.SlimA2A; dotnet build succeeds; nothing started.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: python-jwt-identity
+expected_outcome: |
+  Both scripts use slim_bindings JWT identity provider + verifier (no shared secret), keys under keys/, each verifier trusting the peer's signing key; run end to end showing the echo; processes cleaned up.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: node-fanout-partial-failure
+expected_outcome: |
+  Three @agntcy/slim-a2a agents plus an orchestrator that calls each agent independently (not one all-or-nothing multicast); run with agent_c down shows agent_a and agent_b answers, reports agent_c as failed and exits within ~30 s; processes cleaned up.

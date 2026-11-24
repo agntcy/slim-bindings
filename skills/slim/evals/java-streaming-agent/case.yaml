@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: java-streaming-agent
+expected_outcome: |
+  A maven project using slim-a2a-java on JDK 21: the server emits one streaming event per word, the client uses the streaming call and prints each event as it arrives; run end to end showing several chunks; processes cleaned up.
