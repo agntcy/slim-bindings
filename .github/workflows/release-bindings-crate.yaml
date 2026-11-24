@@ -19,8 +19,7 @@ jobs:
     name: Release bindings crate
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: read
+      contents: read
     steps:
       - name: Authenticate as the GitHub App
         id: app-token
@@ -55,8 +54,7 @@ jobs:
     name: Release bindings crate - PR
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     concurrency:
       group: release-plz-bindings-${{ github.ref }}
       cancel-in-progress: false
