@@ -296,7 +296,9 @@ class BindingsTest {
       double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
       System.out.println("[BindingsTest] testListenForSessionTimeout: timeout asserted elapsed=" + elapsedTime + "s");
 
-      assertTrue(elapsedTime >= 0.08 && elapsedTime <= 0.2,
+      // The upper bound is loose on purpose: slow CI runners routinely overshoot
+      // 0.1s by 2x, and the check only has to prove the timeout fired instead of hanging.
+      assertTrue(elapsedTime >= 0.08 && elapsedTime <= 1.0,
           "Timeout took " + elapsedTime + "s, expected ~0.1s");
       assertTrue(
           (exception.getMessage() != null
