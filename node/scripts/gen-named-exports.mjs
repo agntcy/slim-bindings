@@ -11,29 +11,35 @@
  * ESM's `export * from '<pkg>'` cannot be used to surface named exports on the
  * main `@agntcy/slim-bindings` entry point. We enumerate the value exports here
  * so `import { Channel, RpcError, ... } from '@agntcy/slim-bindings'` resolves
- * at runtime (types come from index.d.ts re-exporting ./types/slim_bindings and
- * ./types/slim_rpc — keep the two in sync).
+ * at runtime (types come from index.d.ts re-exporting ./types/<ns> for every
+ * namespace — keep the two in sync; CI checks it).
  *
  * Usage: node scripts/gen-named-exports.mjs
- * Requires: generated/slim_bindings.ts (run `task generate` first).
+ * Requires: generated/index.ts and one generated/<ns>.ts per namespace it
+ * re-exports (run `task generate` first).
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { bindingNamespaces } from './namespaces.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const nodeDir = path.resolve(scriptDir, '..');
-// slimrpc is a second UniFFI namespace (agntcy-slim-rpc); its types (Channel,
-// RpcError, handlers, ...) are generated into slim_rpc.ts. index.ts re-exports
-// both namespaces, so the runtime barrel must surface value exports from both.
-const srcPaths = [
-  path.join(nodeDir, 'generated', 'slim_bindings.ts'),
-  path.join(nodeDir, 'generated', 'slim_rpc.ts'),
-];
 const outPath = path.join(nodeDir, 'named-exports.js');
 
-// Both namespaces are required: index.d.ts re-exports both, so a missing file
-// would ship types for values that are not exported at runtime.
+// The UniFFI namespaces (slim_bindings, slim_rpc, ...) re-exported by
+// generated/index.ts; the runtime barrel must surface value exports from all.
+let namespaces;
+try {
+  namespaces = bindingNamespaces(nodeDir);
+} catch (err) {
+  console.error(`❌ ${err.message}`);
+  process.exit(1);
+}
+const srcPaths = namespaces.map((ns) => path.join(nodeDir, 'generated', `${ns}.ts`));
+
+// Every namespace is required: index.d.ts re-exports all of them, so a missing
+// file would ship types for values that are not exported at runtime.
 const missingSrc = srcPaths.filter((p) => !fs.existsSync(p));
 if (missingSrc.length) {
   console.error(`❌ ${missingSrc.join(', ')} not found. Run \`task generate\` first.`);
@@ -44,11 +50,28 @@ if (missingSrc.length) {
 // exports (interface/type) are intentionally excluded — they are surfaced via
 // index.d.ts and have no runtime representation.
 const re = /^export (?:abstract class|class|const|enum|function) ([A-Za-z0-9_$]+)/gm;
-const names = [
-  ...new Set(
-    srcPaths.flatMap((p) => [...fs.readFileSync(p, 'utf8').matchAll(re)].map((m) => m[1])),
-  ),
-].sort();
+const owners = new Map(); // value name -> namespaces exporting it
+for (const [i, p] of srcPaths.entries()) {
+  for (const [, name] of fs.readFileSync(p, 'utf8').matchAll(re)) {
+    const list = owners.get(name) ?? [];
+    if (!list.includes(namespaces[i])) list.push(namespaces[i]);
+    owners.set(name, list);
+  }
+}
+
+// A name exported by two namespaces is ambiguous under generated/index.ts's
+// `export *` lines: ESM silently drops it from the platform module, so
+// `ns.<name>` would be undefined at runtime (and TS reports TS2308 on
+// index.d.ts). Fail here instead of shipping an undefined export.
+const clashes = [...owners].filter(([, list]) => list.length > 1);
+if (clashes.length) {
+  console.error('❌ Value exports defined in more than one namespace (ambiguous under `export *`):');
+  for (const [name, list] of clashes) console.error(`   ${name}: ${list.join(', ')}`);
+  console.error('   Rename one of them in the Rust/UniFFI interface.');
+  process.exit(1);
+}
+
+const names = [...owners.keys()].sort();
 
 if (names.length === 0) {
   const files = srcPaths.map((p) => path.basename(p)).join(' or ');

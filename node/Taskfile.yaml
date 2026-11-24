@@ -174,14 +174,13 @@ tasks:
 
   # Generate node/named-exports.js: the runtime named-export barrel for the main
   # package (so `import { Channel } from '@agntcy/slim-bindings'` resolves).
-  # Derived from generated/slim_bindings.ts and generated/slim_rpc.ts (the core
-  # and SLIMRPC UniFFI namespaces); must run after generate.
+  # Derived from every UniFFI namespace generated/index.ts re-exports (core
+  # slim_bindings and SLIMRPC slim_rpc; see scripts/namespaces.mjs); must run
+  # after generate. The script fails if a namespace file is missing.
   emit-named-exports:
-    desc: Generate the runtime named-export barrel (named-exports.js) from generated/slim_bindings.ts and generated/slim_rpc.ts
+    desc: Generate the runtime named-export barrel (named-exports.js) from the generated binding namespaces
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - test -f {{.TASKFILE_DIR}}/generated/slim_bindings.ts || (echo "generated/slim_bindings.ts missing; run task generate first"; exit 1)
-      - test -f {{.TASKFILE_DIR}}/generated/slim_rpc.ts || (echo "generated/slim_rpc.ts missing; run task generate first"; exit 1)
       - node {{.TASKFILE_DIR}}/scripts/gen-named-exports.mjs
     silent: true
 
@@ -226,10 +225,13 @@ tasks:
     cmds:
       - test -d {{.TASKFILE_DIR}}/generated || (echo "Run task generate first"; exit 1)
       - npx -p typescript tsc -p {{.TASKFILE_DIR}}/tsconfig.emit-types.json || true
-      # index.d.ts re-exports both namespaces, so both declaration files must exist
+      # index.d.ts re-exports every namespace, so each declaration file must exist
       # (tsc errors are swallowed above; a missing file would only surface for consumers).
-      - test -f {{.TASKFILE_DIR}}/types/slim_bindings.d.ts || (echo "types/slim_bindings.d.ts not emitted; fix tsconfig or generated code"; exit 1)
-      - test -f {{.TASKFILE_DIR}}/types/slim_rpc.d.ts || (echo "types/slim_rpc.d.ts not emitted; fix tsconfig or generated code"; exit 1)
+      - |
+        namespaces=$(node {{.TASKFILE_DIR}}/scripts/namespaces.mjs {{.TASKFILE_DIR}}) || exit 1
+        for ns in $namespaces; do
+          test -f {{.TASKFILE_DIR}}/types/$ns.d.ts || { echo "types/$ns.d.ts not emitted; fix tsconfig or generated code"; exit 1; }
+        done
       # The published main package also needs the runtime named-export barrel.
       - task: emit-named-exports
       - echo "✅ Types emitted to types/"

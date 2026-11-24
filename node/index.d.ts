@@ -17,10 +17,14 @@
  *              (runtime values come from ./named-exports.js; types from here)
  *   - default: `import slimBindings from '@agntcy/slim-bindings';`
  *              then access the API off it (`slimBindings.SessionType`).
+ *
+ * Each namespace's own `default` export (its UniFFI init/converters object) is
+ * omitted from the default-export type: on the runtime namespace, `default` is
+ * the generated index's `{ slim_bindings, slim_rpc }`, not either of those.
  */
 export * from './types/slim_bindings';
 export * from './types/slim_rpc';
 import * as slimCore from './types/slim_bindings';
 import * as slimRpc from './types/slim_rpc';
-declare const slimBindings: typeof slimCore & typeof slimRpc;
+declare const slimBindings: Omit<typeof slimCore & typeof slimRpc, 'default'>;
 export default slimBindings;
