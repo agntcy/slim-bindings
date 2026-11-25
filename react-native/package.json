@@ -53,11 +53,11 @@
     "directory": "react-native"
   },
   "devDependencies": {
-    "@types/node": "^24.19.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@types/node": "^26.0.0",
+    "@vitest/coverage-v8": "^5.0.0",
     "prettier": "^3.2.5",
-    "typescript": "^5.3.3",
-    "vitest": "^4.1.11"
+    "typescript": "^7.0.0",
+    "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "react-native": ">=0.72.0"
