@@ -19,15 +19,23 @@ jobs:
     name: Release bindings crate
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: read
+      contents: read
     steps:
+      - name: Authenticate as the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           fetch-depth: 0
-          token: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -39,19 +47,27 @@ jobs:
           manifest_path: ./rust/Cargo.toml
           config: ./rust/.release-plz.toml
         env:
-          GITHUB_TOKEN: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   release-crate-pr:
     name: Release bindings crate - PR
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     concurrency:
       group: release-plz-bindings-${{ github.ref }}
       cancel-in-progress: false
     steps:
+      - name: Authenticate as the GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -68,5 +84,5 @@ jobs:
           manifest_path: ./rust/Cargo.toml
           config: ./rust/.release-plz.toml
         env:
-          GITHUB_TOKEN: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

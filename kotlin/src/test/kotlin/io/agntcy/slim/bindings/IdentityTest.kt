@@ -9,7 +9,10 @@ import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import java.security.KeyPairGenerator
+import java.security.spec.ECGenParameterSpec
 import java.time.Duration
+import java.util.Base64
 import kotlin.test.assertContentEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -23,12 +26,33 @@ class IdentityTest {
     private val testAudience = listOf("test.audience")
     
     /**
+     * Generate a throwaway EC key pair for the test run.
+     *
+     * @param curve Standard curve name, e.g. "secp256r1" or "secp384r1".
+     * @return Pair of (PKCS#8 private key PEM, SubjectPublicKeyInfo public key PEM).
+     */
+    private fun generateEcKeyPair(curve: String): Pair<String, String> {
+        val generator = KeyPairGenerator.getInstance("EC")
+        generator.initialize(ECGenParameterSpec(curve))
+        val keyPair = generator.generateKeyPair()
+        return Pair(
+            toPem("PRIVATE KEY", keyPair.private.encoded),
+            toPem("PUBLIC KEY", keyPair.public.encoded)
+        )
+    }
+    
+    private fun toPem(label: String, der: ByteArray): String {
+        val body = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(der)
+        return "-----BEGIN $label-----\n$body\n-----END $label-----\n"
+    }
+    
+    /**
      * Construct an App instance with a JWT identity provider/verifier.
      * 
      * @param name Name identifying this local app (used as JWT subject).
-     * @param privateKey Path to PEM private key used for signing outbound tokens.
+     * @param privateKey PEM private key used for signing outbound tokens.
      * @param privateKeyAlgorithm Algorithm matching the private key type (e.g. ES256).
-     * @param publicKey Path to PEM public key used to verify the peer's tokens.
+     * @param publicKey PEM public key used to verify the peer's tokens.
      * @param publicKeyAlgorithm Algorithm matching the peer public key type.
      * @param wrongAudience Optional override audience list to force verification failure.
      *                      If null, uses the shared test_audience (success path).
@@ -46,14 +70,14 @@ class IdentityTest {
         val privateKeyConfig = JwtKeyConfig(
             algorithm = privateKeyAlgorithm,
             format = JwtKeyFormat.PEM,
-            key = JwtKeyData.File(path = privateKey)
+            key = JwtKeyData.Data(value = privateKey)
         )
         
         // Build verification key config (public key for decoding)
         val publicKeyConfig = JwtKeyConfig(
             algorithm = publicKeyAlgorithm,
             format = JwtKeyFormat.PEM,
-            key = JwtKeyData.File(path = publicKey)
+            key = JwtKeyData.Data(value = publicKey)
         )
         
         // Create provider config (for signing outbound tokens)
@@ -125,14 +149,14 @@ class IdentityTest {
             val senderName = Name("org", "default", "id_sender")
             val receiverName = Name("org", "default", "id_receiver")
             
-            // Keys used for signing JWTs of sender
-            val privateKeySender = "../testdata/jwt/ec256.pem"
-            val publicKeySender = "../testdata/jwt/ec256-public.pem"
+            // Keys used for signing JWTs of sender (P-256 / ES256); the receiver
+            // verifies with the public half
+            val (privateKeySender, publicKeySender) = generateEcKeyPair("secp256r1")
             val algorithmSender = JwtAlgorithm.ES256
             
-            // Keys used for signing JWTs of receiver
-            val privateKeyReceiver = "../testdata/jwt/ec384.pem"
-            val publicKeyReceiver = "../testdata/jwt/ec384-public.pem"
+            // Keys used for signing JWTs of receiver (P-384 / ES384); the sender
+            // verifies with the public half
+            val (privateKeyReceiver, publicKeyReceiver) = generateEcKeyPair("secp384r1")
             val algorithmReceiver = JwtAlgorithm.ES384
             
             // Create new app object. Note that the verifier will use the public key of the receiver
