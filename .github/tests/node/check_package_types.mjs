@@ -8,13 +8,14 @@
  * Type-checks a throwaway consumer that imports from '@agntcy/slim-bindings',
  * resolved to the built node/ directory, so the published entry point
  * (index.d.ts -> types/*.d.ts) is what gets exercised, not generated/index.js.
- * The consumer references:
- *   - every runtime value export in named-exports.js, both as a named import
- *     and off the default export, so types cannot drift from the runtime barrel;
- *   - every type/interface export of each UniFFI namespace re-exported by
- *     generated/index.ts (slim_bindings, slim_rpc: ContextLike, ChannelLike,
- *     ...), which have no runtime representation and are only reachable
- *     through index.d.ts.
+ * The consumer references every export of each UniFFI namespace re-exported
+ * by generated/index.ts (slim_bindings, slim_rpc), as enumerated by
+ * node/scripts/binding-surface.mjs with the TypeScript checker:
+ *   - every runtime value export, both as a named import and off the default
+ *     export (check_named_exports.mjs checks named-exports.js has the same set);
+ *   - every name with a type meaning (ContextLike, ChannelLike, ...), including
+ *     type-only ones that have no runtime representation and are only
+ *     reachable through index.d.ts.
  * Dropping a namespace from index.d.ts (or keeping one generated/index.ts no
  * longer has) fails this check. Library checking is on (skipLibCheck: false)
  * because index.d.ts is itself a .d.ts: with it off, errors inside index.d.ts
@@ -33,52 +34,47 @@ import { pathToFileURL } from 'node:url';
 const nodeDir = path.resolve(process.argv[2] || 'node');
 const read = (p) => fs.readFileSync(path.join(nodeDir, p), 'utf8');
 
-let namespaces;
+let surface;
+let declared;
 try {
-  const helper = pathToFileURL(path.join(nodeDir, 'scripts', 'namespaces.mjs')).href;
-  namespaces = (await import(helper)).bindingNamespaces(nodeDir);
+  const helper = await import(pathToFileURL(path.join(nodeDir, 'scripts', 'binding-surface.mjs')).href);
+  surface = helper.bindingSurface(nodeDir);
+  // index.d.ts is hand-written; read its `export * from '...'` lines with TypeScript.
+  declared = helper.starReexports(nodeDir, path.join(nodeDir, 'index.d.ts'));
 } catch (err) {
   console.error(`❌ ${err.message}`);
   process.exit(1);
 }
+const { namespaces } = surface;
 
-for (const f of [
-  'index.d.ts',
-  'named-exports.js',
-  ...namespaces.flatMap((ns) => [`types/${ns}.d.ts`, `generated/${ns}.ts`]),
-]) {
+for (const f of ['named-exports.js', ...namespaces.map((ns) => `types/${ns}.d.ts`)]) {
   if (!fs.existsSync(path.join(nodeDir, f))) {
     console.error(`❌ ${f} missing — run \`task generate\` and \`task emit-types\` first.`);
     process.exit(1);
   }
 }
 
-// index.d.ts is hand-written: its `export * from './types/<ns>'` lines must
-// match generated/index.ts exactly. A namespace it lacks loses its types (the
-// tsc check below also catches that); one it has extra declares values that
-// do not exist at runtime, which tsc alone would not notice.
-const declared = [...read('index.d.ts').matchAll(/^export \* from '\.\/types\/([A-Za-z0-9_]+)';?$/gm)].map(
-  (m) => m[1],
-);
+// index.d.ts must re-export exactly ./types/<ns> for each namespace in
+// generated/index.ts. A namespace it lacks loses its types (the tsc check
+// below also catches that); one it has extra declares values that do not exist
+// at runtime, which tsc alone would not notice.
+const expected = namespaces.map((ns) => `./types/${ns}`);
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
-if (!sameSet([...new Set(declared)], namespaces)) {
+if (!sameSet([...new Set(declared)], expected)) {
   console.error(
-    `❌ index.d.ts re-exports [${declared.join(', ')}] but generated/index.ts has ` +
-      `[${namespaces.join(', ')}] — update the \`export * from './types/<ns>'\` lines.`,
+    `❌ index.d.ts re-exports [${declared.join(', ')}] but generated/index.ts needs ` +
+      `[${expected.join(', ')}] — update its \`export * from './types/<ns>'\` lines.`,
   );
   process.exit(1);
 }
 
-const values = [...read('named-exports.js').matchAll(/^export const ([A-Za-z0-9_$]+) = /gm)].map(
-  (m) => m[1],
-);
-const types = [
-  ...new Set(
-    namespaces.flatMap((ns) =>
-      [...read(`generated/${ns}.ts`).matchAll(/^export (?:interface|type) ([A-Za-z0-9_$]+)/gm)].map((m) => m[1]),
-    ),
-  ),
-];
+// Every export of the bindings, from the TypeScript checker (no regexes):
+// values (classes, consts, functions, ...) are referenced both as named
+// imports and off the default export; every name with a type meaning
+// (interfaces, type aliases, and the type side of classes/enums) as a type.
+// check_named_exports.mjs separately checks named-exports.js == these values.
+const values = [...surface.values.keys()];
+const types = [...surface.types.keys()];
 if (values.length === 0 || types.length === 0) {
   console.error(`❌ Found ${values.length} value and ${types.length} type exports — expected both.`);
   process.exit(1);

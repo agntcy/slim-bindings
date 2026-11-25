@@ -15,67 +15,51 @@
  * namespace — keep the two in sync; CI checks it).
  *
  * Usage: node scripts/gen-named-exports.mjs
- * Requires: generated/index.ts and one generated/<ns>.ts per namespace it
- * re-exports (run `task generate` first).
+ * Requires: generated/ (run `task generate` first) and node/node_modules
+ * (typescript), both of which `task generate` provides.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bindingNamespaces } from './namespaces.mjs';
+import { bindingSurface } from './binding-surface.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const nodeDir = path.resolve(scriptDir, '..');
 const outPath = path.join(nodeDir, 'named-exports.js');
 
-// The UniFFI namespaces (slim_bindings, slim_rpc, ...) re-exported by
-// generated/index.ts; the runtime barrel must surface value exports from all.
-let namespaces;
+// Value exports of every UniFFI namespace generated/index.ts re-exports
+// (slim_bindings, slim_rpc, ...), enumerated with the TypeScript checker.
+// Type-only exports have no runtime representation; index.d.ts surfaces them.
+let surface;
 try {
-  namespaces = bindingNamespaces(nodeDir);
+  surface = bindingSurface(nodeDir);
 } catch (err) {
   console.error(`❌ ${err.message}`);
   process.exit(1);
-}
-const srcPaths = namespaces.map((ns) => path.join(nodeDir, 'generated', `${ns}.ts`));
-
-// Every namespace is required: index.d.ts re-exports all of them, so a missing
-// file would ship types for values that are not exported at runtime.
-const missingSrc = srcPaths.filter((p) => !fs.existsSync(p));
-if (missingSrc.length) {
-  console.error(`❌ ${missingSrc.join(', ')} not found. Run \`task generate\` first.`);
-  process.exit(1);
-}
-
-// Match VALUE exports only (classes, consts, enums, functions). Type-only
-// exports (interface/type) are intentionally excluded — they are surfaced via
-// index.d.ts and have no runtime representation.
-const re = /^export (?:abstract class|class|const|enum|function) ([A-Za-z0-9_$]+)/gm;
-const owners = new Map(); // value name -> namespaces exporting it
-for (const [i, p] of srcPaths.entries()) {
-  for (const [, name] of fs.readFileSync(p, 'utf8').matchAll(re)) {
-    const list = owners.get(name) ?? [];
-    if (!list.includes(namespaces[i])) list.push(namespaces[i]);
-    owners.set(name, list);
-  }
 }
 
 // A name exported by two namespaces is ambiguous under generated/index.ts's
 // `export *` lines: ESM silently drops it from the platform module, so
 // `ns.<name>` would be undefined at runtime (and TS reports TS2308 on
 // index.d.ts). Fail here instead of shipping an undefined export.
+const owners = new Map(); // export name -> namespaces exporting it (as a value or a type)
+for (const [name, list] of [...surface.values, ...surface.types]) {
+  owners.set(name, [...new Set([...(owners.get(name) ?? []), ...list])]);
+}
 const clashes = [...owners].filter(([, list]) => list.length > 1);
 if (clashes.length) {
-  console.error('❌ Value exports defined in more than one namespace (ambiguous under `export *`):');
+  console.error('❌ Exports defined in more than one namespace (ambiguous under `export *`):');
   for (const [name, list] of clashes) console.error(`   ${name}: ${list.join(', ')}`);
   console.error('   Rename one of them in the Rust/UniFFI interface.');
   process.exit(1);
 }
 
-const names = [...owners.keys()].sort();
+const names = [...surface.values.keys()].sort();
 
 if (names.length === 0) {
-  const files = srcPaths.map((p) => path.basename(p)).join(' or ');
-  console.error(`❌ No value exports found in ${files} — refusing to write an empty barrel.`);
+  console.error(
+    `❌ No value exports found in ${surface.namespaces.join(' or ')} — refusing to write an empty barrel.`,
+  );
   process.exit(1);
 }
 
