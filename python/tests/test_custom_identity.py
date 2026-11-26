@@ -420,7 +420,9 @@ async def test_custom_identity(server, sender_trusted, mls):
 
 def test_the_token_is_the_certificate():
     provider = load_provider("alice")
-    assert provider.get_token() == (CERTS / "alice.pem").read_text()
+    # The bytes of the file, not read_text(): a Windows checkout has CRLF line endings,
+    # which read_text() would turn into "\n".
+    assert provider.get_token() == (CERTS / "alice.pem").read_bytes().decode()
     # The signing keys are the certificate's: SEC1 public key, raw scalar secret.
     keys = provider.get_signature_keys()
     assert keys.public_key == sec1(provider.cert)
