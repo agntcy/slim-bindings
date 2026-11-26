@@ -65,6 +65,22 @@ public static class Slim
     }
 
     /// <summary>
+    /// The <c>did:key</c> of an Ed25519 private key, a PKCS#8 PEM document
+    /// (<c>-----BEGIN PRIVATE KEY-----</c>).
+    /// </summary>
+    /// <remarks>
+    /// An app created with <see cref="SlimService.CreateAppWithDidKey(SlimName, string, string)"/>
+    /// has this identity; peers list the matching public key in their trust anchor.
+    /// </remarks>
+    /// <param name="privateKeyPem">The Ed25519 private key, as PKCS#8 PEM.</param>
+    /// <exception cref="SlimException">Thrown when the key is not an Ed25519 PKCS#8 PEM document.</exception>
+    public static string DidKeyOfPrivateKey(string privateKeyPem)
+    {
+        ArgumentNullException.ThrowIfNull(privateKeyPem);
+        return SlimHelper.Try(() => Internal.SlimBindingsMethods.DidKeyOfPrivateKey(privateKeyPem));
+    }
+
+    /// <summary>
     /// Get the global service instance.
     /// </summary>
     public static SlimService GetGlobalService()
@@ -517,6 +533,12 @@ public sealed class SlimMessage
 
     /// <summary>Payload decoded as UTF-8 string.</summary>
     public string Text => Encoding.UTF8.GetString(Payload);
+
+    /// <summary>
+    /// The sender's identity: the token it sent with the message. For an app with a
+    /// <c>did:key</c> identity, a JWT whose issuer and subject are its <c>did:key</c>.
+    /// </summary>
+    public string Identity => _context.Identity;
 }
 
 /// <summary>
@@ -558,6 +580,53 @@ public sealed class SlimService : IDisposable
         using var name = new SlimName(organization, @namespace, application);
         var app = _inner.CreateAppWithSecret(name._inner, secret);
         return new SlimApp(app);
+    }
+
+    /// <summary>
+    /// Create an application whose identity is a <c>did:key</c>.
+    /// </summary>
+    /// <remarks>
+    /// The app signs with an Ed25519 key and accepts the peers whose public keys it trusts.
+    /// Its identity is the <c>did:key</c> of its key (see <see cref="Slim.DidKeyOfPrivateKey"/>):
+    /// the tokens it sends are JWTs whose issuer and subject are that <c>did:key</c>.
+    /// The app sends and receives.
+    /// </remarks>
+    /// <param name="name">Application name.</param>
+    /// <param name="privateKeyPem">
+    /// The app's Ed25519 private key, a PKCS#8 PEM document (as
+    /// <c>openssl genpkey -algorithm ed25519</c> writes).
+    /// </param>
+    /// <param name="trustedKeys">
+    /// The JWKS (JSON) of the public keys the app accepts, as <c>OKP</c> <c>Ed25519</c> JWKs.
+    /// It has to list the app's own key too.
+    /// </param>
+    /// <exception cref="SlimException">Thrown when a key is invalid, or the app cannot be created.</exception>
+    public SlimApp CreateAppWithDidKey(SlimName name, string privateKeyPem, string trustedKeys)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(privateKeyPem);
+        ArgumentNullException.ThrowIfNull(trustedKeys);
+        // The blocking call: in slim 3.5.1 CreateAppWithDidKeyAsync does not run on SLIM's
+        // runtime and panics ("there is no reactor running").
+        var app = SlimHelper.Try(() => _inner.CreateAppWithDidKey(
+            name._inner, privateKeyPem, trustedKeys, Internal.Direction.Bidirectional));
+        return new SlimApp(app);
+    }
+
+    /// <summary>
+    /// Create an application whose identity is a <c>did:key</c>.
+    /// </summary>
+    /// <remarks>See <see cref="CreateAppWithDidKey(SlimName, string, string)"/>.</remarks>
+    /// <param name="organization">Organization identifier.</param>
+    /// <param name="namespace">Namespace identifier.</param>
+    /// <param name="application">Application identifier.</param>
+    /// <param name="privateKeyPem">The app's Ed25519 private key, a PKCS#8 PEM document.</param>
+    /// <param name="trustedKeys">The JWKS of the public keys the app accepts, its own included.</param>
+    /// <exception cref="SlimException">Thrown when a key is invalid, or the app cannot be created.</exception>
+    public SlimApp CreateAppWithDidKey(string organization, string @namespace, string application, string privateKeyPem, string trustedKeys)
+    {
+        using var name = new SlimName(organization, @namespace, application);
+        return CreateAppWithDidKey(name, privateKeyPem, trustedKeys);
     }
 
     /// <summary>

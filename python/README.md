@@ -19,7 +19,7 @@ Python interface that wraps the high-performance Rust implementation.
 - **Secure by Default**: Support for TLS, mTLS, and various authentication methods
 - **MLS Encryption**: End-to-end encryption for sessions
 - **Delivery Confirmation**: Optional completion handles for reliable messaging
-- **Flexible Authentication**: Shared secrets, JWT, SPIRE for app identity; Basic, JWT, SPIRE,
+- **Flexible Authentication**: Shared secrets, did:key, JWT, SPIRE for app identity; Basic, JWT, SPIRE,
   and [OIDC](#transport-authentication-grpc-connection) for the gRPC transport
 - **slimrpc Support**: Protocol Buffers RPC over SLIM - see [SLIMRPC.md](SLIMRPC.md) for details
 
@@ -353,6 +353,14 @@ name = slim_bindings.Name("org", "example", "app")    # or Name.from_string("org
 
 # Shared secret identity (secret must be at least 32 bytes)
 app = service.create_app_with_secret(name, shared_secret)
+
+# did:key identity: the app's Ed25519 private key (PKCS#8 PEM) and the JWKS of the
+# keys it accepts, its own included (testdata/did_key/generate-keys.sh writes both).
+# Use the blocking call: in slim 3.5.1 create_app_with_did_key_async panics.
+app = service.create_app_with_did_key(
+    name, private_key_pem, trusted_keys_jwks, slim_bindings.Direction.BIDIRECTIONAL
+)
+print(slim_bindings.did_key_of_private_key(private_key_pem))  # did:key:z6Mk...
 
 # JWT / SPIRE identity
 app = service.create_app(name, provider_config, verifier_config)

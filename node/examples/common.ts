@@ -69,23 +69,84 @@ export function clientConfig(serverAddr: string): any {
 }
 
 /**
- * Create a SLIM app with shared secret authentication and connect it to a server
+ * A did:key identity: the paths of the app's Ed25519 private key (a PKCS#8 PEM document,
+ * as `openssl genpkey -algorithm ed25519` writes) and of the JWKS of the keys the app
+ * accepts, its own included. `testdata/did_key/generate-keys.sh` writes both.
+ */
+export interface DidKeyFiles {
+  privateKey: string;
+  trustedKeys: string;
+}
+
+/** Help text of the options that `didKeyFromArgs` reads. */
+export const DID_KEY_USAGE = [
+  '  --private-key <file>  did:key identity: the app\'s Ed25519 private key (PKCS#8 PEM)',
+  '  --trusted-keys <file> did:key identity: JWKS of the keys the app accepts, its own included',
+].join('\n');
+
+/**
+ * The did:key identity given by `--private-key` and `--trusted-keys`, or undefined when
+ * neither is given (the app then uses the shared secret).
+ */
+export function didKeyFromArgs(args: string[]): DidKeyFiles | undefined {
+  const value = (flag: string) => {
+    const i = args.indexOf(flag);
+    return i >= 0 && i + 1 < args.length ? args[i + 1] : undefined;
+  };
+  const privateKey = value('--private-key');
+  const trustedKeys = value('--trusted-keys');
+  if (privateKey === undefined && trustedKeys === undefined) {
+    return undefined;
+  }
+  if (privateKey === undefined || trustedKeys === undefined) {
+    throw new Error('a did:key identity needs both --private-key and --trusted-keys');
+  }
+  return { privateKey, trustedKeys };
+}
+
+/**
+ * Create the app on the global service: with a did:key identity if one is given,
+ * with the shared secret otherwise.
+ */
+function createApp(service: any, appName: any, secret: string, didKey?: DidKeyFiles): any {
+  if (didKey === undefined) {
+    console.log('Identity: shared secret');
+    return service.createAppWithSecret(appName, secret);
+  }
+  const privateKey = readFileSync(didKey.privateKey, 'utf-8');
+  const trustedKeys = readFileSync(didKey.trustedKeys, 'utf-8');
+  console.log(`Identity: ${slimBindings.didKeyOfPrivateKey(privateKey)}`);
+  // The app signs with its private key and accepts the peers whose keys are in the
+  // trust anchor. The blocking call: in slim 3.5.1 createAppWithDidKeyAsync panics
+  // ("there is no reactor running").
+  return service.createAppWithDidKey(
+    appName,
+    privateKey,
+    trustedKeys,
+    slimBindings.Direction.Bidirectional,
+  );
+}
+
+/**
+ * Create a SLIM app and connect it to a server
  *
  * This is a convenience function that combines:
  * - Crypto initialization
- * - App creation with shared secret
+ * - App creation with a shared secret, or a did:key identity
  * - Server connection with TLS settings
  * - Subscription setup
  *
  * @param localId - Local identity string (org/namespace/app format)
  * @param serverAddr - SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)
- * @param secret - Shared secret for authentication (min 32 chars)
+ * @param secret - Shared secret for authentication (min 32 chars), used without didKey
+ * @param didKey - did:key identity to use instead of the shared secret
  * @returns Object containing the app, connection ID, and service
  */
 export async function createAndConnectApp(
   localId: string,
   serverAddr: string,
-  secret: string
+  secret: string,
+  didKey?: DidKeyFiles
 ): Promise<{ app: any; connId: bigint; service: any }> {
   try {
     // Initialize crypto, runtime, global service and logging with defaults
@@ -97,9 +158,8 @@ export async function createAndConnectApp(
     // Get global service
     const service = slimBindings.getGlobalService();
 
-    // Create app with shared secret authentication
-    // Note: Using synchronous version as async has FFI compatibility issues
-    const app = service.createAppWithSecret(appName, secret);
+    // Create the app. Note: synchronous versions, as async has FFI compatibility issues
+    const app = createApp(service, appName, secret, didKey);
     console.log(`[${app.id()}] ✅ Created app`);
 
     // Connect to SLIM server (returns connection ID)

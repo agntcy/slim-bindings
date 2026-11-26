@@ -29,6 +29,7 @@ class AuthMode(str, Enum):
     SHARED_SECRET = "shared_secret"
     JWT = "jwt"
     SPIRE = "spire"
+    DID_KEY = "did_key"
 
 
 class BaseConfig(BaseSettings):
@@ -110,6 +111,23 @@ class BaseConfig(BaseSettings):
         description="Audience list for JWT verification",
     )
 
+    # did:key identity
+    private_key: str | None = Field(
+        None,
+        description=(
+            "did:key identity: path to the app's Ed25519 private key, a PKCS#8 PEM "
+            "document (testdata/did_key/generate-keys.sh writes one)"
+        ),
+    )
+
+    trusted_keys: str | None = Field(
+        None,
+        description=(
+            "did:key identity: path to the JWKS of the keys the app accepts, "
+            "its own included"
+        ),
+    )
+
     # SPIRE dynamic identity
     spire_socket_path: str | None = Field(
         None,
@@ -136,7 +154,14 @@ class BaseConfig(BaseSettings):
             return [a.strip() for a in v.split(",") if a.strip()]
         return v
 
-    @field_validator("jwt", "spire_trust_bundle", "slim_client_config", mode="after")
+    @field_validator(
+        "jwt",
+        "spire_trust_bundle",
+        "slim_client_config",
+        "private_key",
+        "trusted_keys",
+        mode="after",
+    )
     @classmethod
     def validate_file_paths(cls, v: str | None) -> str | None:
         """Validate that file paths exist if provided."""
@@ -152,6 +177,12 @@ class BaseConfig(BaseSettings):
             or self.spire_jwt_audience
         ):
             return AuthMode.SPIRE
+        elif self.private_key or self.trusted_keys:
+            if not (self.private_key and self.trusted_keys):
+                raise ValueError(
+                    "a did:key identity needs both private_key and trusted_keys"
+                )
+            return AuthMode.DID_KEY
         elif self.jwt and self.spire_trust_bundle and self.audience:
             return AuthMode.JWT
         else:

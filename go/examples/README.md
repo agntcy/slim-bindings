@@ -60,6 +60,28 @@ task examples:group:participant:alice
 task examples:group:participant:bob
 ```
 
+### did:key identity
+
+The point-to-point and group examples use a shared secret by default. Pass
+`--private-key` and `--trusted-keys` to give each app a `did:key` identity instead:
+an Ed25519 private key, and the JWKS of the keys the app accepts (its own included).
+Generate them with:
+
+```bash
+../testdata/did_key/generate-keys.sh /tmp/slim-keys alice bob
+```
+
+(macOS: set `OPENSSL=/opt/homebrew/opt/openssl@3/bin/openssl`, the system LibreSSL
+cannot generate Ed25519 keys.) Then add, for Alice and for Bob:
+
+```bash
+task examples:p2p:alice -- --private-key /tmp/slim-keys/alice.pem --trusted-keys /tmp/slim-keys/trusted-keys.jwks
+```
+
+```bash
+task examples:p2p:mls:bob -- --private-key /tmp/slim-keys/bob.pem --trusted-keys /tmp/slim-keys/trusted-keys.jwks
+```
+
 ### 3. slimrpc Example
 
 See [slimrpc/simple/README.md](slimrpc/simple/README.md). With the server running
