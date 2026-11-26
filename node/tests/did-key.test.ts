@@ -9,9 +9,9 @@
  * included. The app's identity is the did:key of its key: the tokens it sends are JWTs
  * whose issuer and subject are that did:key. The keys are generated for each run.
  *
- * The tests use the blocking calls: in slim 3.5.1 the async ones
- * (`createAppWithDidKeyAsync`, `App.newWithDidKeyAsync`) do not run on SLIM's runtime and
- * panic with "there is no reactor running".
+ * The apps are created with the async calls (`createAppWithDidKeyAsync`,
+ * `App.newWithDidKeyAsync`), which slim 3.5.1 could not run ("there is no reactor
+ * running"); the invalid-key cases also try the blocking call.
  */
 
 import { test, describe } from "node:test";
@@ -79,7 +79,7 @@ describe("did:key identity", () => {
     assert.throws(() => slimBindings.didKeyOfPrivateKey("not a pem"));
   });
 
-  test("keys the call does not take are an error", () => {
+  test("keys the call does not take are an error", async () => {
     slimBindings.initializeWithDefaults();
     const service = slimBindings.getGlobalService();
     const key = new DidKey();
@@ -90,14 +90,15 @@ describe("did:key identity", () => {
       ["trust anchor is not a JWKS", key.privatePem, "not a jwks"],
       ["trust anchor without its own key", key.privatePem, trustedKeys(other)],
     ]) {
-      assert.throws(
-        () =>
-          service.createAppWithDidKey(
-            name("did-key-invalid"),
-            privateKey,
-            trusted,
-            slimBindings.Direction.Bidirectional,
-          ),
+      const args = [
+        name("did-key-invalid"),
+        privateKey,
+        trusted,
+        slimBindings.Direction.Bidirectional,
+      ] as const;
+      assert.throws(() => service.createAppWithDidKey(...args), undefined, what);
+      await assert.rejects(
+        service.createAppWithDidKeyAsync(...args),
         undefined,
         what,
       );
@@ -115,13 +116,13 @@ describe("did:key identity", () => {
       const trusted = trustedKeys(alice, bob);
 
       // The App constructor and the Service method create the same kind of app.
-      const sender = slimBindings.App.newWithDidKey(
+      const sender = await slimBindings.App.newWithDidKeyAsync(
         name(`did-key-sender-${tag}`),
         alice.privatePem,
         trusted,
         slimBindings.Direction.Bidirectional,
       );
-      const receiver = slimBindings.getGlobalService().createAppWithDidKey(
+      const receiver = await slimBindings.getGlobalService().createAppWithDidKeyAsync(
         name(`did-key-receiver-${tag}`),
         bob.privatePem,
         trusted,
@@ -171,14 +172,14 @@ describe("did:key identity", () => {
 
     const mallory = new DidKey();
     const bob = new DidKey();
-    const sender = slimBindings.App.newWithDidKey(
+    const sender = await slimBindings.App.newWithDidKeyAsync(
       name("did-key-untrusted-sender"),
       mallory.privatePem,
       trustedKeys(mallory, bob),
       slimBindings.Direction.Bidirectional,
     );
     // The receiver trusts only its own key. Keep it referenced for the whole test.
-    const receiver = slimBindings.App.newWithDidKey(
+    const receiver = await slimBindings.App.newWithDidKeyAsync(
       name("did-key-untrusted-receiver"),
       bob.privatePem,
       trustedKeys(bob),

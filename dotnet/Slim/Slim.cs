@@ -606,9 +606,27 @@ public sealed class SlimService : IDisposable
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(privateKeyPem);
         ArgumentNullException.ThrowIfNull(trustedKeys);
-        // The blocking call: in slim 3.5.1 CreateAppWithDidKeyAsync does not run on SLIM's
-        // runtime and panics ("there is no reactor running").
         var app = SlimHelper.Try(() => _inner.CreateAppWithDidKey(
+            name._inner, privateKeyPem, trustedKeys, Internal.Direction.Bidirectional));
+        return new SlimApp(app);
+    }
+
+    /// <summary>
+    /// Create an application whose identity is a <c>did:key</c>, asynchronously.
+    /// </summary>
+    /// <remarks>See <see cref="CreateAppWithDidKey(SlimName, string, string)"/>.</remarks>
+    /// <param name="name">Application name.</param>
+    /// <param name="privateKeyPem">The app's Ed25519 private key, a PKCS#8 PEM document.</param>
+    /// <param name="trustedKeys">The JWKS of the public keys the app accepts, its own included.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="SlimException">Thrown when a key is invalid, or the app cannot be created.</exception>
+    public async Task<SlimApp> CreateAppWithDidKeyAsync(SlimName name, string privateKeyPem, string trustedKeys, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(privateKeyPem);
+        ArgumentNullException.ThrowIfNull(trustedKeys);
+        cancellationToken.ThrowIfCancellationRequested();
+        var app = await SlimHelper.TryAsync(() => _inner.CreateAppWithDidKeyAsync(
             name._inner, privateKeyPem, trustedKeys, Internal.Direction.Bidirectional));
         return new SlimApp(app);
     }

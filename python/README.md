@@ -356,7 +356,6 @@ app = service.create_app_with_secret(name, shared_secret)
 
 # did:key identity: the app's Ed25519 private key (PKCS#8 PEM) and the JWKS of the
 # keys it accepts, its own included (testdata/did_key/generate-keys.sh writes both).
-# Use the blocking call: in slim 3.5.1 create_app_with_did_key_async panics.
 app = service.create_app_with_did_key(
     name, private_key_pem, trusted_keys_jwks, slim_bindings.Direction.BIDIRECTIONAL
 )

@@ -10,13 +10,14 @@ using Xunit;
 namespace Agntcy.Slim.Tests;
 
 /// <summary>
-/// Apps whose identity is a did:key, created with <see cref="SlimService.CreateAppWithDidKey(SlimName, string, string)"/>.
+/// Apps whose identity is a did:key, created with <see cref="SlimService.CreateAppWithDidKeyAsync"/>.
 /// </summary>
 /// <remarks>
 /// The call takes the app's Ed25519 private key, a PKCS#8 PEM document, and the JWKS of the
 /// public keys the app accepts, its own included. The app's identity is the did:key of its
 /// key: the tokens it sends are JWTs whose issuer and subject are that did:key. The keys are
-/// generated for each run.
+/// generated for each run. The invalid-key cases also try the blocking
+/// <see cref="SlimService.CreateAppWithDidKey(SlimName, string, string)"/>.
 /// </remarks>
 [Collection("Slim")]
 public class DidKeyTests
@@ -117,7 +118,7 @@ public class DidKeyTests
     [InlineData("private key is not a PEM")]
     [InlineData("trust anchor is not a JWKS")]
     [InlineData("trust anchor without its own key")]
-    public void CreateAppWithDidKey_RejectsInvalidKeys(string what)
+    public async Task CreateAppWithDidKey_RejectsInvalidKeys(string what)
     {
         var key = new DidKey();
         var (privateKey, trustedKeys) = what switch
@@ -128,7 +129,9 @@ public class DidKeyTests
         };
 
         using var name = NameOf("invalid");
-        Assert.Throws<SlimException>(() => Slim.GetGlobalService().CreateAppWithDidKey(name, privateKey, trustedKeys));
+        var service = Slim.GetGlobalService();
+        Assert.Throws<SlimException>(() => service.CreateAppWithDidKey(name, privateKey, trustedKeys));
+        await Assert.ThrowsAsync<SlimException>(() => service.CreateAppWithDidKeyAsync(name, privateKey, trustedKeys));
     }
 
     [Theory]
@@ -145,8 +148,8 @@ public class DidKeyTests
 
         using var senderName = NameOf($"sender-{tag}");
         using var receiverName = NameOf($"receiver-{tag}");
-        using var sender = service.CreateAppWithDidKey(senderName, alice.PrivatePem, trusted);
-        using var receiver = service.CreateAppWithDidKey(receiverName, bob.PrivatePem, trusted);
+        using var sender = await service.CreateAppWithDidKeyAsync(senderName, alice.PrivatePem, trusted);
+        using var receiver = await service.CreateAppWithDidKeyAsync(receiverName, bob.PrivatePem, trusted);
 
         var served = Task.Run(async () =>
         {
@@ -177,9 +180,9 @@ public class DidKeyTests
 
         using var senderName = NameOf("untrusted-sender");
         using var receiverName = NameOf("untrusted-receiver");
-        using var sender = service.CreateAppWithDidKey(senderName, mallory.PrivatePem, TrustedKeys(mallory, bob));
+        using var sender = await service.CreateAppWithDidKeyAsync(senderName, mallory.PrivatePem, TrustedKeys(mallory, bob));
         // The receiver trusts only its own key.
-        using var receiver = service.CreateAppWithDidKey(receiverName, bob.PrivatePem, TrustedKeys(bob));
+        using var receiver = await service.CreateAppWithDidKeyAsync(receiverName, bob.PrivatePem, TrustedKeys(bob));
 
         await Assert.ThrowsAnyAsync<Exception>(() => sender.CreateSessionAsync(receiverName, SessionConfig(false)));
     }

@@ -112,12 +112,12 @@ func testDidKeyIdentity(t *testing.T, mls bool) {
 	trusted := trustedKeys(t, alice, bob)
 
 	// The App constructor and the Service method create the same kind of app.
-	sender, err := slim.AppNewWithDidKey(senderName, alice.privatePEM, trusted, slim.DirectionBidirectional)
+	sender, err := slim.AppNewWithDidKeyAsync(senderName, alice.privatePEM, trusted, slim.DirectionBidirectional)
 	if err != nil {
 		t.Fatalf("create sender: %v", err)
 	}
 	defer sender.Destroy()
-	receiver, err := slim.GetGlobalService().CreateAppWithDidKey(receiverName, bob.privatePEM, trusted, slim.DirectionBidirectional)
+	receiver, err := slim.GetGlobalService().CreateAppWithDidKeyAsync(receiverName, bob.privatePEM, trusted, slim.DirectionBidirectional)
 	if err != nil {
 		t.Fatalf("create receiver: %v", err)
 	}
@@ -227,13 +227,13 @@ func TestDidKeyRejectsUntrustedKey(t *testing.T) {
 
 	mallory, bob := newDidKeyPair(t), newDidKeyPair(t)
 
-	sender, err := slim.AppNewWithDidKey(senderName, mallory.privatePEM, trustedKeys(t, mallory, bob), slim.DirectionBidirectional)
+	sender, err := slim.AppNewWithDidKeyAsync(senderName, mallory.privatePEM, trustedKeys(t, mallory, bob), slim.DirectionBidirectional)
 	if err != nil {
 		t.Fatalf("create sender: %v", err)
 	}
 	defer sender.Destroy()
 	// The receiver trusts only its own key.
-	receiver, err := slim.AppNewWithDidKey(receiverName, bob.privatePEM, trustedKeys(t, bob), slim.DirectionBidirectional)
+	receiver, err := slim.AppNewWithDidKeyAsync(receiverName, bob.privatePEM, trustedKeys(t, bob), slim.DirectionBidirectional)
 	if err != nil {
 		t.Fatalf("create receiver: %v", err)
 	}
@@ -259,12 +259,16 @@ func TestDidKeyRejectsInvalidKeys(t *testing.T) {
 		"trust anchor without its own key": {alice.privatePEM, trustedKeys(t, bob)},
 	} {
 		t.Run(name, func(t *testing.T) {
-			app, err := slim.AppNewWithDidKey(
-				slim.NewName("org", "example", "invalid-"+strings.ReplaceAll(name, " ", "-")),
-				tc.privateKey, tc.trustedKeys, slim.DirectionBidirectional)
-			if err == nil {
-				app.Destroy()
-				t.Fatal("the app was created")
+			appName := slim.NewName("org", "example", "invalid-"+strings.ReplaceAll(name, " ", "-"))
+			for call, create := range map[string]func(*slim.Name, string, string, slim.Direction) (*slim.App, error){
+				"blocking": slim.AppNewWithDidKey,
+				"async":    slim.AppNewWithDidKeyAsync,
+			} {
+				app, err := create(appName, tc.privateKey, tc.trustedKeys, slim.DirectionBidirectional)
+				if err == nil {
+					app.Destroy()
+					t.Fatalf("the %s call created the app", call)
+				}
 			}
 		})
 	}

@@ -10,10 +10,9 @@ JWTs whose issuer and subject are that did:key.
 
 The keys are generated for each run.
 
-The tests use the blocking calls: in slim 3.5.1 the async ones
-(`create_app_with_did_key_async`, `App.new_with_did_key_async`) do not run on SLIM's
-runtime and panic with "there is no reactor running". The blocking calls do not call
-back into Python, so they are safe in an event loop.
+The apps are created with the async calls (`create_app_with_did_key_async`,
+`App.new_with_did_key_async`), which slim 3.5.1 could not run from an event loop
+("there is no reactor running"); the invalid-key cases also try the blocking call.
 """
 
 import asyncio
@@ -96,13 +95,16 @@ async def test_did_key_rejects_invalid_keys(server, private_key, trust):
         "not a jwks": "not a jwks",
     }[trust]
 
+    args = (
+        slim_bindings.Name("org", "example", "invalid"),
+        private_key or key.private_pem,
+        trust_anchor,
+        slim_bindings.Direction.BIDIRECTIONAL,
+    )
     with pytest.raises(slim_bindings.SlimError):
-        server.service.create_app_with_did_key(
-            slim_bindings.Name("org", "example", "invalid"),
-            private_key or key.private_pem,
-            trust_anchor,
-            slim_bindings.Direction.BIDIRECTIONAL,
-        )
+        server.service.create_app_with_did_key(*args)
+    with pytest.raises(slim_bindings.SlimError):
+        await server.service.create_app_with_did_key_async(*args)
 
 
 @pytest.mark.asyncio
@@ -127,13 +129,13 @@ async def test_did_key(server, sender_trusted, mls):
     alice, bob = DidKey(), DidKey()
 
     # The App constructor and the Service method create the same kind of app.
-    app_sender = slim_bindings.App.new_with_did_key(
+    app_sender = await slim_bindings.App.new_with_did_key_async(
         sender_name,
         alice.private_pem,
         trusted_keys(alice, bob),
         slim_bindings.Direction.BIDIRECTIONAL,
     )
-    app_receiver = server.service.create_app_with_did_key(
+    app_receiver = await server.service.create_app_with_did_key_async(
         receiver_name,
         bob.private_pem,
         # Each app lists the keys it accepts, its own included.

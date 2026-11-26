@@ -256,9 +256,7 @@ async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
             "Using did:key authentication:",
             slim_bindings.did_key_of_private_key(private_key),
         )
-        # The blocking call: in slim 3.5.1 create_app_with_did_key_async panics
-        # ("there is no reactor running").
-        local_app = service.create_app_with_did_key(
+        local_app = await service.create_app_with_did_key_async(
             local_name,
             private_key,
             trusted_keys,

@@ -108,7 +108,7 @@ export function didKeyFromArgs(args: string[]): DidKeyFiles | undefined {
  * Create the app on the global service: with a did:key identity if one is given,
  * with the shared secret otherwise.
  */
-function createApp(service: any, appName: any, secret: string, didKey?: DidKeyFiles): any {
+async function createApp(service: any, appName: any, secret: string, didKey?: DidKeyFiles): Promise<any> {
   if (didKey === undefined) {
     console.log('Identity: shared secret');
     return service.createAppWithSecret(appName, secret);
@@ -117,9 +117,8 @@ function createApp(service: any, appName: any, secret: string, didKey?: DidKeyFi
   const trustedKeys = readFileSync(didKey.trustedKeys, 'utf-8');
   console.log(`Identity: ${slimBindings.didKeyOfPrivateKey(privateKey)}`);
   // The app signs with its private key and accepts the peers whose keys are in the
-  // trust anchor. The blocking call: in slim 3.5.1 createAppWithDidKeyAsync panics
-  // ("there is no reactor running").
-  return service.createAppWithDidKey(
+  // trust anchor.
+  return service.createAppWithDidKeyAsync(
     appName,
     privateKey,
     trustedKeys,
@@ -158,8 +157,8 @@ export async function createAndConnectApp(
     // Get global service
     const service = slimBindings.getGlobalService();
 
-    // Create the app. Note: synchronous versions, as async has FFI compatibility issues
-    const app = createApp(service, appName, secret, didKey);
+    // Create the app. Note: the shared-secret app uses the synchronous call, as async has FFI compatibility issues
+    const app = await createApp(service, appName, secret, didKey);
     console.log(`[${app.id()}] ✅ Created app`);
 
     // Connect to SLIM server (returns connection ID)
