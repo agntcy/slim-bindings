@@ -7,7 +7,8 @@
     "server": "tsx server.ts",
     "alice": "tsx point-to-point-alice.ts",
     "bob": "tsx point-to-point-bob.ts",
-    "group": "tsx group.ts"
+    "group": "tsx group.ts",
+    "custom-identity": "tsx custom-identity.ts"
   },
   "dependencies": {
     "@agntcy/slim-bindings": "file:.."

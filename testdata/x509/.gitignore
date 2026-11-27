@@ -1,0 +1,6 @@
+# Written by gen.sh: never commit them.
+*.pem
+*.key
+*.csr
+*.ext
+*.srl

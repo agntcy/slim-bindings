@@ -87,11 +87,6 @@ public static class CommonHelpers
 
     /// <summary>
     /// Creates a SLIM app with shared secret authentication and connects it to a SLIM server.
-    ///
-    /// This is a convenience function that combines:
-    /// - Crypto initialization
-    /// - App creation with shared secret
-    /// - Server connection with TLS settings
     /// </summary>
     /// <param name="localId">Local identity string (org/namespace/app format)</param>
     /// <param name="serverAddr">SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)</param>
@@ -100,7 +95,34 @@ public static class CommonHelpers
     public static (SlimApp app, ulong connId) CreateAndConnectApp(
         string localId,
         string serverAddr,
-        string secret)
+        string secret) =>
+        CreateAndConnectApp(localId, serverAddr, secret, privateKeyPath: null, trustedKeysPath: null);
+
+    /// <summary>
+    /// Creates a SLIM app and connects it to a SLIM server.
+    ///
+    /// This is a convenience function that combines:
+    /// - Crypto initialization
+    /// - App creation with a shared secret, or a did:key identity
+    /// - Server connection with TLS settings
+    /// </summary>
+    /// <param name="localId">Local identity string (org/namespace/app format)</param>
+    /// <param name="serverAddr">SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)</param>
+    /// <param name="secret">Shared secret for authentication (min 32 chars), used without a did:key</param>
+    /// <param name="privateKeyPath">
+    /// did:key identity: path of the app's Ed25519 private key, a PKCS#8 PEM document
+    /// (testdata/did_key/generate-keys.sh writes one). The app's identity is its did:key.
+    /// </param>
+    /// <param name="trustedKeysPath">
+    /// did:key identity: path of the JWKS of the keys the app accepts, its own included.
+    /// </param>
+    /// <returns>Created and connected app instance and connection ID</returns>
+    public static (SlimApp app, ulong connId) CreateAndConnectApp(
+        string localId,
+        string serverAddr,
+        string secret,
+        string? privateKeyPath,
+        string? trustedKeysPath)
     {
         // Initialize crypto, runtime, global service and logging with defaults
         Slim.Initialize();
@@ -111,8 +133,25 @@ public static class CommonHelpers
         // Get global service
         using var service = Slim.GetGlobalService();
 
-        // Create app with shared secret authentication
-        var app = service.CreateApp(appName, secret);
+        SlimApp app;
+        if (privateKeyPath is null && trustedKeysPath is null)
+        {
+            // Create app with shared secret authentication
+            Console.WriteLine("Identity: shared secret");
+            app = service.CreateApp(appName, secret);
+        }
+        else if (privateKeyPath is null || trustedKeysPath is null)
+        {
+            throw new ArgumentException("a did:key identity needs both --private-key and --trusted-keys");
+        }
+        else
+        {
+            // The app signs with its private key and accepts the peers whose keys are in the
+            // trust anchor.
+            var privateKey = File.ReadAllText(privateKeyPath);
+            Console.WriteLine($"Identity: {Slim.DidKeyOfPrivateKey(privateKey)}");
+            app = service.CreateAppWithDidKey(appName, privateKey, File.ReadAllText(trustedKeysPath));
+        }
 
         // Connect to SLIM server (returns connection ID)
         var connId = service.Connect(GetClientConfig(serverAddr));

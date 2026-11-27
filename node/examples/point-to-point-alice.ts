@@ -9,7 +9,7 @@
  * 
  */
 
-import { createAndConnectApp, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
+import { createAndConnectApp, didKeyFromArgs, DID_KEY_USAGE, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
 
 // Default configuration
 const DEFAULT_LOCAL_ID = 'org/alice/app';
@@ -49,6 +49,7 @@ function parseArgs(): CliArgs {
       console.log('  --local <id>        Local identity (default: org/alice/app)');
       console.log('  --server <address>  Server endpoint (default: http://localhost:46357)');
       console.log('  --secret <secret>   Shared secret (default: demo-shared-secret-min-32-chars!!)');
+      console.log(DID_KEY_USAGE);
       console.log('  --help, -h         Show this help message');
       process.exit(0);
     }
@@ -165,7 +166,8 @@ async function runReceiver(args: CliArgs): Promise<void> {
     const { app, connId } = await createAndConnectApp(
       args.local,
       args.server,
-      args.sharedSecret
+      args.sharedSecret,
+      didKeyFromArgs(process.argv.slice(2))
     );
 
     const instance = app.id();

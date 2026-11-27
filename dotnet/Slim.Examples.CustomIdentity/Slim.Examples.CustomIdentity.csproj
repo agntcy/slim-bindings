@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Written by testdata/x509/gen.sh (not committed). Globs, so the build works without them. -->
+    <Content Include="../../testdata/x509/*.pem;../../testdata/x509/*.key" Exclude="../../testdata/x509/ca.key" Link="x509/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Slim/Slim.csproj" />
+  </ItemGroup>
+
+</Project>

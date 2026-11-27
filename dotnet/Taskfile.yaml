@@ -294,11 +294,12 @@ tasks:
     silent: true
 
   test:
-    desc: "Run unit tests only (no external server; excludes IntegrationTests)"
+    desc: "Run the tests that need no external server (excludes IntegrationTests)"
     cmds:
       - |
         echo "Running unit tests..."
-        dotnet test Slim.Tests/Slim.Tests.csproj --configuration Release --filter "FullyQualifiedName~UnitTests" --verbosity normal
+        # CustomIdentityTests and DidKeyTests run their sessions on the in-process global service.
+        dotnet test Slim.Tests/Slim.Tests.csproj --configuration Release --filter "FullyQualifiedName~UnitTests|FullyQualifiedName~CustomIdentityTests|FullyQualifiedName~DidKeyTests" --verbosity normal
         echo "Tests completed successfully"
     silent: true
 

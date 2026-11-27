@@ -30,7 +30,7 @@ func main() {
 	local := flag.String("local", "", "Local ID (org/namespace/app) - required")
 	remote := flag.String("remote", "", "Remote ID (org/namespace/channel) - for group topic")
 	server := flag.String("server", common.DefaultServerEndpoint, "SLIM server endpoint")
-	sharedSecret := flag.String("shared-secret", common.DefaultSharedSecret, "Shared secret (min 32 chars)")
+	identity := common.IdentityFlags()
 	enableMLS := flag.Bool("enable-mls", false, "Enable MLS encryption")
 	invites := flag.String("invites", "", "Comma-separated list of participant IDs to invite (moderator mode)")
 
@@ -53,7 +53,7 @@ func main() {
 	isModerator := *remote != "" && len(inviteList) > 0
 
 	// Create and connect app
-	app, connID, err := common.CreateAndConnectApp(*local, *server, *sharedSecret)
+	app, connID, err := common.CreateAndConnectAppWithIdentity(*local, *server, identity)
 	if err != nil {
 		log.Fatalf("Failed to create/connect app: %v", err)
 	}

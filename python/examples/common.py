@@ -5,7 +5,7 @@ Shared helper utilities for the slim_bindings CLI examples.
 
 This module centralizes:
   * Pretty-print / color formatting helpers
-  * Identity (auth) helper constructors (shared secret / JWT / JWKS / SPIRE)
+  * Identity (auth) helper constructors (shared secret / did:key / JWT / JWKS / SPIRE)
   * Convenience coroutine for constructing a local Slim app using global service
   * Configuration parsing utilities
 
@@ -206,8 +206,9 @@ async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
 
     Resolution precedence for auth:
       1. If SPIRE options provided -> SPIRE dynamic identity flow.
-      2. Else if jwt + bundle + audience provided -> JWT/JWKS flow.
-      3. Else -> shared secret (must be provided).
+      2. Else if private key + trusted keys provided -> did:key flow.
+      3. Else if jwt + bundle + audience provided -> JWT/JWKS flow.
+      4. Else -> shared secret (must be provided).
 
     Args:
         config: BaseConfig instance containing all configuration.
@@ -245,6 +246,22 @@ async def create_local_app(config: BaseConfig) -> tuple[slim_bindings.App, int]:
             jwt_audiences=config.spire_jwt_audience,
         )
         local_app = service.create_app(local_name, provider_config, verifier_config)
+    elif auth_mode == AuthMode.DID_KEY:
+        # The app signs with its Ed25519 key and accepts the peers whose public keys
+        # are in the trust anchor (a JWKS that lists its own key too).
+        assert config.private_key and config.trusted_keys
+        private_key = Path(config.private_key).read_text(encoding="utf-8")
+        trusted_keys = Path(config.trusted_keys).read_text(encoding="utf-8")
+        print(
+            "Using did:key authentication:",
+            slim_bindings.did_key_of_private_key(private_key),
+        )
+        local_app = await service.create_app_with_did_key_async(
+            local_name,
+            private_key,
+            trusted_keys,
+            slim_bindings.Direction.BIDIRECTIONAL,
+        )
     elif auth_mode == AuthMode.JWT:
         print("Using JWT + JWKS authentication.")
         # These should always be set if auth_mode is JWT
@@ -359,6 +376,25 @@ def create_base_parser(description: str) -> argparse.ArgumentParser:
         "--audience",
         type=str,
         help="Audience for JWT verification (comma-separated)",
+    )
+
+    # did:key identity
+    parser.add_argument(
+        "--private-key",
+        type=str,
+        help=(
+            "did:key identity: path to the app's Ed25519 private key "
+            "(PKCS#8 PEM); needs --trusted-keys"
+        ),
+    )
+
+    parser.add_argument(
+        "--trusted-keys",
+        type=str,
+        help=(
+            "did:key identity: path to the JWKS of the keys the app accepts, "
+            "its own included"
+        ),
     )
 
     # SPIRE dynamic identity

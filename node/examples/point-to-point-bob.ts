@@ -12,7 +12,7 @@
 
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime
 import * as slimBindings from '../generated/index.js';
-import { createAndConnectApp, splitId, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
+import { createAndConnectApp, didKeyFromArgs, DID_KEY_USAGE, splitId, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
 
 // Default configuration
 const DEFAULT_LOCAL_ID = 'org/bob/app';
@@ -75,6 +75,7 @@ function parseArgs(): CliArgs {
       console.log('  --remote <id>         Remote identity (default: org/alice/app)');
       console.log('  --server <address>    Server endpoint (default: http://localhost:46357)');
       console.log('  --secret <secret>     Shared secret (default: demo-shared-secret-min-32-chars!!)');
+      console.log(DID_KEY_USAGE);
       console.log('  --message <text>      Message to send (default: Hello from Bob)');
       console.log('  --iterations <n>      Number of send/receive cycles (default: 5)');
       console.log('  --help, -h           Show this help message');
@@ -95,7 +96,8 @@ async function runSender(args: CliArgs): Promise<void> {
     const { app, connId } = await createAndConnectApp(
       args.local,
       args.server,
-      args.sharedSecret
+      args.sharedSecret,
+      didKeyFromArgs(process.argv.slice(2))
     );
 
     const instance = app.id();
