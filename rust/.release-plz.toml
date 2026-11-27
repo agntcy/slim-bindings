@@ -72,6 +72,13 @@ publish = true
 # the per-language artifacts at the same version (unified release).
 release = true
 changelog_update = true
+# cargo-semver-checks builds the crate with every feature on, and cannot be
+# told otherwise (release-plz passes no feature flags, and the tool has no
+# metadata setting for them). "web" and "rpc" are mutually exclusive (slim-rpc
+# calls get_runtime, which "web" compiles out), so that build fails and
+# release-plz opens no release PR. The crate's Rust API is not what users
+# consume (they use the per-language bindings), so skip the check.
+semver_check = false
 # release-bindings.yaml (softprops) owns the GitHub release + artifacts, so
 # don't let release-plz create a competing GitHub release for the same tag.
 git_release_enable = false
