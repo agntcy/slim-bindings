@@ -1,0 +1,3 @@
+# Keys written by generate-keys.sh: never commit them.
+*.pem
+*.jwks

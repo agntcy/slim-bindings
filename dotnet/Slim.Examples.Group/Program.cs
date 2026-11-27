@@ -38,6 +38,14 @@ class Program
             getDefaultValue: () => CommonHelpers.DefaultSharedSecret,
             description: "Shared secret (min 32 chars)");
 
+        var privateKeyOption = new Option<string?>(
+            name: "--private-key",
+            description: "did:key identity: file with the app's Ed25519 private key (PKCS#8 PEM)");
+
+        var trustedKeysOption = new Option<string?>(
+            name: "--trusted-keys",
+            description: "did:key identity: file with the JWKS of the keys the app accepts, its own included");
+
         var enableMlsOption = new Option<bool>(
             name: "--enable-mls",
             getDefaultValue: () => false,
@@ -52,6 +60,8 @@ class Program
         rootCommand.AddOption(remoteOption);
         rootCommand.AddOption(serverOption);
         rootCommand.AddOption(sharedSecretOption);
+        rootCommand.AddOption(privateKeyOption);
+        rootCommand.AddOption(trustedKeysOption);
         rootCommand.AddOption(enableMlsOption);
         rootCommand.AddOption(invitesOption);
 
@@ -61,6 +71,8 @@ class Program
             var remote = context.ParseResult.GetValueForOption(remoteOption);
             var server = context.ParseResult.GetValueForOption(serverOption)!;
             var sharedSecret = context.ParseResult.GetValueForOption(sharedSecretOption)!;
+            var privateKey = context.ParseResult.GetValueForOption(privateKeyOption);
+            var trustedKeys = context.ParseResult.GetValueForOption(trustedKeysOption);
             var enableMls = context.ParseResult.GetValueForOption(enableMlsOption);
             var invitesStr = context.ParseResult.GetValueForOption(invitesOption);
 
@@ -78,7 +90,7 @@ class Program
             bool isModerator = !string.IsNullOrEmpty(remote) && inviteList.Count > 0;
 
             // Create and connect app
-            var (app, connId) = CommonHelpers.CreateAndConnectApp(local, server, sharedSecret);
+            var (app, connId) = CommonHelpers.CreateAndConnectApp(local, server, sharedSecret, privateKey, trustedKeys);
 
             var instance = app.Id;
             Console.WriteLine($"{ColorCyan}[{instance}]{ColorReset} Created app");

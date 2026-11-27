@@ -10,6 +10,8 @@
 package common
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 
@@ -77,26 +79,83 @@ func EffectiveEndpoint(serverAddr string) string {
 	return config.Endpoint
 }
 
+// Identity is how an example app authenticates: a shared secret, or a did:key.
+type Identity struct {
+	// SharedSecret is used when PrivateKey is empty. Every app of the mesh uses the
+	// same one (min 32 chars).
+	SharedSecret string
+	// PrivateKey is the path of the app's Ed25519 private key, a PKCS#8 PEM document
+	// (as `openssl genpkey -algorithm ed25519` writes). The app's identity is the
+	// did:key of this key. testdata/did_key/generate-keys.sh generates keys.
+	PrivateKey string
+	// TrustedKeys is the path of the JWKS of the keys the app accepts, one OKP Ed25519
+	// JWK per app. It has to list the app's own key too.
+	TrustedKeys string
+}
+
+// IdentityFlags registers the -shared-secret, -private-key and -trusted-keys flags.
+// Read the returned Identity after flag.Parse.
+func IdentityFlags() *Identity {
+	id := &Identity{}
+	flag.StringVar(&id.SharedSecret, "shared-secret", DefaultSharedSecret, "Shared secret (min 32 chars), unless -private-key is set")
+	flag.StringVar(&id.PrivateKey, "private-key", "", "did:key identity: file with the app's Ed25519 private key (PKCS#8 PEM)")
+	flag.StringVar(&id.TrustedKeys, "trusted-keys", "", "did:key identity: file with the JWKS of the keys the app accepts, its own included")
+	return id
+}
+
+// createApp creates the app on the global service with the chosen identity.
+func (id *Identity) createApp(appName *slim.Name) (*slim.App, error) {
+	if id.PrivateKey == "" && id.TrustedKeys == "" {
+		fmt.Println("Identity: shared secret")
+		return slim.GetGlobalService().CreateAppWithSecret(appName, id.SharedSecret)
+	}
+	if id.PrivateKey == "" || id.TrustedKeys == "" {
+		return nil, errors.New("a did:key identity needs both -private-key and -trusted-keys")
+	}
+	privateKey, err := os.ReadFile(id.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("read private key: %w", err)
+	}
+	trustedKeys, err := os.ReadFile(id.TrustedKeys)
+	if err != nil {
+		return nil, fmt.Errorf("read trusted keys: %w", err)
+	}
+	did, err := slim.DidKeyOfPrivateKey(string(privateKey))
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %w", err)
+	}
+	fmt.Printf("Identity: %s\n", did)
+	// The app signs with the private key and accepts the peers whose keys are in the
+	// trust anchor.
+	return slim.GetGlobalService().CreateAppWithDidKey(appName, string(privateKey), string(trustedKeys), slim.DirectionBidirectional)
+}
+
 // CreateAndConnectApp creates a SLIM app with shared secret authentication
+// and connects it to a SLIM server. See CreateAndConnectAppWithIdentity.
+func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64, error) {
+	return CreateAndConnectAppWithIdentity(localID, serverAddr, &Identity{SharedSecret: secret})
+}
+
+// CreateAndConnectAppWithIdentity creates a SLIM app with the given identity
 // and connects it to a SLIM server.
 //
 // This is a convenience function that combines:
 //   - Crypto initialization
-//   - App creation with shared secret
+//   - App creation with a shared secret or a did:key
 //   - Server connection with TLS settings
 //
 // Args:
 //
 //	localID: Local identity string (org/namespace/app format)
 //	serverAddr: SLIM server endpoint URL (ignored when SLIM_CLIENT_CONFIG is set)
-//	secret: Shared secret for authentication (min 32 chars)
+//	id: How the app authenticates
 //
 // Returns:
 //
-//	*slim.BindingsAdapter: Created and connected app instance
+//	*slim.App: Created and connected app instance
 //	uint64: Connection ID returned by the server
 //	error: If creation or connection fails
-func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64, error) {
+func CreateAndConnectAppWithIdentity(localID, serverAddr string, id *Identity) (*slim.App, uint64, error) {
 	// Initialize crypto, runtime, global service and logging with defaults
 	slim.InitializeWithDefaults()
 
@@ -106,8 +165,7 @@ func CreateAndConnectApp(localID, serverAddr, secret string) (*slim.App, uint64,
 		return nil, 0, fmt.Errorf("invalid local ID: %w", err)
 	}
 
-	// Create app with shared secret authentication
-	app, err := slim.GetGlobalService().CreateAppWithSecret(appName, secret)
+	app, err := id.createApp(appName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("create app failed: %w", err)
 	}

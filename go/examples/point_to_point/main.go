@@ -20,7 +20,7 @@ func main() {
 	server := flag.String("server", common.DefaultServerEndpoint, "SLIM server endpoint")
 	message := flag.String("message", "", "Message to send (sender mode)")
 	iterations := flag.Int("iterations", 10, "Number of messages to send")
-	sharedSecret := flag.String("shared-secret", common.DefaultSharedSecret, "Shared secret (min 32 chars)")
+	identity := common.IdentityFlags()
 	enableMLS := flag.Bool("enable-mls", false, "Enable MLS encryption")
 
 	flag.Parse()
@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// Create and connect app
-	app, connID, err := common.CreateAndConnectApp(*local, *server, *sharedSecret)
+	app, connID, err := common.CreateAndConnectAppWithIdentity(*local, *server, identity)
 	if err != nil {
 		log.Fatalf("Failed to create/connect app: %v", err)
 	}

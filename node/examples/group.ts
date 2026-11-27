@@ -15,7 +15,7 @@
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime
 import * as slimBindings from '../generated/index.js';
 import * as readline from 'node:readline/promises';
-import { createAndConnectApp, splitId, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
+import { createAndConnectApp, didKeyFromArgs, DID_KEY_USAGE, splitId, logMessage, sleep, DEFAULT_SERVER_ENDPOINT, DEFAULT_SHARED_SECRET } from './common.js';
 
 const DEFAULT_LOCAL_ID = 'org/default/me';
 
@@ -72,6 +72,7 @@ function parseArgs(): CliArgs {
       console.log('  --remote <id>         Remote channel/topic identity (moderator mode)');
       console.log('  --server <address>    Server endpoint (default: http://localhost:46357)');
       console.log('  --secret <secret>     Shared secret (default: demo-shared-secret-min-32-chars!!)');
+      console.log(DID_KEY_USAGE);
       console.log('  --enable-mls          Enable MLS encryption');
       console.log('  --invites <ids>       Comma-separated participant IDs to invite (moderator mode)');
       console.log('  --help, -h            Show this help message');
@@ -292,7 +293,12 @@ async function main() {
   console.log();
 
   try {
-    const { app, connId } = await createAndConnectApp(args.local, args.server, args.sharedSecret);
+    const { app, connId } = await createAndConnectApp(
+      args.local,
+      args.server,
+      args.sharedSecret,
+      didKeyFromArgs(process.argv.slice(2))
+    );
     const instance = app.id();
 
     const isModerator = Boolean(args.remote) && args.invites.length > 0;
