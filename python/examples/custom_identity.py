@@ -23,14 +23,15 @@ Three things a custom identity has to get right:
     constructor (the blocking one would wait on the loop it is blocking).
 
 The identities are X.509 certificates. Each app holds a certificate issued by a CA
-(fixtures in `testdata/x509`) and its private key, and its token is the certificate in
+(generate them with `testdata/x509/gen.sh`) and its private key, and its token is the certificate in
 PEM form. The signing keys are the certificate's key (ECDSA P-256, the MLS ciphersuite
 of SLIM): the secret key as the raw 32-byte scalar, the public key as an uncompressed
 SEC1 point. The verifier trusts one CA: it checks the certificate was issued by it, is
 within its validity period and is not a CA certificate, and its subject is the common
 name. It is a trust-anchor check only: there is no revocation checking (CRL / OCSP).
 
-Run with:  uv run --extra examples python examples/custom_identity.py
+Generate the certificates once with `testdata/x509/gen.sh`, then run with:
+  uv run --extra examples python examples/custom_identity.py
 """
 
 import asyncio
@@ -198,6 +199,10 @@ async def create_app(name: slim_bindings.Name, user: str) -> slim_bindings.App:
 
 
 async def main():
+    if not (CERTS / "ca.pem").exists():
+        raise SystemExit(
+            f"no certificates in {CERTS}: generate them with testdata/x509/gen.sh"
+        )
     # SLIM calls our async methods from its own threads: tell it which loop to use.
     slim_bindings.uniffi_set_event_loop(asyncio.get_running_loop())  # type: ignore[arg-type]
     slim_bindings.initialize_with_defaults()

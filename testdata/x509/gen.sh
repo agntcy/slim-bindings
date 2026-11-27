@@ -1,6 +1,11 @@
 #!/bin/sh
-# Regenerates the example CA and the end-entity certificates used by the custom identity
-# examples. The keys are public test keys: never use them for anything else.
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+#
+# Generates the example CA and the end-entity certificates the custom identity examples
+# read from this directory. Run it once before the examples. The keys are for trying the
+# examples: they are not committed (see .gitignore), and are never to be used for
+# anything else. The tests generate their own.
 #
 #   ca.pem / ca.key      self-signed CA (trust anchor of the verifiers)
 #   <name>.pem / .key    certificate signed by the CA, CN = the app's subject, and its

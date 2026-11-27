@@ -8,7 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="../../testdata/x509/*.pem;../../testdata/x509/alice.key;../../testdata/x509/bob.key" Link="x509/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Written by testdata/x509/gen.sh (not committed). Globs, so the build works without them. -->
+    <Content Include="../../testdata/x509/*.pem;../../testdata/x509/*.key" Exclude="../../testdata/x509/ca.key" Link="x509/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

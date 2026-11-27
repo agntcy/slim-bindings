@@ -7,15 +7,16 @@
 traits: subclass them, and pass the instances to `App.new_with_custom_identity`.
 The scheme is X.509: a token is the PEM certificate, and the certificate's own key
 pair (ECDSA P-256) is the key pair SLIM signs with. The verifier trusts one CA
-(trust-anchor check only, no revocation).
+(trust-anchor check only, no revocation). The CA and the certificates are generated
+for each run.
 """
 
 import asyncio
 import datetime
+import functools
 import json
 import threading
 from collections import Counter
-from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -30,75 +31,99 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 import slim_bindings
 
-CERTS = Path(__file__).resolve().parents[2] / "testdata" / "x509"
+DAY = datetime.timedelta(days=1)
 
 
 def common_name(cert: x509.Certificate) -> str:
     return cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value  # type: ignore[return-value]
 
 
-def load_provider(user: str) -> "CertProvider":
-    return CertProvider(
-        (CERTS / f"{user}.pem").read_bytes(), (CERTS / f"{user}.key").read_bytes()
+def x509_name(cn: str) -> x509.Name:
+    return x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, cn)])
+
+
+def certificate(
+    subject: str,
+    key: ec.EllipticCurvePrivateKey,
+    issuer: str,
+    issuer_key: ec.EllipticCurvePrivateKey,
+    *,
+    ca: bool = False,
+    valid: tuple[datetime.timedelta, datetime.timedelta] = (-DAY, DAY),
+) -> bytes:
+    """The PEM certificate of `key` for `subject`, signed by `issuer_key` for `issuer`.
+
+    `valid` is the validity period relative to now; `ca` makes it a CA certificate.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(x509_name(subject))
+        .issuer_name(x509_name(issuer))
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now + valid[0])
+        .not_valid_after(now + valid[1])
+        .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
+        .sign(issuer_key, hashes.SHA256())
+    )
+    return cert.public_bytes(serialization.Encoding.PEM)
+
+
+def pkcs8(key: ec.EllipticCurvePrivateKey) -> bytes:
+    return key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
     )
 
 
+def new_key() -> ec.EllipticCurvePrivateKey:
+    return ec.generate_private_key(ec.SECP256R1())
+
+
+@functools.cache
+def pki() -> dict[str, bytes]:
+    """The test PKI, generated once per run: the CA certificate ("ca.pem"), and alice's
+    and bob's certificates (CN = org/example/<user>) issued by it, with their keys
+    ("<user>.pem", "<user>.key").
+    """
+    ca_key = new_key()
+    files = {
+        "ca.pem": certificate("SLIM test CA", ca_key, "SLIM test CA", ca_key, ca=True)
+    }
+    for user in ("alice", "bob"):
+        key = new_key()
+        files[f"{user}.pem"] = certificate(
+            f"org/example/{user}", key, "SLIM test CA", ca_key
+        )
+        files[f"{user}.key"] = pkcs8(key)
+    return files
+
+
+def load_provider(user: str) -> "CertProvider":
+    return CertProvider(pki()[f"{user}.pem"], pki()[f"{user}.key"])
+
+
 def trusted_verifier() -> "CertVerifier":
-    return CertVerifier((CERTS / "ca.pem").read_bytes())
+    return CertVerifier(pki()["ca.pem"])
 
 
 def issue(
     subject: str,
     *,
     ca: bool = False,
-    valid: tuple[datetime.timedelta, datetime.timedelta] = (
-        -datetime.timedelta(days=1),
-        datetime.timedelta(days=1),
-    ),
+    valid: tuple[datetime.timedelta, datetime.timedelta] = (-DAY, DAY),
 ) -> tuple["CertProvider", bytes]:
     """A provider whose certificate is issued by a new CA, and that CA's certificate.
 
     `valid` is the validity period relative to now; `ca` makes the issued certificate
     itself a CA certificate.
     """
-    now = datetime.datetime.now(datetime.timezone.utc)
-
-    def name(cn: str) -> x509.Name:
-        return x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, cn)])
-
-    ca_key = ec.generate_private_key(ec.SECP256R1())
-    ca_cert = (
-        x509.CertificateBuilder()
-        .subject_name(name("test CA"))
-        .issuer_name(name("test CA"))
-        .public_key(ca_key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now - datetime.timedelta(days=1))
-        .not_valid_after(now + datetime.timedelta(days=1))
-        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-        .sign(ca_key, hashes.SHA256())
-    )
-    key = ec.generate_private_key(ec.SECP256R1())
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(name(subject))
-        .issuer_name(ca_cert.subject)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now + valid[0])
-        .not_valid_after(now + valid[1])
-        .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
-        .sign(ca_key, hashes.SHA256())
-    )
-    provider = CertProvider(
-        cert.public_bytes(serialization.Encoding.PEM),
-        key.private_bytes(
-            serialization.Encoding.PEM,
-            serialization.PrivateFormat.PKCS8,
-            serialization.NoEncryption(),
-        ),
-    )
-    return provider, ca_cert.public_bytes(serialization.Encoding.PEM)
+    ca_key, key = new_key(), new_key()
+    ca_pem = certificate("test CA", ca_key, "test CA", ca_key, ca=True)
+    cert_pem = certificate(subject, key, "test CA", ca_key, ca=ca, valid=valid)
+    return CertProvider(cert_pem, pkcs8(key)), ca_pem
 
 
 def untrusted_ca_provider(subject: str) -> "CertProvider":
@@ -420,9 +445,7 @@ async def test_custom_identity(server, sender_trusted, mls):
 
 def test_the_token_is_the_certificate():
     provider = load_provider("alice")
-    # The bytes of the file, not read_text(): a Windows checkout has CRLF line endings,
-    # which read_text() would turn into "\n".
-    assert provider.get_token() == (CERTS / "alice.pem").read_bytes().decode()
+    assert provider.get_token() == pki()["alice.pem"].decode()
     # The signing keys are the certificate's: SEC1 public key, raw scalar secret.
     keys = provider.get_signature_keys()
     assert keys.public_key == sec1(provider.cert)
@@ -458,15 +481,13 @@ def test_verifier_rejects_untrusted_ca():
         trusted_verifier().verify(token)
     # A certificate the trusted CA did not issue: bob's cert is no trust anchor for alice's.
     with pytest.raises(slim_bindings.IdentityCallbackError.Failed):
-        CertVerifier((CERTS / "bob.pem").read_bytes()).verify(
-            load_provider("alice").get_token()
-        )
+        CertVerifier(pki()["bob.pem"]).verify(load_provider("alice").get_token())
 
 
 def test_verifier_rejects_a_ca_certificate():
     # The CA certificate is signed by the trusted CA (itself), but is no identity.
     with pytest.raises(slim_bindings.IdentityCallbackError.Failed):
-        trusted_verifier().verify((CERTS / "ca.pem").read_text())
+        trusted_verifier().verify(pki()["ca.pem"].decode())
     # A certificate marked as a CA, even from a trusted issuer, does not identify an app.
     provider, ca_pem = issue("org/example/mallory", ca=True)
     with pytest.raises(slim_bindings.IdentityCallbackError.Failed, match="CA"):

@@ -19,7 +19,8 @@
 //   * The callbacks are invoked from SLIM's own threads: keep them thread-safe.
 //
 // The identities are X.509 certificates. Each app holds a certificate issued by a CA
-// (fixtures in testdata/x509) and its private key, and its token is the certificate in PEM
+// (generate them with testdata/x509/gen.sh) and its private key, and its token is the
+// certificate in PEM
 // form. The signing keys are the certificate's key (ECDSA P-256, the MLS ciphersuite of
 // SLIM): the secret key as the raw 32-byte scalar, the public key as an uncompressed SEC1
 // point. The verifier trusts one CA: it checks the certificate was issued by it, is within
@@ -29,10 +30,9 @@
 //
 // Persistence is not supported (ExportIdentity returns null).
 //
-// The certificates and keys are the test fixtures in testdata/x509 (copied next to the
-// binary): public test keys, never use them for anything else.
-//
-// Run with: dotnet run --project Slim.Examples.CustomIdentity
+// The certificates and keys are the ones testdata/x509/gen.sh writes (the build copies
+// them next to the binary). Generate them once, then run with:
+// dotnet run --project Slim.Examples.CustomIdentity
 
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -47,6 +47,11 @@ var aliceName = new Name("org", "example", "alice");
 var bobName = new Name("org", "example", "bob");
 
 var certs = Path.Combine(AppContext.BaseDirectory, "x509");
+if (!File.Exists(Path.Combine(certs, "ca.pem")))
+{
+    Console.Error.WriteLine("No certificates: generate them with testdata/x509/gen.sh, then run the example again.");
+    return 1;
+}
 var ca = X509Certificate2.CreateFromPem(File.ReadAllText(Path.Combine(certs, "ca.pem")));
 
 var alice = await CreateApp("alice", aliceName);
@@ -68,6 +73,7 @@ await created.PublishAndWaitAsync(Encoding.UTF8.GetBytes("hello bob"), null, nul
 var reply = await created.GetMessageAsync(timeout);
 Console.WriteLine($"alice received: {Encoding.UTF8.GetString(reply.Payload)}");
 await serving;
+return 0;
 
 Task<App> CreateApp(string fixture, Name name) =>
     App.NewWithCustomIdentityAsync(

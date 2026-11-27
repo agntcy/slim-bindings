@@ -21,7 +21,7 @@
  *   - The methods are called from SLIM's own threads: keep them quick and side-effect free.
  *
  * The identities are X.509 certificates. Each app holds a certificate issued by a CA
- * (fixtures in `testdata/x509`, regenerate them with `gen.sh`) and its private key, and its
+ * (generate them with `testdata/x509/gen.sh`) and its private key, and its
  * token is the certificate in PEM form. The signing keys are the certificate's key (ECDSA
  * P-256, the MLS ciphersuite of SLIM): the secret key as the raw 32-byte scalar, the public
  * key as an uncompressed SEC1 point. The verifier trusts one CA: it checks the certificate
@@ -29,12 +29,13 @@
  * subject is the common name. It is a trust-anchor check only: there is no revocation
  * checking (CRL / OCSP).
  *
- * Run with: npm run custom-identity
+ * Generate the certificates once with `testdata/x509/gen.sh`, then run with:
+ * npm run custom-identity
  */
 
 import { X509Certificate, createPrivateKey } from "node:crypto";
 import type { KeyObject } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -240,6 +241,11 @@ async function createApp(name: any, user: string) {
 }
 
 async function main() {
+  if (!existsSync(join(CERTS_DIR, "ca.pem"))) {
+    throw new Error(
+      `no certificates in ${CERTS_DIR}: generate them with testdata/x509/gen.sh`,
+    );
+  }
   slimBindings.initializeWithDefaults();
 
   const aliceName = new slimBindings.Name("org", "example", "alice");

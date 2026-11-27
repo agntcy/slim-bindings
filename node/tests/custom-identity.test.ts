@@ -7,29 +7,112 @@
  * `IdentityProvider` and `IdentityVerifier` are foreign interfaces: implement them and pass
  * the objects to `App.newWithCustomIdentityAsync`. The scheme here is based on X.509
  * certificates: the token is the PEM certificate, its key pair (ECDSA P-256) is the SLIM
- * signing key pair, and the verifier trusts the certificates issued by one CA
- * (`testdata/x509`). Only the trust anchor is checked: there is no revocation.
+ * signing key pair, and the verifier trusts the certificates issued by one CA. The CA and
+ * the certificates are generated for each run. Only the trust anchor is checked: there is
+ * no revocation.
  */
 
 import { test, describe } from "node:test";
 import assert from "node:assert";
-import { X509Certificate, createPrivateKey } from "node:crypto";
+import {
+  X509Certificate,
+  createPublicKey,
+  generateKeyPairSync,
+  randomBytes,
+  sign,
+} from "node:crypto";
 import type { KeyObject } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 // @ts-expect-error - tsx resolves .js imports to .ts files at runtime; generated module has default export at runtime
 import * as slimBindings from "../generated/index.js";
 
-const CERTS_DIR = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "testdata",
-  "x509",
-);
-const certFile = (file: string) => join(CERTS_DIR, file);
+// node:crypto reads X.509 certificates but cannot write them, so the test encodes them
+// itself: just the DER it needs for an ECDSA P-256 certificate with a common name.
+const der = (tag: number, ...content: Buffer[]): Buffer => {
+  const body = Buffer.concat(content);
+  const n = body.length;
+  const length =
+    n < 0x80
+      ? Buffer.from([n])
+      : n < 0x100
+        ? Buffer.from([0x81, n])
+        : Buffer.from([0x82, n >> 8, n & 0xff]);
+  return Buffer.concat([Buffer.from([tag]), length, body]);
+};
+const seq = (...content: Buffer[]) => der(0x30, ...content);
+const oid = (hex: string) => der(0x06, Buffer.from(hex, "hex"));
+const ECDSA_WITH_SHA256 = seq(oid("2a8648ce3d040302"));
+const commonNameDer = (cn: string) =>
+  seq(der(0x31, seq(oid("550403"), der(0x0c, Buffer.from(cn)))));
+const utcTime = (date: Date) =>
+  der(
+    0x17,
+    Buffer.from(date.toISOString().replace(/[-:T]/g, "").slice(2, 14) + "Z"),
+  );
+
+/**
+ * A certificate for `subject`'s key, signed by `issuerKey` on behalf of `issuer`, valid
+ * from a day ago to a day from now. `ca` marks it a CA certificate.
+ */
+function issueCertificate(
+  subject: string,
+  key: KeyObject,
+  issuer: string,
+  issuerKey: KeyObject,
+  ca: boolean,
+): string {
+  const day = 24 * 60 * 60 * 1000;
+  const serial = randomBytes(16);
+  serial[0] &= 0x7f; // a positive INTEGER
+  const basicConstraints = seq(
+    oid("551d13"),
+    der(0x01, Buffer.from([0xff])), // critical
+    der(0x04, ca ? seq(der(0x01, Buffer.from([0xff]))) : seq()),
+  );
+  const tbs = seq(
+    der(0xa0, der(0x02, Buffer.from([2]))), // version 3
+    der(0x02, serial),
+    ECDSA_WITH_SHA256,
+    commonNameDer(issuer),
+    seq(utcTime(new Date(Date.now() - day)), utcTime(new Date(Date.now() + day))),
+    commonNameDer(subject),
+    createPublicKey(key).export({ type: "spki", format: "der" }),
+    der(0xa3, seq(basicConstraints)),
+  );
+  const signature = sign("sha256", tbs, { key: issuerKey, dsaEncoding: "der" });
+  const cert = seq(
+    tbs,
+    ECDSA_WITH_SHA256,
+    der(0x03, Buffer.from([0]), signature),
+  );
+  return new X509Certificate(cert).toString();
+}
+
+const newKey = () =>
+  generateKeyPairSync("ec", { namedCurve: "prime256v1" }).privateKey;
+
+/**
+ * The test PKI, generated for each run: a CA, and alice's and bob's certificates (CN =
+ * org/example/alice, org/example/bob) issued by it, with their keys.
+ */
+const PKI = (() => {
+  const caKey = newKey();
+  const certs: Record<string, string> = {
+    ca: issueCertificate("SLIM test CA", caKey, "SLIM test CA", caKey, true),
+  };
+  const keys: Record<string, KeyObject> = {};
+  for (const user of ["alice", "bob"]) {
+    keys[user] = newKey();
+    certs[user] = issueCertificate(
+      `org/example/${user}`,
+      keys[user],
+      "SLIM test CA",
+      caKey,
+      false,
+    );
+  }
+  return { certs, keys };
+})();
 
 const toArrayBuffer = (buf: Buffer): ArrayBuffer =>
   buf.buffer.slice(
@@ -85,15 +168,11 @@ class CertProvider {
     this.calls.set(method, (this.calls.get(method) ?? 0) + 1);
   }
 
-  constructor(certName: string) {
-    this.certPem = readFileSync(certFile(`${certName}.pem`), "utf8");
+  constructor(user: string) {
+    this.certPem = PKI.certs[user];
     this.cert = new X509Certificate(this.certPem);
     this.keys = {
-      secretKey: toArrayBuffer(
-        rawSecretKey(
-          createPrivateKey(readFileSync(certFile(`${certName}.key`))),
-        ),
-      ),
+      secretKey: toArrayBuffer(rawSecretKey(PKI.keys[user])),
       publicKey: toArrayBuffer(sec1PublicKey(this.cert.publicKey)),
     };
   }
@@ -154,8 +233,10 @@ class CertVerifier {
     this.calls.set(method, (this.calls.get(method) ?? 0) + 1);
   }
 
-  constructor(caFile: string = "ca.pem") {
-    this.ca = new X509Certificate(readFileSync(certFile(caFile)));
+  // `trusted` names the certificate of the trust anchor: the CA, or (to test an untrusted
+  // issuer) a user's own certificate.
+  constructor(trusted: string = "ca") {
+    this.ca = new X509Certificate(PKI.certs[trusted]);
   }
 
   // Validates the token, a PEM certificate, and returns the certificate.
@@ -245,7 +326,7 @@ const name = (app: string) => new slimBindings.Name("org", app, "v1");
 async function createApp(
   appName: string,
   user: string,
-  trustedCa: string = "ca.pem",
+  trustedCa: string = "ca",
 ) {
   const provider = new CertProvider(user);
   const verifier = new CertVerifier(trustedCa);
@@ -371,7 +452,7 @@ describe("custom identity implemented in TypeScript", () => {
     const receiver = await createApp(
       "custom-id-bad-receiver",
       "bob",
-      "bob.pem",
+      "bob",
     );
 
     await assert.rejects(
@@ -390,7 +471,7 @@ describe("custom identity implemented in TypeScript", () => {
     const provider = new CertProvider("alice");
     const verifier = new CertVerifier();
     const token = provider.getToken();
-    assert.strictEqual(token, readFileSync(certFile("alice.pem"), "utf8"));
+    assert.strictEqual(token, PKI.certs.alice);
 
     verifier.verify(token);
     assert.strictEqual(verifier.getSubject(token), "org/example/alice");
@@ -440,13 +521,13 @@ describe("custom identity implemented in TypeScript", () => {
     // The CA certificate itself is not an identity.
     rejected(
       verifier,
-      readFileSync(certFile("ca.pem"), "utf8"),
+      PKI.certs.ca,
       /CA certificate/,
     );
 
     // A certificate the verifier's CA did not issue: bob's cannot be the issuer of alice's.
     rejected(
-      new CertVerifier("bob.pem"),
+      new CertVerifier("bob"),
       token,
       /not issued by the trusted CA/,
     );

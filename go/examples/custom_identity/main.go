@@ -17,7 +17,7 @@
 //     threads.
 //
 // The identities are X.509 certificates. Each app holds a certificate issued by a CA
-// (fixtures in testdata/x509) and its private key, and its token is the certificate in
+// (generate them with testdata/x509/gen.sh) and its private key, and its token is the certificate in
 // PEM form. The signing keys are the certificate's key (ECDSA P-256, the MLS ciphersuite
 // of SLIM): the secret key as the raw 32-byte scalar, the public key as an uncompressed
 // SEC1 point. The verifier trusts one CA: it checks the certificate was issued by it, is
@@ -25,7 +25,8 @@
 // name. It is a trust-anchor check only: there is no revocation checking (CRL / OCSP).
 //
 // The certificates come from testdata/x509 at the root of the repository (override the
-// directory with SLIM_X509_DIR). Run with: go run ./examples/custom_identity
+// directory with SLIM_X509_DIR). Generate them once with testdata/x509/gen.sh, then run
+// with: go run ./examples/custom_identity
 package main
 
 import (
@@ -276,6 +277,9 @@ func createApp(name *slim.Name, dir, user string) (*slim.App, error) {
 func main() {
 	slim.InitializeWithDefaults()
 	dir := fixturesDir()
+	if _, err := os.Stat(filepath.Join(dir, "ca.pem")); err != nil {
+		log.Fatalf("no certificates in %s: generate them with testdata/x509/gen.sh", dir)
+	}
 
 	aliceName := slim.NewName("org", "example", "alice")
 	bobName := slim.NewName("org", "example", "bob")

@@ -21,10 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\..\testdata\x509\*.pem;..\..\testdata\x509\alice.key;..\..\testdata\x509\bob.key" Link="x509\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Slim\Slim.csproj" />
   </ItemGroup>
 

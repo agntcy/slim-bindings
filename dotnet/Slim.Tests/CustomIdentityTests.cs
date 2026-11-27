@@ -291,16 +291,25 @@ internal sealed class CertificateVerifier : IdentityVerifier
 [Collection("Slim")]
 public class CustomIdentityTests
 {
-    // Fixtures from testdata/x509, copied next to the test assembly: a CA and two end-entity
-    // certificates (CN = org/example/alice and org/example/bob) signed by it.
-    private static string Fixture(string file) => Path.Combine(AppContext.BaseDirectory, "x509", file);
+    // The test PKI, generated once per run: a CA, and the certificates (PEM) and private keys
+    // (PKCS#8 PEM) of alice and bob (CN = org/example/alice and org/example/bob) issued by it.
+    private static readonly Lazy<(string CaPem, Dictionary<string, (string CertPem, string KeyPem)> Users)> Pki = new(() =>
+    {
+        using var ca = NewCa("SLIM test CA");
+        var users = new[] { "alice", "bob" }.ToDictionary(
+            user => user,
+            user => Issue(ca, Subject(user), DateTimeOffset.UtcNow - Day, DateTimeOffset.UtcNow + Day));
+        return (ca.ExportCertificatePem(), users);
+    });
 
-    private static X509Certificate2 Ca() => X509Certificate2.CreateFromPem(File.ReadAllText(Fixture("ca.pem")));
+    private static X509Certificate2 Ca() => X509Certificate2.CreateFromPem(Pki.Value.CaPem);
 
-    private static string FixturePem(string fixture) => File.ReadAllText(Fixture(fixture + ".pem"));
+    // The PEM certificate of the CA ("ca"), alice or bob.
+    private static string FixturePem(string fixture) =>
+        fixture == "ca" ? Pki.Value.CaPem : Pki.Value.Users[fixture].CertPem;
 
     private static CertificateProvider FixtureProvider(string fixture) =>
-        new(FixturePem(fixture), File.ReadAllText(Fixture(fixture + ".key")));
+        new(FixturePem(fixture), Pki.Value.Users[fixture].KeyPem);
 
     private static string Subject(string fixture) => $"org/example/{fixture}";
 
